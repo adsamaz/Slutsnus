@@ -1,26 +1,39 @@
 import { createSignal, Show } from 'solid-js';
-import { useNavigate, A } from '@solidjs/router';
+import { useNavigate } from '@solidjs/router';
 import { useAuth } from '../stores/auth';
 import { useRoom } from '../stores/room';
-import Modal from '../components/Modal';
 import Button from '../components/Button';
+import { SnusIcon } from '../components/SnusIcon';
 import { GameType } from '@slutsnus/shared';
+
+type Game = { id: GameType; name: string; description: string; badges: string[]; tagline: string };
+
+const GAMES: Game[] = [
+    {
+        id: 'snus-rpg',
+        name: 'Snus King',
+        tagline: 'Collect. Trade. Betray.',
+        description: 'Collect Swedish snus brands and become the Snus King! Fight off evil nicotine pouches, trade with friends — or betray them with a disguised pouch.',
+        badges: ['1–4 Players', 'Co-op + Betrayal', 'RPG'],
+    },
+];
 
 export default function Home() {
     const [auth] = useAuth();
     const [, roomActions] = useRoom();
     const navigate = useNavigate();
 
-    const [createOpen, setCreateOpen] = createSignal(false);
+    const [selectedGame, setSelectedGame] = createSignal<Game | null>(null);
     const [joinCode, setJoinCode] = createSignal('');
     const [joinError, setJoinError] = createSignal('');
     const [creating, setCreating] = createSignal(false);
 
-    const handleCreate = async (gameType: GameType) => {
+    const handleCreate = async () => {
+        const game = selectedGame();
+        if (!game) return;
         setCreating(true);
         try {
-            const code = await roomActions.createRoom(gameType);
-            setCreateOpen(false);
+            const code = await roomActions.createRoom(game.id);
             navigate(`/lobby/${code}`);
         } catch (e: unknown) {
             console.error(e);
@@ -32,77 +45,88 @@ export default function Home() {
     const handleJoin = async (e: Event) => {
         e.preventDefault();
         setJoinError('');
-        if (!joinCode().trim()) return;
+        const code = joinCode().trim();
+        if (!code) return;
         try {
-            await roomActions.joinRoom(joinCode().trim());
-            navigate(`/lobby/${joinCode().trim().toUpperCase()}`);
+            await roomActions.joinRoom(code);
+            navigate(`/lobby/${code.toUpperCase()}`);
         } catch (e: unknown) {
             setJoinError(e instanceof Error ? e.message : 'Failed to join room');
         }
     };
 
+    const selectGame = (game: Game) => {
+        setSelectedGame(prev => prev?.id === game.id ? null : game);
+        setJoinError('');
+        setJoinCode('');
+    };
+
     return (
-        <main class="page">
+        <main class="home-page">
+            <div class="home-glow" aria-hidden="true" />
+
             <section class="hero">
-                <h1 class="hero-title">🎮 Slutsnus</h1>
-                <p class="hero-sub">Play browser games with friends. Real-time co-op, lobbies, betrayal included.</p>
-                <Show
-                    when={auth.user}
-                    fallback={
-                        <div class="hero-actions">
-                            <a href="/register" class="btn btn-primary" style={{ 'margin-right': '12px' }}>Get Started</a>
-                            <a href="/login" class="btn btn-secondary">Login</a>
+                <p class="hero-eyebrow">Browser games with friends</p>
+                <h1 class="hero-title">Slutsnus</h1>
+                <p class="hero-sub">Real-time co-op. Lobbies. Betrayal included.</p>
+            </section>
+
+            <section class="home-games-section">
+                <p class="home-section-label">Choose a game</p>
+                <div class="home-games-grid">
+                    {GAMES.map(game => (
+                        <div
+                            class={`home-game-card${selectedGame()?.id === game.id ? ' home-game-card--selected' : ''}`}
+                            onClick={() => auth.user && selectGame(game)}
+                            style={{ cursor: auth.user ? 'pointer' : 'default' }}
+                        >
+                            <div class="home-game-card-glow" aria-hidden="true" />
+                            <div class="home-game-card-icon">
+                                <SnusIcon size={72} />
+                            </div>
+                            <div class="home-game-card-body">
+                                <p class="home-game-card-tagline">{game.tagline}</p>
+                                <h2 class="home-game-card-title">{game.name}</h2>
+                                <p class="home-game-card-desc">{game.description}</p>
+                                <div class="home-game-card-badges">
+                                    {game.badges.map(b => <span class="badge">{b}</span>)}
+                                </div>
+                            </div>
+                            <div class="home-game-card-cta">
+                                {selectedGame()?.id === game.id ? 'Selected ✓' : auth.user ? 'Select →' : <><a href="/login">Log in</a> to play</>}
+                            </div>
                         </div>
-                    }
-                >
-                    <div class="hero-actions">
-                        <Button onClick={() => setCreateOpen(true)}>Create Game</Button>
-                        <form onSubmit={handleJoin} class="join-form" style={{ 'margin-top': '16px' }}>
-                            <input
-                                class="input"
-                                placeholder="Enter room code"
-                                value={joinCode()}
-                                onInput={(e) => setJoinCode(e.currentTarget.value.toUpperCase())}
-                                maxLength={6}
-                                style={{ 'text-transform': 'uppercase' }}
-                            />
-                            <Button type="submit" variant="secondary" style={{ 'margin-left': '8px' }}>Join</Button>
-                        </form>
+                    ))}
+                </div>
+            </section>
+
+            <Show when={selectedGame()}>
+                {(game) => (
+                    <section class="room-actions">
+                        <p class="room-actions-label">Ready to play <strong>{game().name}</strong>?</p>
+                        <div class="room-actions-inner">
+                            <Button onClick={handleCreate} disabled={creating()}>
+                                {creating() ? 'Creating...' : 'Create Room'}
+                            </Button>
+                            <span class="room-actions-divider">or join one</span>
+                            <form onSubmit={handleJoin} class="join-form">
+                                <input
+                                    class="input"
+                                    placeholder="Room code"
+                                    value={joinCode()}
+                                    onInput={(e) => setJoinCode(e.currentTarget.value.toUpperCase())}
+                                    maxLength={6}
+                                    style={{ 'text-transform': 'uppercase', width: '140px' }}
+                                />
+                                <Button type="submit" variant="secondary">Join</Button>
+                            </form>
+                        </div>
                         <Show when={joinError()}>
-                            <p class="error-text">{joinError()}</p>
+                            <p class="error-text" style={{ 'margin-top': '10px' }}>{joinError()}</p>
                         </Show>
-                    </div>
-                </Show>
-            </section>
-
-            <section class="games-grid">
-                <A href="/games/snus-rpg" style={{ 'text-decoration': 'none', color: 'inherit' }}>
-                    <div class="card game-card">
-                        <div class="game-card-icon">🎯</div>
-                        <h3>Snus King</h3>
-                        <p>
-                            Collect Swedish snus brands and become the Snus King! Fight off evil nicotine pouches,
-                            trade with friends — or betray them with a disguised pouch.
-                        </p>
-                        <div class="game-card-meta">
-                            <span class="badge">1–4 Players</span>
-                            <span class="badge">Co-op + Betrayal</span>
-                            <span class="badge">RPG</span>
-                        </div>
-                    </div>
-                </A>
-            </section>
-
-            <Modal open={createOpen()} onClose={() => setCreateOpen(false)} title="Create Game">
-                <p style={{ 'margin-bottom': '16px', color: 'var(--color-text-muted)' }}>Choose a game to start a new lobby:</p>
-                <Button
-                    onClick={() => handleCreate('snus-rpg')}
-                    disabled={creating()}
-                    style={{ width: '100%' }}
-                >
-                    {creating() ? 'Creating...' : '🎯 Snus King'}
-                </Button>
-            </Modal>
+                    </section>
+                )}
+            </Show>
         </main>
     );
 }

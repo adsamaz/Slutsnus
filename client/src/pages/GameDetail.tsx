@@ -4,6 +4,7 @@ import { useAuth } from '../stores/auth';
 import { useRoom } from '../stores/room';
 import Modal from '../components/Modal';
 import Button from '../components/Button';
+import { SnusIcon } from '../components/SnusIcon';
 import { GameType } from '@slutsnus/shared';
 
 export default function GameDetail() {
@@ -29,7 +30,7 @@ export default function GameDetail() {
 
     return (
         <main class="page">
-            <h2 class="page-title">🎯 Snus King</h2>
+            <h2 class="page-title"><span style={{ 'vertical-align': 'middle', 'margin-right': '8px', display: 'inline-flex' }}><SnusIcon size={32} /></span> Snus King</h2>
             <div class="card" style={{ 'max-width': '600px' }}>
                 <p style={{ 'margin-bottom': '1rem' }}>
                     Collect Swedish snus brands and become the Snus King! Fight off evil nicotine pouches,
@@ -59,7 +60,7 @@ export default function GameDetail() {
                     disabled={creating()}
                     style={{ width: '100%' }}
                 >
-                    {creating() ? 'Creating...' : '🎯 Snus King'}
+                    {creating() ? 'Creating...' : <><span style={{ 'vertical-align': 'middle', 'margin-right': '6px', display: 'inline-flex' }}><SnusIcon size={20} /></span>Snus King</>}
                 </Button>
             </Modal>
         </main>

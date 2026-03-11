@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "private": true,
     "scripts": {
-        "dev": "npx kill-port 4000 & prisma generate && ts-node-dev -r tsconfig-paths/register --respawn --transpile-only src/index.ts",
+        "dev": "ts-node-dev -r tsconfig-paths/register --respawn --transpile-only src/index.ts",
         "build": "tsc",
         "start": "node -r tsconfig-paths/register dist/index.js",
         "db:generate": "prisma generate",

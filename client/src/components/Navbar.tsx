@@ -14,14 +14,13 @@ export default function Navbar() {
     return (
         <nav class="navbar">
             <div class="navbar-brand">
-                <A href="/" class="navbar-logo">🎮 Slutsnus</A>
+                <A href="/" class="navbar-logo">Slutsnus</A>
             </div>
             <div class="navbar-links">
-                <A href="/" class="nav-link">Games</A>
+                <A href="/" class="nav-link" end>Games</A>
                 <Show when={auth.user}>
                     <A href="/friends" class="nav-link">Friends</A>
                     <A href="/leaderboard" class="nav-link">Leaderboard</A>
-                    <A href="/profile" class="nav-link">Profile</A>
                 </Show>
             </div>
             <div class="navbar-auth">
@@ -29,15 +28,12 @@ export default function Navbar() {
                     when={auth.user}
                     fallback={
                         <>
-                            <A href="/login" class="btn btn-secondary" style={{ 'margin-right': '8px' }}>Login</A>
+                            <A href="/login" class="btn btn-secondary">Login</A>
                             <A href="/register" class="btn btn-primary">Register</A>
                         </>
                     }
                 >
-                    <span class="navbar-username">{auth.user!.username}</span>
-                    <button class="btn btn-danger" onClick={handleLogout} style={{ 'margin-left': '12px' }}>
-                        Logout
-                    </button>
+                    <A href="/profile" class="navbar-username">{auth.user!.username}</A>
                 </Show>
             </div>
         </nav>
