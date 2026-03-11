@@ -1,0 +1,21 @@
+{
+    "extends": "../tsconfig.base.json",
+    "compilerOptions": {
+        "jsx": "preserve",
+        "jsxImportSource": "solid-js",
+        "moduleResolution": "bundler",
+        "module": "ESNext",
+        "types": [
+            "vite/client"
+        ],
+        "noEmit": true,
+        "paths": {
+            "@slutsnus/shared": [
+                "../shared/src/index.ts"
+            ]
+        }
+    },
+    "include": [
+        "src"
+    ]
+}

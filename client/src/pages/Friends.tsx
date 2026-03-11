@@ -1,0 +1,150 @@
+import { createSignal, For, Show } from 'solid-js';
+import { useFriends } from '../stores/friends';
+import { useRoom } from '../stores/room';
+import { useNavigate } from '@solidjs/router';
+import Button from '../components/Button';
+import type { UserPublic } from '@slutsnus/shared';
+
+export default function Friends() {
+    const [friendsState, friendsActions] = useFriends();
+    const [, roomActions] = useRoom();
+    const navigate = useNavigate();
+
+    const [searchQuery, setSearchQuery] = createSignal('');
+    const [searching, setSearching] = createSignal(false);
+    const [searchResults, setSearchResults] = createSignal<UserPublic[]>([]);
+
+    const handleSearch = async () => {
+        const q = searchQuery().trim();
+        if (!q) return;
+        setSearching(true);
+        try {
+            const results = await friendsActions.searchUsers(q);
+            setSearchResults(results);
+        } finally {
+            setSearching(false);
+        }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Enter') handleSearch();
+    };
+
+    const handleJoinGame = async (roomCode: string) => {
+        await roomActions.joinRoom(roomCode);
+        navigate(`/lobby/${roomCode}`);
+    };
+
+    const accepted = () => friendsState.friends.filter((f) => f.friendshipStatus === 'accepted');
+    const pending = () => friendsState.friends.filter((f) => f.friendshipStatus === 'pending');
+
+    return (
+        <main class="page">
+            <h2 class="page-title">Friends</h2>
+
+            {/* Search */}
+            <div class="card" style={{ 'margin-bottom': '1.5rem' }}>
+                <h3>Find Players</h3>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                        class="input"
+                        style={{ flex: 1 }}
+                        placeholder="Search by username..."
+                        value={searchQuery()}
+                        onInput={(e) => setSearchQuery(e.currentTarget.value)}
+                        onKeyDown={handleKeyDown}
+                    />
+                    <Button onClick={handleSearch} disabled={searching()}>
+                        {searching() ? 'Searching...' : 'Search'}
+                    </Button>
+                </div>
+                <Show when={searchResults().length > 0}>
+                    <div class="search-results" style={{ 'margin-top': '1rem' }}>
+                        <For each={searchResults()}>
+                            {(user) => (
+                                <div class="friend-item">
+                                    <span>{user.username}</span>
+                                    <Button
+                                        class="btn btn-secondary"
+                                        style={{ 'margin-left': 'auto', padding: '4px 10px', 'font-size': '0.8rem' }}
+                                        onClick={() => friendsActions.sendRequest(user.id)}
+
+                                    >
+                                        Add Friend
+                                    </Button>
+                                </div>
+                            )}
+                        </For>
+                    </div>
+                </Show>
+            </div>
+
+            {/* Pending Requests */}
+            <Show when={pending().length > 0}>
+                <div class="card" style={{ 'margin-bottom': '1.5rem' }}>
+                    <h3>Pending Requests</h3>
+                    <For each={pending()}>
+                        {(f) => (
+                            <div class="friend-item">
+                                <span>{f.username}</span>
+                                <div style={{ 'margin-left': 'auto', display: 'flex', gap: '6px' }}>
+                                    <Button
+                                        class="btn btn-primary"
+                                        style={{ padding: '4px 10px', 'font-size': '0.8rem' }}
+                                        onClick={() => friendsActions.acceptRequest(f.userId)}
+                                    >
+                                        Accept
+                                    </Button>
+                                    <Button
+                                        class="btn btn-danger"
+                                        style={{ padding: '4px 10px', 'font-size': '0.8rem' }}
+                                        onClick={() => friendsActions.declineRequest(f.userId)}
+                                    >
+                                        Decline
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </For>
+                </div>
+            </Show>
+
+            {/* Friends List */}
+            <div class="card">
+                <h3>Friends ({accepted().length})</h3>
+                <Show when={accepted().length === 0}>
+                    <p class="muted">No friends yet. Search for players above!</p>
+                </Show>
+                <For each={accepted()}>
+                    {(f) => (
+                        <div class="friend-item">
+                            <span class={`status-dot ${f.online ? 'online' : 'offline'}`} />
+                            <span>{f.username}</span>
+                            <Show when={f.online}>
+                                <span class="online-label">Online</span>
+                            </Show>
+                            <div style={{ 'margin-left': 'auto', display: 'flex', gap: '6px' }}>
+                                <Show when={f.currentRoom?.code}>
+                                    <Button
+                                        class="btn btn-secondary"
+                                        style={{ padding: '4px 10px', 'font-size': '0.8rem' }}
+                                        onClick={() => handleJoinGame(f.currentRoom!.code)}
+                                    >
+                                        Join Game
+                                    </Button>
+                                </Show>
+                                <Button
+                                    class="btn btn-danger"
+                                    style={{ padding: '4px 10px', 'font-size': '0.8rem' }}
+                                    onClick={() => friendsActions.removeFriend(f.userId)}
+                                >
+                                    Remove
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </For>
+            </div>
+        </main>
+    );
+}

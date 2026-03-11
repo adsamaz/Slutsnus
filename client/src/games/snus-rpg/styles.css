@@ -1,0 +1,297 @@
+/* ============================
+   Snus RPG Game Styles
+   ============================ */
+
+.game-viewport {
+    position: relative;
+    width: 750px;
+    height: 750px;
+    margin: 0 auto;
+    background: #0f0f0f;
+    border: 2px solid #333;
+    border-radius: 4px;
+    overflow: hidden;
+    outline: none;
+}
+
+.game-canvas {
+    display: block;
+    image-rendering: pixelated;
+}
+
+/* ---- HUD ---- */
+.hud {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    font-family: 'Courier New', monospace;
+}
+
+.hud-panel {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    padding: 8px 12px;
+    color: #e0e0e0;
+    font-size: 0.8rem;
+}
+
+.hud-topleft {
+    top: 10px;
+    left: 10px;
+    min-width: 140px;
+}
+
+.hud-topright {
+    top: 10px;
+    right: 10px;
+}
+
+.hud-topcenter {
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 180px;
+}
+
+.hud-bottomleft {
+    bottom: 10px;
+    left: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.hud-bottomcenter {
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 0.7rem;
+    color: #888;
+}
+
+.hud-label {
+    color: #888;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 6px;
+}
+
+.hud-value {
+    color: #e0e0e0;
+    font-weight: bold;
+}
+
+.hud-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+}
+
+.hud-hp {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.hp-bar-bg {
+    flex: 1;
+    height: 8px;
+    background: #333;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.hp-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.1s;
+}
+
+.hud-timer {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: #ffa657;
+    letter-spacing: 0.1em;
+}
+
+/* Scoreboard rows */
+.hud-score-row {
+    display: flex;
+    gap: 8px;
+    font-size: 0.78rem;
+    padding: 1px 0;
+}
+
+.hud-score-row.me {
+    color: #39d353;
+    font-weight: bold;
+}
+
+.hud-score-row .rank {
+    width: 24px;
+    color: #888;
+}
+
+.hud-score-row .name {
+    flex: 1;
+}
+
+.hud-score-row .pts {
+    color: #ffa657;
+}
+
+/* Effect badges */
+.effect-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.effect-badge.boost {
+    background: rgba(255, 215, 0, 0.2);
+    color: #ffd700;
+}
+
+.effect-badge.debuff {
+    background: rgba(255, 77, 77, 0.2);
+    color: #ff4d4d;
+}
+
+/* ---- Trade Modal ---- */
+.trade-overlay {
+    pointer-events: all;
+}
+
+.trade-modal {
+    max-width: 380px;
+    width: 90%;
+    text-align: center;
+}
+
+.trade-modal h3 {
+    color: #ffa657;
+    margin-bottom: 8px;
+}
+
+.trade-from {
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+    color: #ccc;
+}
+
+.trade-items {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.trade-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.trade-label {
+    font-size: 0.7rem;
+    color: #888;
+    text-transform: uppercase;
+}
+
+.trade-brand {
+    font-weight: bold;
+    color: #d2a679;
+}
+
+.trade-count {
+    font-size: 0.85rem;
+    color: #e0e0e0;
+}
+
+.trade-arrow {
+    font-size: 1.5rem;
+    color: #888;
+}
+
+.trade-warning {
+    font-size: 0.78rem;
+    color: #ff7b72;
+    margin-bottom: 16px;
+}
+
+.trade-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+/* ---- End Screen ---- */
+.end-screen-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.88);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.end-screen {
+    text-align: center;
+    max-width: 480px;
+    width: 90%;
+    padding: 2rem;
+}
+
+.end-title {
+    font-size: 2.5rem;
+    color: #ffd700;
+    margin-bottom: 0.25rem;
+}
+
+.end-winner {
+    font-size: 1.1rem;
+    color: #ccc;
+    margin-bottom: 1.5rem;
+}
+
+.end-scoreboard {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+}
+
+.end-scoreboard th,
+.end-scoreboard td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #333;
+    text-align: left;
+}
+
+.end-scoreboard th {
+    color: #888;
+    font-weight: normal;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+}
+
+.end-scoreboard .highlight-row td {
+    color: #39d353;
+    font-weight: bold;
+}
+
+.end-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
