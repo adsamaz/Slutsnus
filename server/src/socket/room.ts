@@ -93,7 +93,7 @@ export function roomHandlers(
                 socket.emit('room:error', { message: 'Only the host can start the game' });
                 return;
             }
-            if (!room.players.every((p) => p.ready)) {
+            if (!room.players.filter((p: { userId: string; ready: boolean }) => p.userId !== room.hostId).every((p: { userId: string; ready: boolean }) => p.ready)) {
                 socket.emit('room:error', { message: 'Not all players are ready' });
                 return;
             }

@@ -1,12 +1,13 @@
 import {
     createContext,
     useContext,
-    onMount,
+    createEffect,
     onCleanup,
     ParentComponent,
 } from 'solid-js';
 import { io, Socket } from 'socket.io-client';
 import { ClientToServerEvents, ServerToClientEvents } from '@slutsnus/shared';
+import { useAuth } from './auth';
 
 type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -14,9 +15,14 @@ const SocketCtx = createContext<AppSocket | null>(null);
 
 export const SocketProvider: ParentComponent = (props) => {
     const socket: AppSocket = io({ withCredentials: true, autoConnect: false });
+    const [authState] = useAuth();
 
-    onMount(() => {
-        socket.connect();
+    createEffect(() => {
+        if (authState.user) {
+            socket.connect();
+        } else {
+            socket.disconnect();
+        }
     });
 
     onCleanup(() => {

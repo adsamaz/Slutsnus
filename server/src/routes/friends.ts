@@ -71,9 +71,9 @@ router.get('/search', async (req: AuthenticatedRequest, res: Response) => {
                 NOT: { id: req.user!.userId },
             },
             take: 20,
-            select: { id: true, username: true, email: true },
+            select: { id: true, username: true },
         });
-        const result: UserPublic[] = users.map((u) => ({ id: u.id, username: u.username, email: u.email }));
+        const result: UserPublic[] = users.map((u) => ({ id: u.id, username: u.username }));
         res.json(result);
     } catch {
         res.status(500).json({ error: 'Internal server error' });

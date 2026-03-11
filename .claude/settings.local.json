@@ -3,7 +3,10 @@
     "allow": [
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(ls c:/Users/addes/Git/Slutsnus/*.json c:/Users/addes/Git/Slutsnus/*.js)",
+      "Bash(npm show:*)",
+      "Bash(npm install:*)"
     ]
   }
 }

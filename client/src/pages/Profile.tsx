@@ -23,11 +23,7 @@ export default function Profile() {
                         <label class="form-label">Username</label>
                         <p class="profile-value">{user()?.username}</p>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Email</label>
-                        <p class="profile-value">{user()?.email}</p>
-                    </div>
-                </div>
+</div>
                 <Button class="btn btn-danger" onClick={handleLogout} style={{ 'margin-top': '1.5rem' }}>
                     Logout
                 </Button>

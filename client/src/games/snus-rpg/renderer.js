@@ -110,4 +110,3 @@ export function render(ctx, state) {
         ctx.fillText(player.username, px, py - TILE / 2 - 9);
     }
 }
-//# sourceMappingURL=renderer.js.map
