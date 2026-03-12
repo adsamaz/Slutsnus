@@ -25,7 +25,7 @@
 
 **Research flag:** Standard patterns — no phase research needed
 
-**Plans:** 3/7 plans executed
+**Plans:** 4/7 plans executed
 
 Plans:
 - [ ] 01-01-PLAN.md — Test infrastructure: Vitest install, config, RED-state stubs for deck/rules/engine

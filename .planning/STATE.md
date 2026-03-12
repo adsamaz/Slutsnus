@@ -42,6 +42,9 @@
 - Import Snusking types from `@slutsnus/shared` (workspace package), not relative paths
 - `SnuskingProjectedState` uses `self`/`opponents` fields (not `players` map) — confirmed by type definition
 - Vitest resolve alias required for `@slutsnus/shared` in server workspace test runs
+- Snusking types added directly to shared/src/types.ts (no separate file) — matches existing project convention
+- GameContainer uses fragment wrapper so snus-rpg and snusking Show blocks coexist under the gameState accessor
+- onAction in SnuskingGame casts to existing GameAction type — no new Snusking-specific action type needed at this layer
 
 ---
 
@@ -61,4 +64,5 @@
 - [x] Research complete — FEATURES.md, ARCHITECTURE.md, STACK.md, PITFALLS.md, SUMMARY.md
 - [x] Phase 1 planned — 01-RESEARCH.md, 01-VALIDATION.md, 7 PLAN.md files (01-01 through 01-07)
 - [x] Plan 01-01 complete — Vitest installed, RED-state test stubs for engine/rules/deck (4 min)
+- [x] Plan 01-02 complete — TurnBasedGameEngine interface and full Snusking type contracts defined in registry.ts and shared/src/types.ts (4 min)
 - [x] Plan 01-06 complete — Snusking client UI components: Board, Hand, OpponentStatus, PlayerHUD, EndScreen, SnuskingGame root; GameContainer routing wired (4 min)
