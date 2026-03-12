@@ -2,14 +2,16 @@
 
 **Project:** Snusking
 **Updated:** 2026-03-12
+**Last session:** Completed 01-06-PLAN.md (Snusking client UI components)
 
 ---
 
 ## Current Status
 
 **Milestone:** 1.0 — Card Game Engine
-**Active Phase:** Phase 1 — Foundation and Engine Contract (planned, ready to execute)
-**Overall Progress:** 0 / 4 phases complete
+**Active Phase:** Phase 1 — Foundation and Engine Contract (executing — plan 6 of 7 complete)
+**Current Plan:** 01-07 (next to execute)
+**Overall Progress:** 0 / 4 phases complete (6/7 plans in Phase 1 done)
 
 ---
 
@@ -17,7 +19,7 @@
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | Foundation and Engine Contract | Planned — 7 plans ready |
+| 1 | Foundation and Engine Contract | In progress — 6/7 plans complete |
 | 2 | Card Design, Balance, and Game Economy | Not started |
 | 3 | Client UI and Reveal Experience | Not started |
 | 4 | Integration, Playtesting, and Balance Iteration | Not started |
@@ -37,6 +39,9 @@
 - Beer hold cap: max 2–3 units
 - Turn timer starting point: 45 seconds (tunable after playtesting)
 - Score threshold starting point: 200 (tunable after playtesting)
+- Import Snusking types from `@slutsnus/shared` (workspace package), not relative paths
+- `SnuskingProjectedState` uses `self`/`opponents` fields (not `players` map) — confirmed by type definition
+- Vitest resolve alias required for `@slutsnus/shared` in server workspace test runs
 
 ---
 
@@ -55,3 +60,5 @@
 - [x] Codebase mapped — ARCHITECTURE.md, STACK.md, CONVENTIONS.md, TESTING.md, STRUCTURE.md, CONCERNS.md, INTEGRATIONS.md
 - [x] Research complete — FEATURES.md, ARCHITECTURE.md, STACK.md, PITFALLS.md, SUMMARY.md
 - [x] Phase 1 planned — 01-RESEARCH.md, 01-VALIDATION.md, 7 PLAN.md files (01-01 through 01-07)
+- [x] Plan 01-01 complete — Vitest installed, RED-state test stubs for engine/rules/deck (4 min)
+- [x] Plan 01-06 complete — Snusking client UI components: Board, Hand, OpponentStatus, PlayerHUD, EndScreen, SnuskingGame root; GameContainer routing wired (4 min)
