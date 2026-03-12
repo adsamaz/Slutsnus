@@ -27,7 +27,7 @@ export interface AuthResponse {
 // Rooms
 // ─────────────────────────────────────────────────
 export type RoomStatus = 'waiting' | 'playing' | 'ended';
-export type GameType = 'snus-rpg';
+export type GameType = 'snus-rpg' | 'snusking';
 
 export interface RoomPlayer {
     userId: string;
@@ -187,3 +187,87 @@ export interface SnusRpgState {
     tradeOffers: TradeOffer[];
     timeRemainingTicks: number;
 }
+
+// ─────────────────────────────────────────────────
+// Snusking specific
+// ─────────────────────────────────────────────────
+export type GameEndReason = 'score_threshold' | 'slut_snus';
+
+/** Static card definition from the card catalog */
+export interface SnuskingCardDefinition {
+  id: string;
+  name: string;
+  empirePoints: number;
+}
+
+export interface SnuskingCardInstance {
+  instanceId: string;
+  definitionId: string;
+  name: string;
+  empirePoints: number;
+}
+
+export interface SnuskingTradeOffer {
+  offerId: string;
+  fromPlayerId: string;
+  toPlayerId: string;
+  cardInstanceId: string;   // stable card ID — NOT array position
+  displayName: string;      // Phase 1: same as real name. Phase 2: may differ.
+  expiresAtTurn: number;
+}
+
+export interface SnuskingPlayerState {
+  userId: string;
+  username: string;
+  hand: SnuskingCardInstance[];
+  empireScore: number;
+  hasCommitted: boolean;
+  isConnected: boolean;
+  beer: number;
+}
+
+export interface SnuskingOpponentState {
+  userId: string;
+  username: string;
+  handCount: number;
+  empireScore: number;
+  hasCommitted: boolean;
+  isConnected: boolean;
+  beer: number;
+}
+
+export interface SnuskingProjectedState {
+  phase: 'draw' | 'planning' | 'reveal' | 'resolve' | 'ended';
+  self: SnuskingPlayerState;
+  opponents: SnuskingOpponentState[];
+  deckCount: number;
+  discardCount: number;
+  turnNumber: number;
+  pendingTradeOffers: SnuskingTradeOffer[];
+  status: 'active' | 'ended';
+  endReason: GameEndReason | null;
+  results: GameResult[] | null;
+}
+
+/** Server-only master state — NEVER emitted directly (contains all players' hands) */
+export interface SnuskingMasterState {
+  roomId: string;
+  phase: 'draw' | 'planning' | 'reveal' | 'resolve' | 'ended';
+  players: Record<string, SnuskingPlayerState>;
+  deck: SnuskingCardInstance[];
+  discardPile: SnuskingCardInstance[];
+  currentEvent: null;
+  turnNumber: number;
+  pendingTradeOffers: SnuskingTradeOffer[];
+  status: 'active' | 'ended';
+  endReason: GameEndReason | null;
+  results: GameResult[] | null;
+}
+
+// Snusking action discriminated union — validated by Zod at Socket.IO boundary (server-only)
+export type SnuskingAction =
+  | { type: 'snusking:spend'; cardIds: string[] }
+  | { type: 'snusking:pass' }
+  | { type: 'snusking:trade-offer'; targetPlayerId: string; cardInstanceId: string }
+  | { type: 'snusking:trade-accept'; offerId: string }
+  | { type: 'snusking:trade-decline'; offerId: string };
