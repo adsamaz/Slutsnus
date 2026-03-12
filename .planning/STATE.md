@@ -65,4 +65,6 @@
 - [x] Phase 1 planned — 01-RESEARCH.md, 01-VALIDATION.md, 7 PLAN.md files (01-01 through 01-07)
 - [x] Plan 01-01 complete — Vitest installed, RED-state test stubs for engine/rules/deck (4 min)
 - [x] Plan 01-02 complete — TurnBasedGameEngine interface and full Snusking type contracts defined in registry.ts and shared/src/types.ts (4 min)
+- [x] Plan 01-03 complete — Card catalog (8 real brands), Fisher-Yates shuffle (crypto.randomInt), pure rule functions (scoreCards, checkWinCondition, drawCards, spendCards) (5 min)
+- [x] Plan 01-04 complete — SnuskingEngine FSM (draw→planning→reveal→resolve), simultaneous reveal, 45s auto-pass timer, per-player projectState, Zod action validation — all 22 tests GREEN (15 min)
 - [x] Plan 01-06 complete — Snusking client UI components: Board, Hand, OpponentStatus, PlayerHUD, EndScreen, SnuskingGame root; GameContainer routing wired (4 min)
