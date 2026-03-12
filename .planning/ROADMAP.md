@@ -25,6 +25,17 @@
 
 **Research flag:** Standard patterns — no phase research needed
 
+**Plans:** 7 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Test infrastructure: Vitest install, config, RED-state stubs for deck/rules/engine
+- [ ] 01-02-PLAN.md — Type contracts: TurnBasedGameEngine interface, all Snusking shared types
+- [ ] 01-03-PLAN.md — Card catalog, Fisher-Yates deck builder, pure rules functions
+- [ ] 01-04-PLAN.md — SnuskingEngine FSM: simultaneous reveal, timer, per-player projection
+- [ ] 01-05-PLAN.md — Platform wiring: GameType registration, room.ts per-socket routing, reconnect
+- [ ] 01-06-PLAN.md — Client skeleton: Solid.js components (Board, Hand, OpponentStatus, PlayerHUD, EndScreen)
+- [ ] 01-07-PLAN.md — Cleanup: snus-rpg removal, lobby labels, player count, smoke test checkpoint
+
 ---
 
 ## Phase 2 — Card Design, Balance, and Game Economy
