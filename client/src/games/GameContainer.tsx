@@ -3,13 +3,14 @@ import { useSocket } from '../stores/socket';
 import { useRoom } from '../stores/room';
 import { useNavigate } from '@solidjs/router';
 import SnusRpgGame from './snus-rpg/index';
-import type { SnusRpgState } from '@slutsnus/shared';
+import { SnuskingGame } from './snusking/index';
+import type { SnusRpgState, SnuskingProjectedState, GameAction } from '@slutsnus/shared';
 
 interface GameContainerProps {
     roomCode: string;
 }
 
-type AnyGameState = SnusRpgState;
+type AnyGameState = SnusRpgState | SnuskingProjectedState;
 
 export default function GameContainer(props: GameContainerProps) {
     const socket = useSocket();
@@ -51,15 +52,24 @@ export default function GameContainer(props: GameContainerProps) {
             </Show>
             <Show when={gameState()}>
                 {(state) => (
-                    <Show when={gameType() === 'snus-rpg'}>
-                        <SnusRpgGame
-                            state={state() as SnusRpgState}
-                            roomCode={props.roomCode}
-                            ended={ended()}
-                            onPlayAgain={handlePlayAgain}
-                            onLeaderboard={handleLeaderboard}
-                        />
-                    </Show>
+                    <>
+                        <Show when={gameType() === 'snus-rpg'}>
+                            <SnusRpgGame
+                                state={state() as SnusRpgState}
+                                roomCode={props.roomCode}
+                                ended={ended()}
+                                onPlayAgain={handlePlayAgain}
+                                onLeaderboard={handleLeaderboard}
+                            />
+                        </Show>
+                        <Show when={gameType() === 'snusking'}>
+                            <SnuskingGame
+                                state={state() as SnuskingProjectedState}
+                                roomCode={props.roomCode}
+                                onAction={(action) => socket.emit('game:action', { roomCode: props.roomCode, action: action as GameAction })}
+                            />
+                        </Show>
+                    </>
                 )}
             </Show>
         </div>
