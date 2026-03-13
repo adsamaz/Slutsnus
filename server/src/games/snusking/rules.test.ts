@@ -119,6 +119,7 @@ function makeState(opts: { scores: number[]; deckSize: number; discardSize: numb
     players[id] = {
       userId: id, username: `Player ${i}`, hand: [], empireScore: score,
       hasCommitted: false, isConnected: true, beer: 0,
+      skipNextTurn: false, pendingDiscard: false, highNicEffect: false, immunityActive: false,
     };
   });
   return {
