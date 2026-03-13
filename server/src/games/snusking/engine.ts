@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
+import { randomInt } from 'crypto';
 import type {
   SnuskingMasterState,
   SnuskingProjectedState,
@@ -11,7 +12,7 @@ import type {
 } from '@slutsnus/shared';
 import type { TurnBasedGameEngine, TurnPhase } from '../registry';
 import type { PlayerInfo, GameAction } from '@slutsnus/shared';
-import { buildDeck, shuffle } from './deck';
+import { buildDeck, shuffle, SNUSKING_EVENTS } from './deck';
 import { drawCards, spendCards, checkWinCondition, MAX_HAND_SIZE } from './rules';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -30,9 +31,26 @@ const SnuskingActionSchema = z.discriminatedUnion('type', [
     type: z.literal('snusking:trade-offer'),
     targetPlayerId: z.string(),
     cardInstanceId: z.string(),
+    displayName: z.string().optional(),
   }),
   z.object({ type: z.literal('snusking:trade-accept'), offerId: z.string() }),
   z.object({ type: z.literal('snusking:trade-decline'), offerId: z.string() }),
+  z.object({
+    type: z.literal('snusking:spend-with-beer'),
+    cardIds: z.array(z.string()),
+    beerCardId: z.string(),
+  }),
+  z.object({
+    type: z.literal('snusking:sabotage-spentsnus'),
+    targetPlayerId: z.string(),
+    cardInstanceId: z.string(),
+  }),
+  z.object({
+    type: z.literal('snusking:sabotage-highnic'),
+    targetPlayerId: z.string(),
+    cardInstanceId: z.string(),
+  }),
+  z.object({ type: z.literal('snusking:activate-immunity') }),
 ]);
 
 // ─── Engine ──────────────────────────────────────────────────────────────────
@@ -57,6 +75,10 @@ export class SnuskingEngine implements TurnBasedGameEngine {
         hasCommitted: false,
         isConnected: true,
         beer: 0,
+        skipNextTurn: false,
+        pendingDiscard: false,
+        highNicEffect: false,
+        immunityActive: false,
       };
     }
     this.masterState = {
@@ -91,6 +113,9 @@ export class SnuskingEngine implements TurnBasedGameEngine {
     if (validated.type === 'snusking:trade-offer') {
       this.registerTradeOffer(playerId, validated);
     }
+
+    // Sabotage and immunity actions are stored in pendingActions — delivered in startResolve()
+    // No immediate side effects here.
 
     // Emit only commit status update — NOT the action content (REQ-MULTI-02, anti-pattern guard)
     this.emitPerPlayer();
@@ -147,6 +172,7 @@ export class SnuskingEngine implements TurnBasedGameEngine {
       status: state.status,
       endReason: state.endReason,
       results: state.results,
+      currentEvent: state.currentEvent,
     };
   }
 
@@ -163,6 +189,35 @@ export class SnuskingEngine implements TurnBasedGameEngine {
     for (const p of Object.values(this.masterState.players)) {
       p.hasCommitted = false;
     }
+
+    // Select event for this turn
+    const eventIdx = randomInt(0, SNUSKING_EVENTS.length);
+    this.masterState.currentEvent = SNUSKING_EVENTS[eventIdx];
+
+    // Beer increment (+1/turn, cap 3)
+    for (const player of Object.values(this.masterState.players)) {
+      player.beer = Math.min(player.beer + 1, 3);
+    }
+
+    // Handle skipNextTurn (spent snus sabotage from previous turn)
+    for (const [playerId, player] of Object.entries(this.masterState.players)) {
+      if (player.skipNextTurn) {
+        this.pendingActions.set(playerId, { type: 'snusking:pass' });
+        player.hasCommitted = true;
+        player.skipNextTurn = false;
+      }
+    }
+
+    // Handle pendingDiscard (high-nic sabotage from previous turn)
+    for (const player of Object.values(this.masterState.players)) {
+      if (player.pendingDiscard && player.hand.length > 0) {
+        const [discarded] = player.hand.splice(0, 1);
+        this.masterState.discardPile.push(discarded);
+        player.pendingDiscard = false;
+        // highNicEffect stays true — emitted once in startPlanningPhase, then cleared
+      }
+    }
+
     // Draw cards for all players up to MAX_HAND_SIZE
     for (const playerId of Object.keys(this.masterState.players)) {
       this.masterState = drawCards(this.masterState, playerId);
@@ -174,6 +229,10 @@ export class SnuskingEngine implements TurnBasedGameEngine {
   private startPlanningPhase(): void {
     this.masterState.phase = 'planning';
     this.emitPerPlayer();
+    // Clear transient highNicEffect after one emit cycle
+    for (const player of Object.values(this.masterState.players)) {
+      player.highNicEffect = false;
+    }
     // Start 45-second timer — auto-pass any uncommitted players on expiry (REQ-CORE-05)
     this.turnTimer = setTimeout(() => {
       this.autoPassUncommitted();
@@ -196,19 +255,85 @@ export class SnuskingEngine implements TurnBasedGameEngine {
   private startResolve(): void {
     this.masterState.phase = 'resolve';
 
-    // Apply all pending actions — spend cards, credit scores (score BEFORE win check)
+    // Step 1: Activate immunity (must happen before sabotage delivery)
     for (const [playerId, action] of this.pendingActions) {
-      if (action.type === 'snusking:spend') {
-        this.masterState = spendCards(this.masterState, playerId, action.cardIds);
+      if (action.type === 'snusking:activate-immunity') {
+        const player = this.masterState.players[playerId];
+        if (player && player.beer >= 1) {
+          player.immunityActive = true;
+          player.beer -= 1;
+        }
       }
-      // pass: nothing to do
-      // trade actions: resolved via pending trade offers (Phase 1 basic trades)
     }
 
-    // Resolve accepted trades
+    // Step 2: Deliver sabotage (one-per-target, immunity blocks)
+    const sabotagedThisTurn = new Set<string>();
+    for (const [senderId, action] of this.pendingActions) {
+      if (
+        action.type !== 'snusking:sabotage-spentsnus' &&
+        action.type !== 'snusking:sabotage-highnic'
+      ) continue;
+
+      const targetId = action.targetPlayerId;
+      if (sabotagedThisTurn.has(targetId)) continue; // one-per-target limit
+      const target = this.masterState.players[targetId];
+      if (!target || target.immunityActive) continue; // blocked by immunity
+
+      sabotagedThisTurn.add(targetId);
+
+      // Transfer card from sender to target
+      const sender = this.masterState.players[senderId];
+      const cardIdx = sender?.hand.findIndex(c => c.instanceId === action.cardInstanceId) ?? -1;
+      if (cardIdx !== -1 && sender) {
+        const [card] = sender.hand.splice(cardIdx, 1);
+        target.hand.push(card);
+      }
+
+      if (action.type === 'snusking:sabotage-spentsnus') {
+        target.skipNextTurn = true;
+      } else {
+        target.pendingDiscard = true;
+        target.highNicEffect = true;
+      }
+    }
+
+    // Step 3: Score spend actions (thread currentEvent through)
+    for (const [playerId, action] of this.pendingActions) {
+      if (action.type === 'snusking:spend') {
+        this.masterState = spendCards(
+          this.masterState, playerId, action.cardIds,
+          this.masterState.currentEvent,
+        );
+      }
+      if (action.type === 'snusking:spend-with-beer') {
+        const player = this.masterState.players[playerId];
+        if (player && player.beer >= 1) {
+          player.beer -= 1;
+          this.masterState = spendCards(
+            this.masterState, playerId, action.cardIds,
+            this.masterState.currentEvent,
+            action.beerCardId,
+          );
+        } else {
+          // Not enough beer — treat as plain spend (no bonus)
+          this.masterState = spendCards(
+            this.masterState, playerId, action.cardIds,
+            this.masterState.currentEvent,
+          );
+        }
+      }
+      // pass: nothing to do
+    }
+
+    // Step 4: Resolve accepted trades with displayName masking
     this.resolveAcceptedTrades();
 
-    // Win condition check AFTER scoring (REQ-CORE-06, REQ-CORE-07)
+    // Step 5: Clear transient flags
+    for (const player of Object.values(this.masterState.players)) {
+      player.immunityActive = false;
+    }
+
+    // Step 6: Win condition check AFTER scoring (REQ-CORE-06, REQ-CORE-07)
     const endReason = checkWinCondition(this.masterState);
     if (endReason) {
       this.endGame(endReason);
@@ -275,22 +400,23 @@ export class SnuskingEngine implements TurnBasedGameEngine {
 
   private registerTradeOffer(
     fromPlayerId: string,
-    action: { type: 'snusking:trade-offer'; targetPlayerId: string; cardInstanceId: string },
+    action: { type: 'snusking:trade-offer'; targetPlayerId: string; cardInstanceId: string; displayName?: string },
   ): void {
+    const realName = this.masterState.players[fromPlayerId]?.hand.find(
+      c => c.instanceId === action.cardInstanceId,
+    )?.name ?? 'Unknown';
     this.masterState.pendingTradeOffers.push({
       offerId: uuidv4(),
       fromPlayerId,
       toPlayerId: action.targetPlayerId,
       cardInstanceId: action.cardInstanceId,
-      displayName: this.masterState.players[fromPlayerId]?.hand.find(
-        c => c.instanceId === action.cardInstanceId,
-      )?.name ?? 'Unknown',
+      displayName: action.displayName ?? realName, // fake name or real name
       expiresAtTurn: this.masterState.turnNumber,
     });
   }
 
   private resolveAcceptedTrades(): void {
-    // Phase 1: basic trade — find accepted offers and transfer cards
+    // Phase 2: trades — find accepted offers and transfer cards with displayName masking
     const acceptedOfferIds = new Set<string>();
     for (const [, action] of this.pendingActions) {
       if (action.type === 'snusking:trade-accept') {
@@ -305,6 +431,8 @@ export class SnuskingEngine implements TurnBasedGameEngine {
       const cardIdx = fromPlayer.hand.findIndex(c => c.instanceId === offer.cardInstanceId);
       if (cardIdx === -1) continue;
       const [card] = fromPlayer.hand.splice(cardIdx, 1);
+      // Mask real name with the displayName from the trade offer
+      card.name = offer.displayName;
       toPlayer.hand.push(card);
     }
     // Clear resolved offers
@@ -320,6 +448,10 @@ export class SnuskingEngine implements TurnBasedGameEngine {
       hasCommitted: false,
       isConnected: false,
       beer: 0,
+      skipNextTurn: false,
+      pendingDiscard: false,
+      highNicEffect: false,
+      immunityActive: false,
     };
   }
 }
