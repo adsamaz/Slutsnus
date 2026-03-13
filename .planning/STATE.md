@@ -75,6 +75,8 @@ progress:
 - GameContainer uses fragment wrapper so snus-rpg and snusking Show blocks coexist under the gameState accessor
 - onAction in SnuskingGame casts to existing GameAction type — no new Snusking-specific action type needed at this layer
 - SNUSKING_EVENTS exported from deck.ts as catalog data (not engine.ts logic)
+- Use it.todo() for RED-state test stubs (not expect(true).toBe(false)) — avoids TypeScript errors before implementation types exist
+- Group RED stubs by requirement ID in separate describe blocks (EVENT-SYS-3, BEER-RES, TRADE-SAB)
 - Card empirePoints from research matrix: siberia=30, odens=28, thunder=25, catch-licorice=22, general=20, zyn=19, goteborg=18, knox-blue=17, lundgrens=16, ettan=15, grov=14, velo=12
 
 ---
