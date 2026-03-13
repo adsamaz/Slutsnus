@@ -89,11 +89,11 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — SnuskingCard component + snusking.css (card visuals, all game CSS, keyframes)
+- [x] 03-01-PLAN.md — SnuskingCard component + snusking.css (card visuals, all game CSS, keyframes)
 - [ ] 03-02-PLAN.md — Hand.tsx rewrite: Play/Sabotage/Trade tabs, trade modal, debuff state
 - [ ] 03-03-PLAN.md — PlayerHUD (beer mugs, timer ring, debuff banners) + OpponentStatus (face-down cards, commit dot, beer)
-- [ ] 03-04-PLAN.md — RevealOverlay + Board + index.tsx wiring (event flash timer, ToastContainer, all component props)
-- [ ] 03-05-PLAN.md — EndScreen polish (Swedish copy, winner highlight) + Lobby redesign (Swedish labels, snusking theme)
+- [x] 03-04-PLAN.md — RevealOverlay + Board + index.tsx wiring (event flash timer, ToastContainer, all component props)
+- [x] 03-05-PLAN.md — EndScreen polish (Swedish copy, winner highlight) + Lobby redesign (Swedish labels, snusking theme)
 
 ---
 

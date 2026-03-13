@@ -2,31 +2,31 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 02-01 complete
+current_plan: 03-04 complete
 status: in-progress
-last_updated: "2026-03-13T15:39:00Z"
+last_updated: "2026-03-13T00:10:00Z"
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 12
-  completed_plans: 11
-  percent: 92
+  completed_plans: 12
+  percent: 100
 ---
 
 # Project State
 
 **Project:** Snusking
 **Updated:** 2026-03-13
-**Last session:** Completed 02-01-PLAN.md (Phase 2 type contracts, type test fixtures updated, shared compiles clean)
+**Last session:** Completed 03-04-PLAN.md (RevealOverlay created with CSS 3D flip, Board rewritten with event flash/banner, index.tsx wired with ToastContainer and event flash timer)
 
 ---
 
 ## Current Status
 
 **Milestone:** 1.0 — Card Game Engine
-**Active Phase:** Phase 2 — Card Design, Balance, and Game Economy (executing — plan 1 of 5 complete)
-**Current Plan:** 02-01 complete
-**Overall Progress:** [█████████░] 92% — 11 / 12 plans complete
+**Active Phase:** Phase 3 — Client UI and Reveal Experience (executing — plan 5 complete)
+**Current Plan:** 03-04 complete
+**Overall Progress:** [██████████] 100% — 12 / 12 plans complete
 
 ---
 
@@ -36,7 +36,7 @@ progress:
 |-------|------|--------|
 | 1 | Foundation and Engine Contract | Complete |
 | 2 | Card Design, Balance, and Game Economy | In progress — 1/5 plans complete |
-| 3 | Client UI and Reveal Experience | Not started |
+| 3 | Client UI and Reveal Experience | In progress — 1/5 plans complete (03-05 done) |
 | 4 | Integration, Playtesting, and Balance Iteration | Not started |
 
 ---
@@ -66,6 +66,16 @@ progress:
 - Card empirePoints from research matrix: siberia=30, odens=28, thunder=25, catch-licorice=22, general=20, zyn=19, goteborg=18, knox-blue=17, lundgrens=16, ettan=15, grov=14, velo=12
 - SnuskingCardDefinition.strength and flavor are required (non-optional) — all catalog entries must declare them
 - sabotage actions split into sabotage-spentsnus and sabotage-highnic (not generic sabotage) — explicit union members aid Zod validation and engine dispatch
+- SnuskingCard is purely prop-driven (no createSignal) — all visual state (selected, disabled, combo, discarding) flows from parent
+- snusking.css is the single CSS file for all Phase 3 game-specific styles — imported once at index.tsx
+- Strength color scale: low=#39d353, medium=#ffa657, high=#f97316, extreme=#da3633 (reused from global palette)
+- Swedish copy throughout all snusking UI — no English player-facing strings
+- Return-to-lobby button in EndScreen uses window.location.href = '/' (hard navigation, not SPA route) — correct for post-game flow
+- Self-aware winner detection in EndScreen: selfUserId comparison yields "Du har byggt riket!" vs "Riket är byggt!" + winner name
+- RevealOverlay shows opponent hands as face-down card backs (handCount determines count) — actual cards remain server-private until resolve phase
+- Board receives eventFlashActive as prop from index.tsx — Board is purely presentational, index.tsx owns all reactive state
+- index.tsx applies snusking-highnic-blur class (matching CSS definition) when highNicEffect && phase === 'planning'
+- ToastContainer mounted at root of snusking-game div (above all fixed-position overlays in DOM order)
 
 ---
 
@@ -92,3 +102,6 @@ progress:
 - [x] Plan 02-01 complete — Phase 2 type contracts: SnuskingCardStrength/Flavor, SnuskingEventCard, sabotage flags on SnuskingPlayerState, extended SnuskingAction union (9 total), type tests updated (2 min)
 - [x] Plan 02-02 complete — 15 RED-state it.todo stubs: 5 event-multiplier stubs in rules.test.ts, 10 beer/sabotage stubs in engine.test.ts; baseline scoreCards asserts 35 points (8 min)
 - [x] Plan 02-03 complete — 12-card catalog with strength/flavor, SNUSKING_EVENTS pool (3 events), buildDeck() stamps strength/flavor on instances — all 12 tests GREEN (2 min)
+- [x] Plan 03-01 complete — SnuskingCard component (face-up/face-down/selected/combo/discard states, prop-driven, zero signals) + snusking.css (569 lines, all Phase 3 game styles + keyframes) — TypeScript clean (15 min)
+- [x] Plan 03-04 complete — RevealOverlay created (CSS 3D flip, self cards with comboLevel, opponents as face-down backs); Board rewritten (event flash full-screen overlay + persistent banner, Swedish labels); index.tsx rewritten (CSS import, ToastContainer, event flash timer via createEffect, highnic blur class, all Phase 3 components wired) (10 min)
+- [x] Plan 03-05 complete — EndScreen polished (Swedish copy, self-aware winner detection, results table with rank/username/score, return button); Lobby redesigned (Swedish l10n throughout, 🫙 Snusking game badge, snusking theme) (10 min)

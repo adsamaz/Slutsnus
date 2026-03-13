@@ -71,12 +71,12 @@ export default function Lobby() {
     return (
         <main class="page lobby-page">
             <Show when={joining()}>
-                <p>Joining lobby...</p>
+                <p>Ansluter till lobby...</p>
             </Show>
             <Show when={!joining() && error()}>
                 <div class="card" style={{ 'max-width': '480px', margin: '2rem auto' }}>
                     <p class="error-text">{error()}</p>
-                    <Button onClick={() => navigate('/')}>Back Home</Button>
+                    <Button onClick={() => navigate('/')}>Tillbaka</Button>
                 </div>
             </Show>
             <Show when={!joining() && !error() && room()}>
@@ -84,13 +84,17 @@ export default function Lobby() {
                     <div class="lobby-layout">
                         <div class="lobby-main card">
                             <div class="lobby-header">
-                                <h2>Lobby</h2>
-                                <span class="lobby-code">Code: <strong>{r().code}</strong></span>
-                                <span class="game-badge">{r().gameType === 'snusking' ? 'Snusking' : r().gameType}</span>
+                                <div class="lobby-title-row">
+                                    <h2>Snusking — Lobby</h2>
+                                    <span class="lobby-code">Kod: <strong>{r().code}</strong></span>
+                                </div>
+                                <span class={`game-badge ${r().gameType}`}>
+                                    {r().gameType === 'snusking' ? '🫙 Snusking' : r().gameType}
+                                </span>
                             </div>
 
                             <div class="player-list">
-                                <h3>Players ({r().players.length} / 4)</h3>
+                                <h3>Spelare ({r().players.length} / 4)</h3>
                                 <For each={r().players}>
                                     {(player: RoomPlayer) => (
                                         <div class="player-item">
@@ -101,7 +105,7 @@ export default function Lobby() {
                                             </Show>
                                             <Show when={player.userId !== r().hostId}>
                                                 <span class={`ready-badge ${player.ready ? 'ready' : 'not-ready'}`}>
-                                                    {player.ready ? 'Ready' : 'Not Ready'}
+                                                    {player.ready ? '✓ Redo' : '⏳ Inte redo'}
                                                 </span>
                                             </Show>
                                         </div>
@@ -116,7 +120,7 @@ export default function Lobby() {
                                         onClick={handleReady}
                                         disabled={ready()}
                                     >
-                                        {ready() ? '✓ Ready' : 'Ready'}
+                                        {ready() ? '✓ Redo' : 'Redo'}
                                     </Button>
                                 </Show>
                                 <Show when={isHost()}>
@@ -125,19 +129,19 @@ export default function Lobby() {
                                         onClick={handleStart}
                                         disabled={!allReady() || starting()}
                                     >
-                                        {starting() ? 'Starting...' : 'Start Game'}
+                                        {starting() ? 'Startar...' : 'Starta spel'}
                                     </Button>
                                 </Show>
                                 <Button class="btn btn-danger" onClick={handleLeave}>
-                                    Leave
+                                    Lämna
                                 </Button>
                             </div>
                         </div>
 
                         <div class="lobby-sidebar card">
-                            <h3>Invite Friends</h3>
+                            <h3>Bjud in vänner</h3>
                             <Show when={onlineAcceptedFriends().length === 0}>
-                                <p class="muted">No friends online</p>
+                                <p class="muted">Inga vänner online</p>
                             </Show>
                             <For each={onlineAcceptedFriends()}>
                                 {(f) => (
@@ -149,7 +153,7 @@ export default function Lobby() {
                                             style={{ 'margin-left': 'auto', padding: '4px 10px', 'font-size': '0.8rem' }}
                                             onClick={() => handleInvite(f.userId)}
                                         >
-                                            Invite
+                                            Bjud in
                                         </Button>
                                     </div>
                                 )}

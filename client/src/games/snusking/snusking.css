@@ -1,0 +1,569 @@
+/* ====================================================
+   Snusking — Game-specific styles
+   Import once at client/src/index.tsx (Plan 03-04)
+   ==================================================== */
+
+/* ── Card base ──────────────────────────────────────── */
+
+.snusking-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 80px;
+  width: 100px;
+  min-height: 140px;
+  padding: 10px 8px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+  position: relative;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.snusking-card:hover:not(.disabled):not(.face-down) {
+  border-color: var(--color-muted);
+  transform: translateY(-2px);
+}
+
+.snusking-card.selected {
+  transform: translateY(-6px);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent), var(--shadow-md);
+}
+
+.snusking-card.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: default;
+}
+
+.snusking-card.face-down {
+  background: #1a3a2a;
+  border-color: #2d5a3d;
+  cursor: default;
+  align-items: center;
+  justify-content: center;
+}
+
+.snusking-card.combo-gold {
+  box-shadow: 0 0 16px 4px gold, 0 0 0 2px gold;
+}
+
+.snusking-card.combo-silver {
+  box-shadow: 0 0 12px 3px silver, 0 0 0 2px silver;
+}
+
+.snusking-card.discarding {
+  animation: card-discard 400ms ease-in forwards;
+}
+
+/* ── Card back ──────────────────────────────────────── */
+
+.face-down-back {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.face-down-icon {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.face-down-label {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: #4a8a5a;
+  text-transform: uppercase;
+}
+
+/* ── Card face rows ─────────────────────────────────── */
+
+.card-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.card-strength-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.strength-dot {
+  font-size: 0.65rem;
+  line-height: 1;
+}
+
+.strength-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.strength-low  { color: #39d353; }
+.strength-medium { color: #ffa657; }
+.strength-high { color: #f97316; }
+.strength-extreme { color: #da3633; }
+
+.card-flavor-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.flavor-emoji {
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.flavor-badge {
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  letter-spacing: 0.03em;
+}
+
+.card-points {
+  margin-top: auto;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  text-align: right;
+}
+
+/* ── Planning hand + tabs ───────────────────────────── */
+
+.snusking-hand {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hand-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0;
+}
+
+.hand-tab {
+  padding: 8px 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+  margin-bottom: -1px;
+}
+
+.hand-tab:hover {
+  color: var(--color-text);
+}
+
+.hand-tab.active {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.hand-tab-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 0;
+}
+
+.hand-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* ── Opponent zone ──────────────────────────────────── */
+
+.opponent-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.opponent-zone.disconnected {
+  opacity: 0.5;
+  border-color: var(--color-danger);
+}
+
+.opponent-face-down-cards {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.opponent-commit-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+
+.commit-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+.commit-dot.committed {
+  background: var(--color-accent);
+  box-shadow: 0 0 6px var(--color-accent);
+}
+
+.commit-dot.pending {
+  background: var(--color-warning);
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+.beer-icons {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+}
+
+/* ── PlayerHUD ──────────────────────────────────────── */
+
+.player-hud {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.hud-self {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.hud-opponents {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hud-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.hud-entry:last-child {
+  border-bottom: none;
+}
+
+.beer-mugs {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.beer-mug {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.beer-mug.filled {
+  opacity: 1;
+}
+
+.beer-mug.empty {
+  opacity: 0.3;
+}
+
+/* Debuff banners */
+
+.debuff-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.debuff-banner.skip {
+  background: rgba(218, 54, 51, 0.15);
+  border: 1px solid rgba(218, 54, 51, 0.4);
+  color: #ff7b72;
+}
+
+.debuff-banner.highnic {
+  background: rgba(255, 166, 87, 0.12);
+  border: 1px solid rgba(255, 166, 87, 0.35);
+  color: var(--color-warning);
+}
+
+/* Timer ring */
+
+.timer-ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.timer-ring svg {
+  transform: rotate(-90deg);
+}
+
+.timer-ring .timer-track {
+  fill: none;
+  stroke: var(--color-border);
+  stroke-width: 3;
+}
+
+.timer-ring .timer-fill {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear, stroke 500ms ease;
+}
+
+.timer-ring.green .timer-fill { stroke: #39d353; }
+.timer-ring.yellow .timer-fill { stroke: #ffa657; }
+.timer-ring.red .timer-fill { stroke: #da3633; }
+
+.timer-ring .timer-text {
+  position: absolute;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+/* ── Event display ──────────────────────────────────── */
+
+.event-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(13, 17, 23, 0.93);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  text-align: center;
+  padding: 2rem;
+  animation: event-flash-in 2.5s ease forwards;
+  pointer-events: none;
+}
+
+.event-flash-title {
+  font-size: 2.2rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--color-text);
+}
+
+.event-flash-desc {
+  font-size: 1rem;
+  color: var(--color-muted);
+  max-width: 480px;
+}
+
+.event-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: rgba(57, 211, 83, 0.08);
+  border-bottom: 1px solid rgba(57, 211, 83, 0.2);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  letter-spacing: 0.02em;
+}
+
+.event-banner-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+
+/* ── Reveal overlay ─────────────────────────────────── */
+
+.reveal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(13, 17, 23, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 2rem;
+  backdrop-filter: blur(4px);
+}
+
+.reveal-card-flip {
+  animation: card-flip 350ms ease-in-out;
+  transform-style: preserve-3d;
+}
+
+/* ── Score pop ──────────────────────────────────────── */
+
+.score-pop {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: gold;
+  pointer-events: none;
+  animation: score-pop 900ms ease-out forwards;
+  white-space: nowrap;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+  z-index: 10;
+}
+
+/* ── End screen ─────────────────────────────────────── */
+
+.end-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 3rem 2rem;
+  min-height: 60vh;
+  text-align: center;
+}
+
+.slut-snus-banner {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-warning);
+}
+
+.winner-banner {
+  font-size: 2rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--color-accent);
+}
+
+.final-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.result-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+
+.result-row.self {
+  border-color: var(--color-accent);
+  background: rgba(57, 211, 83, 0.05);
+  font-weight: 700;
+}
+
+/* ── Lobby (snusking-specific extensions) ───────────── */
+
+.lobby-page {
+  flex: 1;
+  max-width: 820px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* ── High-nic blur ──────────────────────────────────── */
+
+.snusking-highnic-blur {
+  filter: blur(3px);
+  pointer-events: none;
+  transition: filter 300ms ease;
+}
+
+/* ── Keyframe animations ────────────────────────────── */
+
+@keyframes card-discard {
+  to {
+    transform: translateX(200px) translateY(50px) rotate(15deg);
+    opacity: 0;
+  }
+}
+
+@keyframes card-flip {
+  0%   { transform: rotateY(0deg); }
+  50%  { transform: rotateY(90deg); }
+  100% { transform: rotateY(0deg); }
+}
+
+@keyframes score-pop {
+  0%   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-40px); }
+}
+
+@keyframes event-flash-in {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}

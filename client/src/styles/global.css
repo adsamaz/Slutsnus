@@ -708,6 +708,13 @@ h5 {
     margin-bottom: 1.5rem;
 }
 
+.lobby-title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
 .lobby-code {
     font-family: monospace;
     font-size: 0.9rem;
