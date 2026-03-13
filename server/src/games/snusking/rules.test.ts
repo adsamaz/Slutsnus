@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { checkWinCondition, scoreCards } from './rules';
-import type { SnuskingMasterState } from '@slutsnus/shared';
+import type { SnuskingMasterState, SnuskingCardInstance } from '@slutsnus/shared';
 
 describe('checkWinCondition (REQ-CORE-06, REQ-CORE-07)', () => {
   it('returns null when no win condition is met', () => {
@@ -26,11 +26,33 @@ describe('checkWinCondition (REQ-CORE-06, REQ-CORE-07)', () => {
 });
 
 describe('scoreCards (REQ-CORE-06)', () => {
-  it('returns the sum of empire points for all spent cards', () => {
-    // placeholder — implementation fills in real card shapes
-    expect(true).toBe(true);
+  it('returns the sum of empire points for all spent cards (baseline)', () => {
+    // Baseline: two cards, no event, no beer
+    const cards = [
+      makeCardInstance('general', 20),
+      makeCardInstance('ettan', 15),
+    ];
+    expect(scoreCards(cards)).toBe(35);
   });
 });
+
+describe('scoreCards with event multipliers (EVENT-SYS-3)', () => {
+  it.todo('returns 2x points when card matches both event strength and flavor (both match → 2x)');
+  it.todo('returns 1.5x points when card matches one event property (one match → 1.5x)');
+  it.todo('returns 1x points when card matches neither event property (no match → 1x)');
+  it.todo('beer +50% on high-strength card is applied before event 2x multiplier (combined → 3x base)');
+  it.todo('isSpentSnus card scores 0 empire points for owner');
+});
+
+// Test helper — builds a minimal SnuskingCardInstance for scoring tests
+function makeCardInstance(definitionId: string, empirePoints: number): SnuskingCardInstance {
+  return {
+    instanceId: `inst-${definitionId}`,
+    definitionId,
+    name: definitionId,
+    empirePoints,
+  };
+}
 
 // Test helper — builds a minimal SnuskingMasterState for rule tests
 function makeState(opts: { scores: number[]; deckSize: number; discardSize: number }): SnuskingMasterState {
