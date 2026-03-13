@@ -36,7 +36,8 @@ export default function Friends() {
     };
 
     const accepted = () => friendsState.friends.filter((f) => f.friendshipStatus === 'accepted');
-    const pending = () => friendsState.friends.filter((f) => f.friendshipStatus === 'pending');
+    const pending = () => friendsState.friends.filter((f) => f.friendshipStatus === 'pending' && f.direction === 'incoming');
+    const outgoing = () => friendsState.friends.filter((f) => f.friendshipStatus === 'pending' && f.direction === 'outgoing');
 
     return (
         <main class="page">
@@ -61,25 +62,32 @@ export default function Friends() {
                 <Show when={searchResults().length > 0}>
                     <div class="search-results" style={{ 'margin-top': '1rem' }}>
                         <For each={searchResults()}>
-                            {(user) => (
-                                <div class="friend-item">
-                                    <span>{user.username}</span>
-                                    <Button
-                                        class="btn btn-secondary"
-                                        style={{ 'margin-left': 'auto', padding: '4px 10px', 'font-size': '0.8rem' }}
-                                        onClick={() => friendsActions.sendRequest(user.id)}
-
-                                    >
-                                        Add Friend
-                                    </Button>
-                                </div>
-                            )}
+                            {(user) => {
+                                const existing = () => friendsState.friends.find((f) => f.userId === user.id);
+                                return (
+                                    <div class="friend-item">
+                                        <span>{user.username}</span>
+                                        <Show
+                                            when={!existing()}
+                                            fallback={<span class="muted" style={{ 'margin-left': 'auto', 'font-size': '0.8rem' }}>{existing()?.friendshipStatus === 'accepted' ? 'Friends' : 'Pending...'}</span>}
+                                        >
+                                            <Button
+                                                class="btn btn-secondary"
+                                                style={{ 'margin-left': 'auto', padding: '4px 10px', 'font-size': '0.8rem' }}
+                                                onClick={() => friendsActions.sendRequest(user.id)}
+                                            >
+                                                Add Friend
+                                            </Button>
+                                        </Show>
+                                    </div>
+                                );
+                            }}
                         </For>
                     </div>
                 </Show>
             </div>
 
-            {/* Pending Requests */}
+            {/* Incoming Pending Requests */}
             <Show when={pending().length > 0}>
                 <div class="card" style={{ 'margin-bottom': '1.5rem' }}>
                     <h3>Pending Requests</h3>
@@ -103,6 +111,21 @@ export default function Friends() {
                                         Decline
                                     </Button>
                                 </div>
+                            </div>
+                        )}
+                    </For>
+                </div>
+            </Show>
+
+            {/* Outgoing Pending Requests */}
+            <Show when={outgoing().length > 0}>
+                <div class="card" style={{ 'margin-bottom': '1.5rem' }}>
+                    <h3>Sent Requests</h3>
+                    <For each={outgoing()}>
+                        {(f) => (
+                            <div class="friend-item">
+                                <span>{f.username}</span>
+                                <span class="muted" style={{ 'margin-left': 'auto', 'font-size': '0.8rem' }}>Pending...</span>
                             </div>
                         )}
                     </For>

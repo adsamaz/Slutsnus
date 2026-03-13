@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { prisma } from '../db/client';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
 import { FriendInfo, FriendshipStatus, UserPublic } from '@slutsnus/shared';
-import { onlineUsers } from '../socket/index';
+import { onlineUsers, io } from '../socket/index';
 
 const router = Router();
 router.use(authMiddleware);
@@ -11,7 +11,7 @@ async function buildFriendList(userId: string): Promise<FriendInfo[]> {
     const friendships = await prisma.friendship.findMany({
         where: {
             OR: [{ requesterId: userId }, { addresseeId: userId }],
-            NOT: { status: 'blocked' },
+            NOT: [{ status: 'blocked' }, { requesterId: userId, addresseeId: userId }],
         },
         include: {
             requester: true,
@@ -107,6 +107,13 @@ router.post('/request', async (req: AuthenticatedRequest, res: Response) => {
         await prisma.friendship.create({
             data: { requesterId: req.user!.userId, addresseeId: targetUserId, status: 'pending' },
         });
+        // Notify recipient if online
+        const targetSockets = onlineUsers.get(targetUserId);
+        if (targetSockets) {
+            for (const sid of targetSockets) {
+                io.to(sid).emit('friends:update');
+            }
+        }
         res.status(201).json({ ok: true });
     } catch {
         res.status(500).json({ error: 'Internal server error' });
