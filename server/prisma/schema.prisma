@@ -93,3 +93,15 @@ model Friendship {
 
   @@unique([requesterId, addresseeId])
 }
+
+// Win/loss record per player per game type — upserted on game end (CONTEXT.md locked decision)
+model WinLossRecord {
+  userId    String
+  gameType  String
+  wins      Int    @default(0)
+  losses    Int    @default(0)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@id([userId, gameType])
+}

@@ -1,8 +1,11 @@
 import { Server, Socket } from 'socket.io';
 import { ClientToServerEvents, ServerToClientEvents, RoomInfo, RoomPlayer, GameResult, PlayerInfo } from '@slutsnus/shared';
 import { prisma } from '../db/client';
-import { gameRegistry } from '../games/registry';
-import { activeGames } from './index';
+import { gameRegistry, TurnBasedGameEngine } from '../games/registry';
+import { activeGames, onlineUsers } from './index';
+
+// Tracks pending cleanup timers when all players in a room go offline (REQ-MULTI-04)
+const activeGameCleanupTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 async function buildRoomInfo(roomId: string): Promise<RoomInfo | null> {
     const room = await prisma.room.findUnique({
@@ -38,9 +41,25 @@ export function roomHandlers(
                 socket.emit('room:error', { message: 'Room not found' });
                 return;
             }
+
+            // Cancel any pending 5-minute cleanup timer for this room on reconnect (REQ-MULTI-04)
+            const pendingCleanup = activeGameCleanupTimers.get(roomCode);
+            if (pendingCleanup) {
+                clearTimeout(pendingCleanup);
+                activeGameCleanupTimers.delete(roomCode);
+            }
+
             socket.join(roomCode);
             const info = await buildRoomInfo(room.id);
             if (info) io.to(roomCode).emit('room:update', { room: info });
+
+            // Reconnect: if a game is in progress, send this player their current projected state (REQ-MULTI-03)
+            const existingEngine = activeGames.get(roomCode);
+            if (existingEngine && typeof (existingEngine as TurnBasedGameEngine).projectState === 'function') {
+                const turnEngine = existingEngine as TurnBasedGameEngine;
+                const snapshot = turnEngine.projectState(userId);
+                socket.emit('game:state', { state: snapshot });
+            }
         } catch {
             socket.emit('room:error', { message: 'Failed to join room' });
         }
@@ -115,20 +134,37 @@ export function roomHandlers(
             const engine = new EngineClass();
 
             const onUpdate = async (state: unknown) => {
-                io.to(roomCode).emit('game:state', { state });
+                // Per-player projection: all Snusking state updates use { forUserId, state } wrapper
+                const s = state as { forUserId?: string; state: unknown };
+                if (s.forUserId) {
+                    // Route to the target player's sockets only (REQ-NFR-01, REQ-MULTI-01)
+                    const socketIds = onlineUsers.get(s.forUserId);
+                    if (socketIds) {
+                        for (const socketId of socketIds) {
+                            io.to(socketId).emit('game:state', { state: s.state });
+                        }
+                    }
+                } else {
+                    // Fallback room-broadcast (not used by Snusking — kept for safety)
+                    io.to(roomCode).emit('game:state', { state });
+                }
 
-                const s = state as { status: string; results?: GameResult[] };
-                if (s.status === 'ended' && s.results) {
-                    io.to(roomCode).emit('game:end', { results: s.results });
+                // Determine which object carries status/results
+                const raw = s.forUserId
+                    ? (s.state as { status?: string; results?: GameResult[] })
+                    : (state as { status?: string; results?: GameResult[] });
+
+                if (raw.status === 'ended' && raw.results) {
+                    io.to(roomCode).emit('game:end', { results: raw.results });
                     activeGames.delete(roomCode);
 
                     // Persist results
                     try {
                         await prisma.gameSession.update({
                             where: { id: session.id },
-                            data: { endTime: new Date(), resultJson: JSON.stringify(s.results) },
+                            data: { endTime: new Date(), resultJson: JSON.stringify(raw.results) },
                         });
-                        for (const result of s.results) {
+                        for (const result of raw.results) {
                             await prisma.gameSessionPlayer.upsert({
                                 where: { sessionId_userId: { sessionId: session.id, userId: result.userId } },
                                 create: { sessionId: session.id, userId: result.userId, score: result.score, rank: result.rank },
@@ -150,6 +186,30 @@ export function roomHandlers(
             activeGames.set(roomCode, engine);
 
             io.to(roomCode).emit('room:started', { roomCode });
+
+            // 5-minute session cleanup when all players disconnect (REQ-MULTI-04)
+            // Listen for any socket disconnect and check if the room is now all-offline
+            io.in(roomCode).fetchSockets().then((roomSockets) => {
+                for (const roomSocket of roomSockets) {
+                    roomSocket.on('disconnect', () => {
+                        // Check if any player in this room is still online
+                        const roomPlayerIds = players.map(p => p.userId);
+                        const anyOnline = roomPlayerIds.some(
+                            pid => (onlineUsers.get(pid)?.size ?? 0) > 0,
+                        );
+                        if (!anyOnline && activeGames.has(roomCode)) {
+                            const cleanupTimer = setTimeout(() => {
+                                const activeEngine = activeGames.get(roomCode);
+                                if (activeEngine) {
+                                    activeEngine.destroy();
+                                    activeGames.delete(roomCode);
+                                }
+                            }, 5 * 60 * 1000);
+                            activeGameCleanupTimers.set(roomCode, cleanupTimer);
+                        }
+                    });
+                }
+            }).catch(() => { /* intentionally ignored */ });
         } catch {
             socket.emit('room:error', { message: 'Failed to start game' });
         }
