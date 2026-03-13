@@ -2,7 +2,7 @@
 
 **Project:** Snusking
 **Version:** 1.0 — Card Game Engine
-**Updated:** 2026-03-12
+**Updated:** 2026-03-13
 
 ---
 
@@ -55,6 +55,15 @@ Plans:
 **Addresses pitfalls:** Sabotage kingmaking, combo multiplier imbalance, turn timer miscalibration, beer hoarding, trade index instability
 
 **Research flag:** Design validation phase — create balance spreadsheet before coding any values
+
+**Plans:** 5 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Type contracts: extend shared types with strength/flavor/event/sabotage flags/new actions
+- [ ] 02-02-PLAN.md — Wave 0 RED stubs: combo multiplier and sabotage state transition test stubs
+- [ ] 02-03-PLAN.md — Card catalog + event pool: 12 cards with strength/flavor, SNUSKING_EVENTS, buildDeck stamp
+- [ ] 02-04-PLAN.md — Scoring + beer rules: scoreCards with event multipliers and beer combo; rules.test.ts green
+- [ ] 02-05-PLAN.md — Engine mechanics: beer accounting, event rotation, sabotage delivery, immunity, deceptive trade
 
 ---
 
