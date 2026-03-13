@@ -2,30 +2,45 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: Not started
-status: unknown
-last_updated: "2026-03-13T11:03:13.126Z"
+current_plan: 02-03 complete
+status: in-progress
+last_updated: "2026-03-13T15:37:55.956Z"
 progress:
-  total_phases: 1
+  total_phases: 2
   completed_phases: 1
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 12
+  completed_plans: 11
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_plan: 02-04 complete
+status: in-progress
+last_updated: "2026-03-13T15:37:00Z"
+progress:
+  total_phases: 4
+  completed_phases: 1
+  total_plans: 12
+  completed_plans: 11
+  percent: 92
 ---
 
 # Project State
 
 **Project:** Snusking
-**Updated:** 2026-03-12
-**Last session:** Completed 01-06-PLAN.md (Snusking client UI components)
+**Updated:** 2026-03-13
+**Last session:** 2026-03-13T15:37:55.954Z
 
 ---
 
 ## Current Status
 
 **Milestone:** 1.0 — Card Game Engine
-**Active Phase:** Phase 1 — Foundation and Engine Contract (executing — plan 6 of 7 complete)
-**Current Plan:** Not started
-**Overall Progress:** 0 / 4 phases complete (6/7 plans in Phase 1 done)
+**Active Phase:** Phase 2 — Card Design, Balance, and Game Economy (executing — plan 3 of 5 complete)
+**Current Plan:** 02-03 complete
+**Overall Progress:** [████████░░] 75% — 9 / 12 plans complete
 
 ---
 
@@ -33,8 +48,8 @@ progress:
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | Foundation and Engine Contract | In progress — 6/7 plans complete |
-| 2 | Card Design, Balance, and Game Economy | Not started |
+| 1 | Foundation and Engine Contract | Complete |
+| 2 | Card Design, Balance, and Game Economy | In progress — 3/5 plans complete |
 | 3 | Client UI and Reveal Experience | Not started |
 | 4 | Integration, Playtesting, and Balance Iteration | Not started |
 
@@ -59,6 +74,8 @@ progress:
 - Snusking types added directly to shared/src/types.ts (no separate file) — matches existing project convention
 - GameContainer uses fragment wrapper so snus-rpg and snusking Show blocks coexist under the gameState accessor
 - onAction in SnuskingGame casts to existing GameAction type — no new Snusking-specific action type needed at this layer
+- SNUSKING_EVENTS exported from deck.ts as catalog data (not engine.ts logic)
+- Card empirePoints from research matrix: siberia=30, odens=28, thunder=25, catch-licorice=22, general=20, zyn=19, goteborg=18, knox-blue=17, lundgrens=16, ettan=15, grov=14, velo=12
 
 ---
 
@@ -82,3 +99,7 @@ progress:
 - [x] Plan 01-03 complete — Card catalog (8 real brands), Fisher-Yates shuffle (crypto.randomInt), pure rule functions (scoreCards, checkWinCondition, drawCards, spendCards) (5 min)
 - [x] Plan 01-04 complete — SnuskingEngine FSM (draw→planning→reveal→resolve), simultaneous reveal, 45s auto-pass timer, per-player projectState, Zod action validation — all 22 tests GREEN (15 min)
 - [x] Plan 01-06 complete — Snusking client UI components: Board, Hand, OpponentStatus, PlayerHUD, EndScreen, SnuskingGame root; GameContainer routing wired (4 min)
+- [x] Plan 02-01 complete — Phase 2 type contracts: SnuskingCardStrength/Flavor, SnuskingEventCard, sabotage flags on SnuskingPlayerState, extended SnuskingAction union (committed as prerequisite of 02-02)
+- [x] Plan 02-02 complete — 15 RED-state it.todo stubs: 5 event-multiplier stubs in rules.test.ts, 10 beer/sabotage stubs in engine.test.ts; baseline scoreCards asserts 35 points (8 min)
+- [x] Plan 02-01 complete — Phase 2 shared types: SnuskingCardStrength, SnuskingCardFlavor, SnuskingEventCard, SnuskingCardDefinition with strength/flavor, updated SnuskingCardInstance
+- [x] Plan 02-03 complete — 12-card catalog with strength/flavor, SNUSKING_EVENTS pool (3 events), buildDeck() stamps strength/flavor on instances — all 12 tests GREEN (2 min)

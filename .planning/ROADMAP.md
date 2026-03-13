@@ -56,7 +56,7 @@ Plans:
 
 **Research flag:** Design validation phase — create balance spreadsheet before coding any values
 
-**Plans:** 5 plans
+**Plans:** 4/5 plans executed
 
 Plans:
 - [ ] 02-01-PLAN.md — Type contracts: extend shared types with strength/flavor/event/sabotage flags/new actions
