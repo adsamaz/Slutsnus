@@ -1,6 +1,27 @@
 import { describe, it, expect } from 'vitest';
 import { checkWinCondition, scoreCards } from './rules';
-import type { SnuskingMasterState, SnuskingCardInstance } from '@slutsnus/shared';
+import type {
+  SnuskingMasterState,
+  SnuskingCardInstance,
+  SnuskingCardStrength,
+  SnuskingCardFlavor,
+  SnuskingEventCard,
+} from '@slutsnus/shared';
+
+// ─── Event card fixtures ──────────────────────────────────────────────────────
+const SAUNA_NIGHT: SnuskingEventCard = {
+  id: 'sauna-night',
+  name: 'Sauna Night',
+  strengthAffinity: ['high', 'extreme'],
+  flavorAffinity: ['tobacco', 'licorice'],
+};
+
+const PARTY: SnuskingEventCard = {
+  id: 'party',
+  name: 'Party',
+  strengthAffinity: ['medium', 'high'],
+  flavorAffinity: ['mint', 'sweet', 'citrus'],
+};
 
 describe('checkWinCondition (REQ-CORE-06, REQ-CORE-07)', () => {
   it('returns null when no win condition is met', () => {
@@ -37,20 +58,56 @@ describe('scoreCards (REQ-CORE-06)', () => {
 });
 
 describe('scoreCards with event multipliers (EVENT-SYS-3)', () => {
-  it.todo('returns 2x points when card matches both event strength and flavor (both match → 2x)');
-  it.todo('returns 1.5x points when card matches one event property (one match → 1.5x)');
-  it.todo('returns 1x points when card matches neither event property (no match → 1x)');
-  it.todo('beer +50% on high-strength card is applied before event 2x multiplier (combined → 3x base)');
-  it.todo('isSpentSnus card scores 0 empire points for owner');
+  it('returns 2x points when card matches both event strength and flavor (both match → 2x)', () => {
+    // extreme + tobacco vs Sauna Night (strengthAffinity: high/extreme, flavorAffinity: tobacco/licorice)
+    // both match → 2.0x: Math.round(30 * 2.0) = 60
+    const card = makeCardInstance('siberia', 30, { strength: 'extreme', flavor: 'tobacco' });
+    expect(scoreCards([card], SAUNA_NIGHT)).toBe(60);
+  });
+
+  it('returns 1.5x points when card matches one event property (one match → 1.5x)', () => {
+    // high + mint vs Sauna Night: strength 'high' is in affinity (match), 'mint' is NOT in tobacco/licorice (no match)
+    // one match → 1.5x: Math.round(25 * 1.5) = Math.round(37.5) = 38
+    const card = makeCardInstance('thunder', 25, { strength: 'high', flavor: 'mint' });
+    expect(scoreCards([card], SAUNA_NIGHT)).toBe(38);
+  });
+
+  it('returns 1x points when card matches neither event property (no match → 1x)', () => {
+    // low + mint vs Sauna Night: 'low' NOT in high/extreme, 'mint' NOT in tobacco/licorice
+    // no match → 1.0x: Math.round(12 * 1.0) = 12
+    const card = makeCardInstance('velo', 12, { strength: 'low', flavor: 'mint' });
+    expect(scoreCards([card], SAUNA_NIGHT)).toBe(12);
+  });
+
+  it('beer +50% on high-strength card is applied before event 2x multiplier (combined → 3x base)', () => {
+    // high + mint vs Party (strengthAffinity: medium/high, flavorAffinity: mint/sweet/citrus)
+    // both strength 'high' and flavor 'mint' match → 2.0x event multiplier
+    // beer bonus FIRST: Math.round(25 * 1.5) = Math.round(37.5) = 38
+    // then event 2x: Math.round(38 * 2.0) = 76
+    const card = makeCardInstance('thunder', 25, { strength: 'high', flavor: 'mint', instanceId: 'inst-thunder' });
+    expect(scoreCards([card], PARTY, 'inst-thunder')).toBe(76);
+  });
+
+  it('isSpentSnus card scores 0 empire points for owner', () => {
+    // empirePoints=0 — no bonus logic can change a zero base
+    const card = makeCardInstance('spent-snus', 0, { strength: 'low', flavor: 'tobacco' });
+    expect(scoreCards([card], SAUNA_NIGHT)).toBe(0);
+  });
 });
 
 // Test helper — builds a minimal SnuskingCardInstance for scoring tests
-function makeCardInstance(definitionId: string, empirePoints: number): SnuskingCardInstance {
+function makeCardInstance(
+  definitionId: string,
+  empirePoints: number,
+  opts?: { strength?: SnuskingCardStrength; flavor?: SnuskingCardFlavor; instanceId?: string },
+): SnuskingCardInstance {
   return {
-    instanceId: `inst-${definitionId}`,
+    instanceId: opts?.instanceId ?? `inst-${definitionId}`,
     definitionId,
     name: definitionId,
     empirePoints,
+    strength: opts?.strength,
+    flavor: opts?.flavor,
   };
 }
 
