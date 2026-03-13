@@ -59,10 +59,10 @@ Plans:
 **Plans:** 4/5 plans executed
 
 Plans:
-- [ ] 02-01-PLAN.md — Type contracts: extend shared types with strength/flavor/event/sabotage flags/new actions
-- [ ] 02-02-PLAN.md — Wave 0 RED stubs: combo multiplier and sabotage state transition test stubs
-- [ ] 02-03-PLAN.md — Card catalog + event pool: 12 cards with strength/flavor, SNUSKING_EVENTS, buildDeck stamp
-- [ ] 02-04-PLAN.md — Scoring + beer rules: scoreCards with event multipliers and beer combo; rules.test.ts green
+- [x] 02-01-PLAN.md — Type contracts: extend shared types with strength/flavor/event/sabotage flags/new actions
+- [x] 02-02-PLAN.md — Wave 0 RED stubs: combo multiplier and sabotage state transition test stubs
+- [x] 02-03-PLAN.md — Card catalog + event pool: 12 cards with strength/flavor, SNUSKING_EVENTS, buildDeck stamp
+- [x] 02-04-PLAN.md — Scoring + beer rules: scoreCards with event multipliers and beer combo; rules.test.ts green
 - [ ] 02-05-PLAN.md — Engine mechanics: beer accounting, event rotation, sabotage delivery, immunity, deceptive trade
 
 ---
