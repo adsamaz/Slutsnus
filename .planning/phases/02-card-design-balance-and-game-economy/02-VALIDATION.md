@@ -1,10 +1,11 @@
 ---
 phase: 2
 slug: card-design-balance-and-game-economy
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-13
+audited: 2026-03-13
 ---
 
 # Phase 2 — Validation Strategy
@@ -21,7 +22,7 @@ created: 2026-03-13
 | **Config file** | `server/vitest.config.ts` (exists) |
 | **Quick run command** | `cd server && npm test -- --reporter=dot` |
 | **Full suite command** | `cd server && npm test` |
-| **Estimated runtime** | ~10 seconds |
+| **Estimated runtime** | ~300ms |
 
 ---
 
@@ -30,7 +31,7 @@ created: 2026-03-13
 - **After every task commit:** Run `cd server && npm test -- --reporter=dot`
 - **After every plan wave:** Run `cd server && npm test`
 - **Before `/gsd:verify-work`:** Full suite must be green
-- **Max feedback latency:** ~10 seconds
+- **Max feedback latency:** <1 second
 
 ---
 
@@ -38,22 +39,24 @@ created: 2026-03-13
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 2-01-* | 02-01 | 1 | CARD-SYS | unit | `cd server && npm test -- deck.test` | ✅ extend deck.test.ts | ⬜ pending |
-| 2-02-* | 02-02 | 1 | EVENT-SYS, EVENT-SYS-3 | unit | `cd server && npm test -- rules.test` | ✅ extend rules.test.ts | ⬜ pending |
-| 2-03-* | 02-03 | 2 | BEER-RES, BEER-RES-2 | unit | `cd server && npm test -- rules.test engine.test` | ✅ extend both | ⬜ pending |
-| 2-04-* | 02-04 | 2 | TRADE-SAB-2..6 | unit | `cd server && npm test -- engine.test` | ✅ extend engine.test.ts | ⬜ pending |
-| 2-05-* | 02-05 | 3 | All Phase 2 | unit | `cd server && npm test` | ✅ full suite | ⬜ pending |
+| 2-01-* | 02-01 | 1 | CARD-SYS | unit | `cd server && npm test -- deck.test` | ✅ deck.test.ts | ✅ green |
+| 2-02-* | 02-02 | 1 | EVENT-SYS, EVENT-SYS-3 | unit | `cd server && npm test -- rules.test` | ✅ rules.test.ts | ✅ green |
+| 2-03-* | 02-03 | 2 | BEER-RES, BEER-RES-2 | unit | `cd server && npm test -- rules.test engine.test` | ✅ both | ✅ green |
+| 2-04-* | 02-04 | 2 | TRADE-SAB-2..6 | unit | `cd server && npm test -- engine.test` | ✅ engine.test.ts | ✅ green |
+| 2-05-* | 02-05 | 3 | All Phase 2 | unit | `cd server && npm test` | ✅ full suite | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+
+**Total: 46 tests, 3 test files, all green.**
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `server/src/games/snusking/rules.test.ts` — extend with combo multiplier stubs (EVENT-SYS-3, BEER-RES-2); current `scoreCards` test is a placeholder `expect(true).toBe(true)`
-- [ ] `server/src/games/snusking/engine.test.ts` — extend with RED stubs for sabotage state transitions (TRADE-SAB-2, TRADE-SAB-3, TRADE-SAB-4, TRADE-SAB-5) and beer accounting (BEER-RES)
+- [x] `server/src/games/snusking/rules.test.ts` — EVENT-SYS-3 multipliers (5 tests): 2x/1.5x/1x/combined/isSpentSnus
+- [x] `server/src/games/snusking/engine.test.ts` — TRADE-SAB-2..5 (6 tests) + BEER-RES (4 tests): all green
 
-*Existing infrastructure covers all phase requirements — no new test files needed.*
+*All wave 0 gaps resolved during execution — no new test files were needed.*
 
 ---
 
@@ -68,11 +71,21 @@ created: 2026-03-13
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s (actual: <1s)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** 2026-03-13
+
+---
+
+## Validation Audit 2026-03-13
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved (pre-existing) | 11 |
+| Escalated | 0 |
