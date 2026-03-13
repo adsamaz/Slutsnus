@@ -10,11 +10,11 @@ type Game = { id: GameType; name: string; description: string; badges: string[];
 
 const GAMES: Game[] = [
     {
-        id: 'snus-rpg',
-        name: 'Snus King',
-        tagline: 'Collect. Trade. Betray.',
-        description: 'Collect Swedish snus brands and become the Snus King! Fight off evil nicotine pouches, trade with friends — or betray them with a disguised pouch.',
-        badges: ['1–4 Players', 'Co-op + Betrayal', 'RPG'],
+        id: 'snusking',
+        name: 'Snusking',
+        tagline: 'Collect. Spend. Dominate.',
+        description: 'Build a snus empire by collecting Swedish brands and spending strategically. Simultaneous reveal — everyone commits before anyone sees the result.',
+        badges: ['2–4 Players', 'Strategy', 'Card Game'],
     },
 ];
 
