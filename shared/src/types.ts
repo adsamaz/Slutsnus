@@ -193,11 +193,26 @@ export interface SnusRpgState {
 // ─────────────────────────────────────────────────
 export type GameEndReason = 'score_threshold' | 'slut_snus';
 
+export type SnuskingCardStrength = 'low' | 'medium' | 'high' | 'extreme';
+export type SnuskingCardFlavor = 'tobacco' | 'mint' | 'citrus' | 'licorice' | 'sweet';
+
+export interface SnuskingEventCard {
+  id: string;
+  name: string;
+  strengthAffinity: SnuskingCardStrength[];
+  flavorAffinity: SnuskingCardFlavor[];
+}
+
 /** Static card definition from the card catalog */
 export interface SnuskingCardDefinition {
   id: string;
   name: string;
   empirePoints: number;
+  strength: SnuskingCardStrength;
+  flavor: SnuskingCardFlavor;
+  isSpentSnus?: boolean;
+  isHighNic?: boolean;
+  canProvideImmunity?: boolean;
 }
 
 export interface SnuskingCardInstance {
@@ -205,6 +220,8 @@ export interface SnuskingCardInstance {
   definitionId: string;
   name: string;
   empirePoints: number;
+  strength?: SnuskingCardStrength;
+  flavor?: SnuskingCardFlavor;
 }
 
 export interface SnuskingTradeOffer {
@@ -224,6 +241,10 @@ export interface SnuskingPlayerState {
   hasCommitted: boolean;
   isConnected: boolean;
   beer: number;
+  skipNextTurn: boolean;
+  pendingDiscard: boolean;
+  highNicEffect: boolean;
+  immunityActive: boolean;
 }
 
 export interface SnuskingOpponentState {
@@ -247,6 +268,7 @@ export interface SnuskingProjectedState {
   status: 'active' | 'ended';
   endReason: GameEndReason | null;
   results: GameResult[] | null;
+  currentEvent: SnuskingEventCard | null;
 }
 
 /** Server-only master state — NEVER emitted directly (contains all players' hands) */
@@ -256,7 +278,7 @@ export interface SnuskingMasterState {
   players: Record<string, SnuskingPlayerState>;
   deck: SnuskingCardInstance[];
   discardPile: SnuskingCardInstance[];
-  currentEvent: null;
+  currentEvent: SnuskingEventCard | null;
   turnNumber: number;
   pendingTradeOffers: SnuskingTradeOffer[];
   status: 'active' | 'ended';
@@ -267,7 +289,11 @@ export interface SnuskingMasterState {
 // Snusking action discriminated union — validated by Zod at Socket.IO boundary (server-only)
 export type SnuskingAction =
   | { type: 'snusking:spend'; cardIds: string[] }
+  | { type: 'snusking:spend-with-beer'; cardIds: string[]; beerCardId: string }
   | { type: 'snusking:pass' }
-  | { type: 'snusking:trade-offer'; targetPlayerId: string; cardInstanceId: string }
+  | { type: 'snusking:trade-offer'; targetPlayerId: string; cardInstanceId: string; displayName?: string }
   | { type: 'snusking:trade-accept'; offerId: string }
-  | { type: 'snusking:trade-decline'; offerId: string };
+  | { type: 'snusking:trade-decline'; offerId: string }
+  | { type: 'snusking:sabotage-spentsnus'; targetPlayerId: string; cardInstanceId: string }
+  | { type: 'snusking:sabotage-highnic'; targetPlayerId: string; cardInstanceId: string }
+  | { type: 'snusking:activate-immunity' };
