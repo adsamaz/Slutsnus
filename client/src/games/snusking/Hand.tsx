@@ -59,6 +59,73 @@ export const Hand: Component<HandProps> = (props) => {
 
   const isActionDisabled = () => props.self.hasCommitted || props.self.skipNextTurn;
 
+  // Animate selected cards flying to the discard pile, then fire the action.
+  const flyAndPlay = (action: unknown, ids: string[]) => {
+    const anchor = document.getElementById('discard-pile-anchor');
+    const anchorRect = anchor?.getBoundingClientRect();
+
+    const targetX = anchorRect ? anchorRect.left + anchorRect.width / 2 : window.innerWidth / 2;
+    const targetY = anchorRect ? anchorRect.top + anchorRect.height / 2 : 0;
+
+    const cardEls = ids
+      .map((id) => {
+        const wrapper = document.querySelector<HTMLElement>(`[data-instance-id="${id}"]`);
+        // wrapper is display:contents — grab its first rendered child (the card div)
+        return (wrapper?.firstElementChild as HTMLElement | null) ?? wrapper;
+      })
+      .filter((el): el is HTMLElement => el !== null);
+
+    if (cardEls.length === 0) {
+      props.onAction(action);
+      setSelectedIds(new Set<string>());
+      return;
+    }
+
+    const clones: HTMLElement[] = cardEls.map((el) => {
+      const rect = el.getBoundingClientRect();
+      const clone = el.cloneNode(true) as HTMLElement;
+      clone.style.cssText = `
+        position:fixed;
+        left:${rect.left}px;
+        top:${rect.top}px;
+        width:${rect.width}px;
+        height:${rect.height}px;
+        margin:0;
+        z-index:999;
+        pointer-events:none;
+        transform-origin:center center;
+        will-change:transform,opacity;
+      `;
+      document.body.appendChild(clone);
+      return clone;
+    });
+
+    let done = 0;
+    clones.forEach((clone, i) => {
+      const rect = cardEls[i]!.getBoundingClientRect();
+      const dx = targetX - (rect.left + rect.width / 2);
+      const dy = targetY - (rect.top + rect.height / 2);
+      const delay = i * 40;
+
+      const anim = clone.animate(
+        [
+          { transform: 'translate(0,0) scale(1) rotate(0deg)', opacity: '1' },
+          { transform: `translate(${dx}px,${dy}px) scale(0.35) rotate(${(i % 2 === 0 ? 1 : -1) * 20}deg)`, opacity: '0' },
+        ],
+        { duration: 380, delay, easing: 'cubic-bezier(0.4,0,0.6,1)', fill: 'forwards' },
+      );
+
+      anim.onfinish = () => {
+        clone.remove();
+        done++;
+        if (done === clones.length) {
+          props.onAction(action);
+          setSelectedIds(new Set<string>());
+        }
+      };
+    });
+  };
+
   return (
     <div class={`snusking-hand${props.self.highNicEffect ? ' highnic-blur' : ''}`}>
       <Show when={props.self.highNicEffect}>
@@ -96,12 +163,14 @@ export const Hand: Component<HandProps> = (props) => {
             <div class="hand-cards">
               <For each={props.self.hand}>
                 {(card: SnuskingCardInstance) => (
-                  <SnuskingCard
-                    card={card}
-                    selected={selectedIds().has(card.instanceId)}
-                    disabled={isActionDisabled()}
-                    onClick={() => !isActionDisabled() && toggleCard(card.instanceId)}
-                  />
+                  <div data-instance-id={card.instanceId} style="display:contents">
+                    <SnuskingCard
+                      card={card}
+                      selected={selectedIds().has(card.instanceId)}
+                      disabled={isActionDisabled()}
+                      onClick={() => !isActionDisabled() && toggleCard(card.instanceId)}
+                    />
+                  </div>
                 )}
               </For>
             </div>
@@ -110,8 +179,8 @@ export const Hand: Component<HandProps> = (props) => {
                 class="hand-btn primary"
                 disabled={isActionDisabled() || selectedIds().size === 0}
                 onClick={() => {
-                  props.onAction({ type: 'snusking:spend', cardIds: [...selectedIds()] });
-                  setSelectedIds(new Set<string>());
+                  const ids = [...selectedIds()];
+                  flyAndPlay({ type: 'snusking:spend', cardIds: ids }, ids);
                 }}
               >
                 Spela valda
@@ -121,12 +190,11 @@ export const Hand: Component<HandProps> = (props) => {
                   class="hand-btn beer"
                   disabled={isActionDisabled()}
                   onClick={() => {
-                    props.onAction({
-                      type: 'snusking:spend-with-beer',
-                      cardIds: [...selectedIds()],
-                      beerCardId: 'beer',
-                    });
-                    setSelectedIds(new Set<string>());
+                    const ids = [...selectedIds()];
+                    flyAndPlay(
+                      { type: 'snusking:spend-with-beer', cardIds: ids, beerCardId: 'beer' },
+                      ids,
+                    );
                   }}
                 >
                   Spela + Öl 🍺

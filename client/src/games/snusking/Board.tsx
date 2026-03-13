@@ -1,4 +1,4 @@
-import { Component, Show } from 'solid-js';
+import { Component, For, Show } from 'solid-js';
 import type { SnuskingEventCard } from '@slutsnus/shared';
 
 interface BoardProps {
@@ -10,17 +10,31 @@ interface BoardProps {
   eventFlashActive: boolean;
 }
 
+const PHASE_LABELS: Record<string, string> = {
+  planning: 'Planering',
+  reveal:   'Avslöjning',
+  draw:     'Kortdragning',
+  resolve:  'Poängrakning',
+};
+
 export const Board: Component<BoardProps> = (props) => {
+  const phaseLabel = () => PHASE_LABELS[props.phase] ?? props.phase;
+
   return (
     <div class="snusking-board">
       <Show when={props.eventFlashActive && props.currentEvent !== null}>
         <div class="event-flash">
           <div class="event-flash-content">
+            <div class="event-flash-eyebrow">Ny händelse</div>
             <h2 class="event-flash-title">{props.currentEvent!.name}</h2>
-            <p class="event-flash-desc">
-              Styrka: {props.currentEvent!.strengthAffinity.join(', ')} |{' '}
-              Smak: {props.currentEvent!.flavorAffinity.join(', ')}
-            </p>
+            <div class="event-flash-affinities">
+              <For each={props.currentEvent!.strengthAffinity}>
+                {(s) => <span class="event-flash-affinity-tag">{s}</span>}
+              </For>
+              <For each={props.currentEvent!.flavorAffinity}>
+                {(f) => <span class="event-flash-affinity-tag">{f}</span>}
+              </For>
+            </div>
           </div>
         </div>
       </Show>
@@ -30,8 +44,10 @@ export const Board: Component<BoardProps> = (props) => {
           <span class="event-banner-label">Händelse</span>
           <strong>{props.currentEvent!.name}</strong>
           <span class="event-affinity">
-            {props.currentEvent!.strengthAffinity.join('/')} &middot;{' '}
-            {props.currentEvent!.flavorAffinity.join('/')}
+            {[
+              ...props.currentEvent!.strengthAffinity,
+              ...props.currentEvent!.flavorAffinity,
+            ].join(' · ')}
           </span>
         </div>
       </Show>
@@ -39,8 +55,8 @@ export const Board: Component<BoardProps> = (props) => {
       <div class="board-info">
         <span>Runda {props.turnNumber}</span>
         <span>Kortlek: {props.deckCount}</span>
-        <span>Kasserad: {props.discardCount}</span>
-        <span class="board-phase">Fas: {props.phase}</span>
+        <span id="discard-pile-anchor">Kasserad: {props.discardCount}</span>
+        <span class="board-phase">{phaseLabel()}</span>
       </div>
     </div>
   );
