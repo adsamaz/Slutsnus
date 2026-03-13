@@ -56,7 +56,7 @@ export default function GameDetail() {
             <Modal open={createOpen()} onClose={() => setCreateOpen(false)} title="Create Game">
                 <p style={{ 'margin-bottom': '16px', color: 'var(--color-text-muted)' }}>Choose a game to start a new lobby:</p>
                 <Button
-                    onClick={() => handleCreate('snus-rpg')}
+                    onClick={() => handleCreate('snusking')}
                     disabled={creating()}
                     style={{ width: '100%' }}
                 >

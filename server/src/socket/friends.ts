@@ -23,7 +23,7 @@ export function friendsHandlers(
                     fromUserId: userId,
                     fromUsername: username,
                     roomCode: room.code,
-                    gameType: room.gameType as 'snus-rpg',
+                    gameType: room.gameType as 'snusking',
                 });
             }
         } catch { /* intentionally ignored */ }

@@ -8,7 +8,7 @@ interface LeaderboardEntry {
 }
 
 async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
-    const res = await fetch('/api/leaderboard/snus-rpg', { credentials: 'include' });
+    const res = await fetch('/api/leaderboard/snusking', { credentials: 'include' });
     if (!res.ok) throw new Error('Failed to load leaderboard');
     const data = await res.json();
     return data.entries ?? [];
