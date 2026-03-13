@@ -1,47 +1,28 @@
 import { createSignal, onCleanup, Show } from 'solid-js';
 import { useSocket } from '../stores/socket';
 import { useRoom } from '../stores/room';
-import { useNavigate } from '@solidjs/router';
-import SnusRpgGame from './snus-rpg/index';
 import { SnuskingGame } from './snusking/index';
-import type { SnusRpgState, SnuskingProjectedState, GameAction } from '@slutsnus/shared';
+import type { SnuskingProjectedState, GameAction } from '@slutsnus/shared';
 
 interface GameContainerProps {
     roomCode: string;
 }
 
-type AnyGameState = SnusRpgState | SnuskingProjectedState;
-
 export default function GameContainer(props: GameContainerProps) {
     const socket = useSocket();
     const [roomState] = useRoom();
-    const navigate = useNavigate();
 
-    const [gameState, setGameState] = createSignal<AnyGameState | null>(null);
-    const [ended, setEnded] = createSignal(false);
+    const [gameState, setGameState] = createSignal<SnuskingProjectedState | null>(null);
 
-    const onState = ({ state }: { state: unknown }) => setGameState(state as AnyGameState);
-    const onEnd = (_data: { results: unknown[] }) => {
-        setEnded(true);
-    };
+    const onState = ({ state }: { state: unknown }) => setGameState(state as SnuskingProjectedState);
 
     socket.on('game:state', onState);
-    socket.on('game:end', onEnd);
 
     onCleanup(() => {
         socket.off('game:state', onState);
-        socket.off('game:end', onEnd);
     });
 
     const gameType = () => roomState.room?.gameType ?? '';
-
-    const handlePlayAgain = () => {
-        navigate(`/lobby/${props.roomCode}`);
-    };
-
-    const handleLeaderboard = () => {
-        navigate('/leaderboard');
-    };
 
     return (
         <div class="game-wrapper">
@@ -50,26 +31,13 @@ export default function GameContainer(props: GameContainerProps) {
                     <p>Waiting for game to start...</p>
                 </div>
             </Show>
-            <Show when={gameState()}>
+            <Show when={gameType() === 'snusking' ? gameState() : null}>
                 {(state) => (
-                    <>
-                        <Show when={gameType() === 'snus-rpg'}>
-                            <SnusRpgGame
-                                state={state() as SnusRpgState}
-                                roomCode={props.roomCode}
-                                ended={ended()}
-                                onPlayAgain={handlePlayAgain}
-                                onLeaderboard={handleLeaderboard}
-                            />
-                        </Show>
-                        <Show when={gameType() === 'snusking'}>
-                            <SnuskingGame
-                                state={state() as SnuskingProjectedState}
-                                roomCode={props.roomCode}
-                                onAction={(action) => socket.emit('game:action', { roomCode: props.roomCode, action: action as GameAction })}
-                            />
-                        </Show>
-                    </>
+                    <SnuskingGame
+                        state={state() as SnuskingProjectedState}
+                        roomCode={props.roomCode}
+                        onAction={(action) => socket.emit('game:action', { roomCode: props.roomCode, action: action as GameAction })}
+                    />
                 )}
             </Show>
         </div>

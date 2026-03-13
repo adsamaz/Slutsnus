@@ -27,7 +27,7 @@ export interface AuthResponse {
 // Rooms
 // ─────────────────────────────────────────────────
 export type RoomStatus = 'waiting' | 'playing' | 'ended';
-export type GameType = 'snus-rpg' | 'snusking';
+export type GameType = 'snusking';
 
 export interface RoomPlayer {
     userId: string;

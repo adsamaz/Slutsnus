@@ -86,11 +86,11 @@ export default function Lobby() {
                             <div class="lobby-header">
                                 <h2>Lobby</h2>
                                 <span class="lobby-code">Code: <strong>{r().code}</strong></span>
-                                <span class="game-badge">{r().gameType}</span>
+                                <span class="game-badge">{r().gameType === 'snusking' ? 'Snusking' : r().gameType}</span>
                             </div>
 
                             <div class="player-list">
-                                <h3>Players ({r().players.length})</h3>
+                                <h3>Players ({r().players.length} / 4)</h3>
                                 <For each={r().players}>
                                     {(player: RoomPlayer) => (
                                         <div class="player-item">
