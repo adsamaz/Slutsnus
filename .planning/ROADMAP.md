@@ -72,18 +72,28 @@ Plans:
 **Goal:** Complete Solid.js card game UI built against the finalized state shape.
 
 **Delivers:**
-- `Board` component — overall game layout
-- `Hand` component — player's own cards with select → lock-in action confirmation UX
-- `OpponentHand` component — face-down cards with commit status indicator
-- `RevealOverlay` component — simultaneous card-flip reveal animation (CSS)
-- `PlayerStatus` component — score HUD, beer count, turn phase indicator
-- Event card display — revealed prominently at turn start, before planning phase opens
-- Game end screen with final scores
+- `Board` component — overall game layout with event flash/banner and deck info
+- `Hand` component — Play/Sabotage/Trade tabs with beer combo button, trade modal, skip/blur debuffs
+- `OpponentStatus` component — face-down cards with commit status and beer count per opponent
+- `RevealOverlay` component — simultaneous card-flip reveal animation (CSS 3D flip)
+- `PlayerHUD` component — score HUD, beer mug icons, circular timer ring, debuff banners
+- Event card display — full-screen flash at draw phase → persistent top banner
+- Game end screen with final scores (Swedish copy, winner highlight)
+- Lobby redesign with Swedish labels and snusking theme
 - Phase-conditional rendering via Solid.js `<Switch>/<Match>` (no canvas, no RAF loop)
 
 **Addresses pitfalls:** Event card reveal timing (shown at turn start, never mid-turn)
 
 **Research flag:** Standard Solid.js patterns — no phase research needed
+
+**Plans:** 5 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — SnuskingCard component + snusking.css (card visuals, all game CSS, keyframes)
+- [ ] 03-02-PLAN.md — Hand.tsx rewrite: Play/Sabotage/Trade tabs, trade modal, debuff state
+- [ ] 03-03-PLAN.md — PlayerHUD (beer mugs, timer ring, debuff banners) + OpponentStatus (face-down cards, commit dot, beer)
+- [ ] 03-04-PLAN.md — RevealOverlay + Board + index.tsx wiring (event flash timer, ToastContainer, all component props)
+- [ ] 03-05-PLAN.md — EndScreen polish (Swedish copy, winner highlight) + Lobby redesign (Swedish labels, snusking theme)
 
 ---
 
