@@ -1,4 +1,4 @@
-import type { SnuskingCardInstance, SnuskingMasterState, GameEndReason } from '@slutsnus/shared';
+import type { SnuskingCardInstance, SnuskingMasterState, SnuskingEventCard, GameEndReason } from '@slutsnus/shared';
 import { shuffle } from './deck';
 
 // Locked constant per CONTEXT.md decisions
@@ -7,9 +7,47 @@ export const SCORE_THRESHOLD = 200;
 
 // ─── Scoring ─────────────────────────────────────────────────────────────────
 
-/** Returns the total empire points for a set of played cards. */
-export function scoreCards(cards: SnuskingCardInstance[]): number {
-  return cards.reduce((sum, card) => sum + card.empirePoints, 0);
+/**
+ * Returns tiered event multiplier for a card against the active event.
+ * Both strength + flavor match → 2.0x; one match → 1.5x; neither → 1.0x.
+ */
+function computeEventMultiplier(
+  card: SnuskingCardInstance,
+  event: SnuskingEventCard,
+): number {
+  const strengthMatch = card.strength != null && event.strengthAffinity.includes(card.strength);
+  const flavorMatch = card.flavor != null && event.flavorAffinity.includes(card.flavor);
+  if (strengthMatch && flavorMatch) return 2.0;
+  if (strengthMatch || flavorMatch) return 1.5;
+  return 1.0;
+}
+
+/**
+ * Returns the total empire points for a set of played cards.
+ * Optional event multiplier (applied after optional beer bonus):
+ *   - beer +50% is applied FIRST to the designated beerCardId (only for high/extreme strength)
+ *   - then event multiplier (2x/1.5x/1x) is applied per card
+ * Math.round() at each multiplication step avoids fractional empire points.
+ */
+export function scoreCards(
+  cards: SnuskingCardInstance[],
+  activeEvent?: SnuskingEventCard | null,
+  beerCardId?: string,
+): number {
+  return cards.reduce((sum, card) => {
+    let points = card.empirePoints;
+    // Beer bonus: +50% applied first, only for high/extreme strength cards
+    if (
+      beerCardId &&
+      card.instanceId === beerCardId &&
+      (card.strength === 'high' || card.strength === 'extreme')
+    ) {
+      points = Math.round(points * 1.5);
+    }
+    // Event multiplier applied after beer
+    const multiplier = activeEvent ? computeEventMultiplier(card, activeEvent) : 1.0;
+    return sum + Math.round(points * multiplier);
+  }, 0);
 }
 
 // ─── Win Condition ───────────────────────────────────────────────────────────
@@ -68,13 +106,15 @@ export function spendCards(
   state: SnuskingMasterState,
   playerId: string,
   cardIds: string[],
+  activeEvent?: SnuskingEventCard | null,
+  beerCardId?: string,
 ): SnuskingMasterState {
   const player = state.players[playerId];
   if (!player) return state;
 
   const spentCards = player.hand.filter(c => cardIds.includes(c.instanceId));
   const remainingHand = player.hand.filter(c => !cardIds.includes(c.instanceId));
-  const points = scoreCards(spentCards);
+  const points = scoreCards(spentCards, activeEvent, beerCardId);
 
   return {
     ...state,
