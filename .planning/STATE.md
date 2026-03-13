@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 02-04 complete
+current_plan: 02-01 complete
 status: in-progress
-last_updated: "2026-03-13T15:38:00Z"
+last_updated: "2026-03-13T15:39:00Z"
 progress:
   total_phases: 4
   completed_phases: 1
@@ -17,15 +17,15 @@ progress:
 
 **Project:** Snusking
 **Updated:** 2026-03-13
-**Last session:** Completed 02-04-PLAN.md (scoreCards event multipliers, beer bonus, 11/11 tests green)
+**Last session:** Completed 02-01-PLAN.md (Phase 2 type contracts, type test fixtures updated, shared compiles clean)
 
 ---
 
 ## Current Status
 
 **Milestone:** 1.0 — Card Game Engine
-**Active Phase:** Phase 2 — Card Design, Balance, and Game Economy (executing — plan 4 of 5 complete)
-**Current Plan:** 02-04 complete
+**Active Phase:** Phase 2 — Card Design, Balance, and Game Economy (executing — plan 1 of 5 complete)
+**Current Plan:** 02-01 complete
 **Overall Progress:** [█████████░] 92% — 11 / 12 plans complete
 
 ---
@@ -35,7 +35,7 @@ progress:
 | Phase | Name | Status |
 |-------|------|--------|
 | 1 | Foundation and Engine Contract | Complete |
-| 2 | Card Design, Balance, and Game Economy | In progress — 4/5 plans complete |
+| 2 | Card Design, Balance, and Game Economy | In progress — 1/5 plans complete |
 | 3 | Client UI and Reveal Experience | Not started |
 | 4 | Integration, Playtesting, and Balance Iteration | Not started |
 
@@ -64,18 +64,17 @@ progress:
 - Use it.todo() for RED-state test stubs (not expect(true).toBe(false)) — avoids TypeScript errors before implementation types exist
 - Group RED stubs by requirement ID in separate describe blocks (EVENT-SYS-3, BEER-RES, TRADE-SAB)
 - Card empirePoints from research matrix: siberia=30, odens=28, thunder=25, catch-licorice=22, general=20, zyn=19, goteborg=18, knox-blue=17, lundgrens=16, ettan=15, grov=14, velo=12
-- Beer +50% applied FIRST before event multiplier in scoreCards() — order locked per CONTEXT.md
-- Math.round() at each multiplication step (beer then event) to prevent fractional empire points
-- spendCards() new params are optional — engine.ts call site compiles unchanged
+- SnuskingCardDefinition.strength and flavor are required (non-optional) — all catalog entries must declare them
+- sabotage actions split into sabotage-spentsnus and sabotage-highnic (not generic sabotage) — explicit union members aid Zod validation and engine dispatch
 
 ---
 
 ## Open Questions
 
 - ~~Exact `onStateUpdate` callback change approach~~ — resolved: `{ forUserId, state }` wrapper pattern (keeps `GameEngine.init()` signature unchanged)
-- ~~Maximum hand size (cards held simultaneously)?~~ — resolved: 5 cards (confirmed Phase 1)
-- ~~Are trades resolved during the same reveal cycle, or queued for next turn?~~ — resolved: same turn, before reveal
-- Sabotage immunity card name and cost? (resolve in Phase 2 plan 05)
+- Maximum hand size (cards held simultaneously)? (resolve in Phase 2 balance design)
+- Are trades resolved during the same reveal cycle, or queued for next turn? (resolve in Phase 2)
+- Sabotage immunity card name and cost? (resolve in Phase 2)
 
 ---
 
@@ -90,7 +89,6 @@ progress:
 - [x] Plan 01-03 complete — Card catalog (8 real brands), Fisher-Yates shuffle (crypto.randomInt), pure rule functions (scoreCards, checkWinCondition, drawCards, spendCards) (5 min)
 - [x] Plan 01-04 complete — SnuskingEngine FSM (draw→planning→reveal→resolve), simultaneous reveal, 45s auto-pass timer, per-player projectState, Zod action validation — all 22 tests GREEN (15 min)
 - [x] Plan 01-06 complete — Snusking client UI components: Board, Hand, OpponentStatus, PlayerHUD, EndScreen, SnuskingGame root; GameContainer routing wired (4 min)
-- [x] Plan 02-01 complete — Phase 2 shared types: SnuskingCardStrength, SnuskingCardFlavor, SnuskingEventCard, SnuskingCardDefinition with strength/flavor, updated SnuskingCardInstance, sabotage flags on SnuskingPlayerState, extended SnuskingAction union
+- [x] Plan 02-01 complete — Phase 2 type contracts: SnuskingCardStrength/Flavor, SnuskingEventCard, sabotage flags on SnuskingPlayerState, extended SnuskingAction union (9 total), type tests updated (2 min)
 - [x] Plan 02-02 complete — 15 RED-state it.todo stubs: 5 event-multiplier stubs in rules.test.ts, 10 beer/sabotage stubs in engine.test.ts; baseline scoreCards asserts 35 points (8 min)
 - [x] Plan 02-03 complete — 12-card catalog with strength/flavor, SNUSKING_EVENTS pool (3 events), buildDeck() stamps strength/flavor on instances — all 12 tests GREEN (2 min)
-- [x] Plan 02-04 complete — scoreCards()/spendCards() extended with event multipliers (2x/1.5x/1x) and beer bonus (+50% before multiplier); all 5 EVENT-SYS-3 stubs converted to passing assertions; 11/11 rules.test.ts GREEN (2 min)
