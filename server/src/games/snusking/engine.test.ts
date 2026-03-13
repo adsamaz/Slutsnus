@@ -119,4 +119,20 @@ describe('SnuskingEngine', () => {
       expect(() => engine.destroy()).not.toThrow();
     });
   });
+
+  describe('Beer resource (BEER-RES)', () => {
+    it.todo('beer increments by 1 at the start of each draw phase');
+    it.todo('beer does not exceed cap 3 when already at max');
+    it.todo('immunity activation with beer >= 1 sets immunityActive on player state');
+    it.todo('immunity activation with 0 beer is silently ignored');
+  });
+
+  describe('Sabotage and immunity (TRADE-SAB)', () => {
+    it.todo('snusking:sabotage-spentsnus sets skipNextTurn on the target player');
+    it.todo('player with skipNextTurn is auto-passed next turn and flag is cleared');
+    it.todo('snusking:sabotage-highnic sets pendingDiscard and highNicEffect on target');
+    it.todo('player with pendingDiscard loses one card from hand at start of next draw phase');
+    it.todo('second sabotage targeting same player in one turn is ignored (one-per-target limit)');
+    it.todo('sabotage against a player with immunityActive has no effect');
+  });
 });
