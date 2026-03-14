@@ -62,7 +62,7 @@
 
 ### Game Core
 
-- [ ] **GAME-01**: Player can join a Snus Catcher 1v1 match from the lobby
+- [x] **GAME-01**: Player can join a Snus Catcher 1v1 match from the lobby
 - [ ] **GAME-02**: Each player controls a bar via mouse on their own browser screen
 - [ ] **GAME-03**: Fresh snus pouches fall from the top of the screen continuously
 - [ ] **GAME-04**: Spent (nasty) snus pouches fall from the top and must be avoided
@@ -82,7 +82,7 @@
 
 ### Platform Integration
 
-- [ ] **PLAT-01**: Snus Catcher appears as a selectable game in the lobby
+- [x] **PLAT-01**: Snus Catcher appears as a selectable game in the lobby
 - [ ] **PLAT-02**: Game state syncs between both players via Socket.IO in real time
 - [ ] **PLAT-03**: Game result (winner/loser) is written to the leaderboard on game end
 - [ ] **PLAT-04**: Player can return to lobby after the game ends
@@ -111,7 +111,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| GAME-01 | Phase 5 | Pending |
+| GAME-01 | Phase 5 | Complete |
 | GAME-02 | Phase 6 | Pending |
 | GAME-03 | Phase 6 | Pending |
 | GAME-04 | Phase 6 | Pending |
@@ -125,7 +125,7 @@
 | PWR-03 | Phase 7 | Pending |
 | PWR-04 | Phase 7 | Pending |
 | PWR-05 | Phase 7 | Pending |
-| PLAT-01 | Phase 5 | Pending |
+| PLAT-01 | Phase 5 | Complete |
 | PLAT-02 | Phase 6 | Pending |
 | PLAT-03 | Phase 6 | Pending |
 | PLAT-04 | Phase 6 | Pending |

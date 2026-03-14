@@ -1,12 +1,27 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
+milestone_name: Requirement Coverage
+current_plan: —
+status: roadmap created
+last_updated: "2026-03-14T22:24:50.904Z"
+progress:
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 2
+  completed_plans: 1
+  percent: 95
+---
+
+---
+gsd_state_version: 1.0
+milestone: v2.0
 milestone_name: Snus Catcher
 current_plan: —
 status: roadmap created
 last_updated: "2026-03-14T00:00:00Z"
 progress:
-  total_phases: 3
+  [██████████] 95%
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,16 +32,16 @@ progress:
 
 **Project:** Snusking Platform
 **Updated:** 2026-03-14
-**Last session:** Milestone v2.0 roadmap created — Phases 5, 6, 7 defined for Snus Catcher arcade game.
+**Last session:** 2026-03-14T22:24:50.900Z
 
 ---
 
 ## Current Status
 
 **Milestone:** 2.0 — Snus Catcher
-**Active Phase:** Not started (roadmap created, ready for Phase 5)
-**Current Plan:** —
-**Overall Progress:** [░░░░░░░░░░] 0% — no plans executed
+**Active Phase:** Phase 5 — Snus Catcher: Foundation (1/2 plans complete)
+**Current Plan:** 05-02 (next)
+**Overall Progress:** [██████████] 95% — 18/19 plans complete across all phases
 
 ---
 
@@ -38,7 +53,7 @@ progress:
 | 2 | Card Design, Balance, and Game Economy | In progress — 1/5 plans complete |
 | 3 | Client UI and Reveal Experience | In progress — 1/5 plans complete (03-05 done) |
 | 4 | Integration, Playtesting, and Balance Iteration | Not started |
-| 5 | Snus Catcher: Foundation | Not started |
+| 5 | Snus Catcher: Foundation | In progress — 1/2 plans complete |
 | 6 | Snus Catcher: Core Loop | Not started |
 | 7 | Snus Catcher: Powerups | Not started |
 
@@ -122,3 +137,4 @@ progress:
 - [x] Plan 03-05 complete — EndScreen polished (Swedish copy, self-aware winner detection, results table with rank/username/score, return button); Lobby redesigned (Swedish l10n throughout, snusking theme) (10 min)
 - [x] v2.0 milestone started — requirements defined (18 requirements: GAME-01–09, PWR-01–05, PLAT-01–04)
 - [x] v2.0 roadmap created — Phases 5, 6, 7 defined with success criteria and 100% requirement coverage
+- [x] Plan 05-01 complete — SenusCatcherEngine stub (20Hz tick, 4 GREEN tests), GameType union expanded, atomic registration in registry/GameContainer/Home/Lobby (~20 min)
