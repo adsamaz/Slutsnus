@@ -146,7 +146,11 @@ Plans:
   2. Player can create a Snus Catcher room from the lobby and a second player can join it
   3. TypeScript compiles clean across shared, server, and client after the GameType addition
   4. The server emits game ticks to both sockets once a Snus Catcher room starts
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — SenusCatcherEngine stub + unit tests + atomic GameType propagation (all 4 files) + client placeholder
+- [ ] 05-02-PLAN.md — Human verification: lobby UI, room create/join flow, server tick confirmation
 
 ### Phase 6: Core Loop
 **Goal**: Two players can play a complete, scorable 1v1 Snus Catcher match — from lobby entry through win/loss — with server-authoritative physics and a 60fps canvas client
@@ -182,7 +186,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 5. Foundation | 0/? | Not started | - |
+| 5. Foundation | 0/2 | Not started | - |
 | 6. Core Loop | 0/? | Not started | - |
 | 7. Powerups | 0/? | Not started | - |
 
