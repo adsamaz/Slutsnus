@@ -130,7 +130,7 @@ Plans:
 
 ## Phases
 
-- [ ] **Phase 5: Foundation** - Register Snus Catcher game type and wire lobby entry point
+- [x] **Phase 5: Foundation** - Register Snus Catcher game type and wire lobby entry point (completed 2026-03-14)
 - [ ] **Phase 6: Core Loop** - Full playable 1v1 arcade game with server tick engine and canvas client
 - [ ] **Phase 7: Powerups** - All 4 powerup types implemented, tunable, and balanced
 
@@ -186,7 +186,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 5. Foundation | 1/2 | In Progress|  |
+| 5. Foundation | 2/2 | Complete   | 2026-03-14 |
 | 6. Core Loop | 0/? | Not started | - |
 | 7. Powerups | 0/? | Not started | - |
 

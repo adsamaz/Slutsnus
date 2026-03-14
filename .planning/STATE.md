@@ -2,11 +2,26 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Requirement Coverage
+current_plan: 05-02 (next)
+status: roadmap created
+last_updated: "2026-03-14T22:39:24.612Z"
+progress:
+  total_phases: 3
+  completed_phases: 1
+  total_plans: 2
+  completed_plans: 2
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v2.0
+milestone_name: Requirement Coverage
 current_plan: —
 status: roadmap created
 last_updated: "2026-03-14T22:24:50.904Z"
 progress:
-  total_phases: 3
+  [██████████] 100%
   completed_phases: 0
   total_plans: 2
   completed_plans: 1
@@ -32,16 +47,16 @@ progress:
 
 **Project:** Snusking Platform
 **Updated:** 2026-03-14
-**Last session:** 2026-03-14T22:24:50.900Z
+**Last session:** 2026-03-14T22:39:24.608Z
 
 ---
 
 ## Current Status
 
 **Milestone:** 2.0 — Snus Catcher
-**Active Phase:** Phase 5 — Snus Catcher: Foundation (1/2 plans complete)
-**Current Plan:** 05-02 (next)
-**Overall Progress:** [██████████] 95% — 18/19 plans complete across all phases
+**Active Phase:** Phase 6 — Snus Catcher: Core Loop (0/N plans complete)
+**Current Plan:** 06-01 (next)
+**Overall Progress:** [██████████] 100% — 19/19 plans complete across all phases
 
 ---
 
@@ -53,7 +68,7 @@ progress:
 | 2 | Card Design, Balance, and Game Economy | In progress — 1/5 plans complete |
 | 3 | Client UI and Reveal Experience | In progress — 1/5 plans complete (03-05 done) |
 | 4 | Integration, Playtesting, and Balance Iteration | Not started |
-| 5 | Snus Catcher: Foundation | In progress — 1/2 plans complete |
+| 5 | Snus Catcher: Foundation | Complete |
 | 6 | Snus Catcher: Core Loop | Not started |
 | 7 | Snus Catcher: Powerups | Not started |
 
@@ -105,6 +120,7 @@ progress:
 - Snus Catcher: bar position emits throttled to 30ms intervals
 - Snus Catcher: powerup timing via expiresAtTick (not wall-clock) — prevents client timer display divergence
 - Snus Catcher: powerup balance values are LOW confidence starting points — implement as named constants, tune from playtesting
+- Snus Catcher: lobby title must derive from gameType dynamically — hardcoded game name is a bug (caught during 05-02 verification)
 
 ---
 
@@ -138,3 +154,5 @@ progress:
 - [x] v2.0 milestone started — requirements defined (18 requirements: GAME-01–09, PWR-01–05, PLAT-01–04)
 - [x] v2.0 roadmap created — Phases 5, 6, 7 defined with success criteria and 100% requirement coverage
 - [x] Plan 05-01 complete — SenusCatcherEngine stub (20Hz tick, 4 GREEN tests), GameType union expanded, atomic registration in registry/GameContainer/Home/Lobby (~20 min)
+- [x] Plan 05-02 complete — Human verification passed (all 4 steps); lobby title bug fixed (dynamic gameType); GAME-01 and PLAT-01 satisfied (~10 min)
+- [x] Phase 5 complete — Snus Catcher foundation verified end-to-end
