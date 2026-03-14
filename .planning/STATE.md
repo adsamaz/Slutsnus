@@ -1,32 +1,32 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-current_plan: 03-04 complete
-status: in-progress
-last_updated: "2026-03-13T00:10:00Z"
+milestone: v2.0
+milestone_name: Snus Catcher
+current_plan: —
+status: defining requirements
+last_updated: "2026-03-14T00:00:00Z"
 progress:
-  total_phases: 4
-  completed_phases: 1
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
-**Project:** Snusking
-**Updated:** 2026-03-13
-**Last session:** Completed 03-04-PLAN.md (RevealOverlay created with CSS 3D flip, Board rewritten with event flash/banner, index.tsx wired with ToastContainer and event flash timer)
+**Project:** Snusking Platform
+**Updated:** 2026-03-14
+**Last session:** Milestone v2.0 started — Snus Catcher arcade game. Requirements defined, roadmap pending.
 
 ---
 
 ## Current Status
 
-**Milestone:** 1.0 — Card Game Engine
-**Active Phase:** Phase 3 — Client UI and Reveal Experience (executing — plan 5 complete)
-**Current Plan:** 03-04 complete
-**Overall Progress:** [██████████] 100% — 12 / 12 plans complete
+**Milestone:** 2.0 — Snus Catcher
+**Active Phase:** Not started (defining requirements)
+**Current Plan:** —
+**Overall Progress:** [░░░░░░░░░░] 0% — roadmap not yet created
 
 ---
 

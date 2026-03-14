@@ -2,11 +2,21 @@
 
 ## What This Is
 
-Snusking is a multiplayer real-time game platform built for 2–4 players. The platform supports room/lobby management, authentication, friends, and a leaderboard. The centerpiece game — also called Snusking — is a turn-based card game where players race to build the most powerful snus empire by drawing and playing Swedish snus cards, trading with allies, and strategically sabotaging rivals.
+Snusking is a multiplayer real-time game platform hosting multiple snus-themed games. The platform supports room/lobby management, authentication, friends, and a leaderboard. Games include the turn-based card game Snusking (build a snus empire through combos and sabotage) and the real-time arcade game Snus Catcher (catch falling snus pouches, avoid spent ones, outlast your opponent).
 
 ## Core Value
 
-Build and win a snus empire before your rivals do — through smart card play, timely combos, and calculated betrayal.
+A snus-themed multiplayer game platform where every game is distinctly competitive — whether through card strategy or arcade reflexes.
+
+## Current Milestone: v2.0 — Snus Catcher
+
+**Goal:** A fully playable 1v1 arcade game where players catch falling snus pouches with a mouse-controlled bar, avoid spent snus that costs lives, and use powerups to gain an edge over their opponent.
+
+**Target features:**
+- Mouse-controlled bar catching falling snus pouches
+- Lives system (3 lives), lose all lives = lose the match
+- 4 powerups: Snus Rain, Narrow Curse, Shield, Score Multiplier
+- Full platform integration (lobby, Socket.IO sync, leaderboard)
 
 ## Requirements
 
@@ -25,27 +35,23 @@ Build and win a snus empire before your rivals do — through smart card play, t
 
 ### Active
 
-<!-- The new Snusking game — replacing snus-rpg engine entirely. -->
+<!-- v2.0 Snus Catcher — new real-time arcade game -->
 
-- [ ] Turn-based card game engine replacing the current real-time snus-rpg engine
-- [ ] Players draw snus cards each turn from a shared or personal deck
-- [ ] Players spend snus cards to gain empire points (the win resource)
-- [ ] Players can trade snus cards with teammates/other players
-- [ ] Sabotage mechanic: give opponents spent snus (worthless) or strong snus with negative side effects
-- [ ] Beer as a separate holdable resource that combines with snus cards for bonus effects
-- [ ] Contextual snus cards (e.g. Fishsnus, Bastusnus) that are stronger in matching situations
-- [ ] Event cards drawn each round (Sauna night, Fishing trip, Party) that boost matching snus
-- [ ] Players can trigger situations/events to set up their own combos
-- [ ] Up to 4 players per game
-- [ ] First player to reach the empire score threshold wins
-- [ ] All players choose actions simultaneously per turn, then reveal
+- [ ] 1v1 real-time arcade game: mouse-controlled bar catches falling snus pouches
+- [ ] Spent snus pouches fall and must be avoided — touching costs a life
+- [ ] Each player starts with 3 lives; losing all lives loses the match
+- [ ] 4 powerups fall as catchable items: Snus Rain, Narrow Curse, Shield, Score Multiplier
+- [ ] Snus Catcher selectable from lobby alongside Snusking
+- [ ] Game state syncs between players via Socket.IO at 20Hz server tick
+- [ ] Match result written to leaderboard on game end
 
 ### Out of Scope
 
-- Real-time action movement — replaced entirely by turn-based card play
-- NPC AI enemies — this is a player vs player game
-- Grid-based map — not needed for card game format
+- Real-time action movement in Snusking — replaced entirely by turn-based card play
+- NPC AI enemies — all games are player vs player
+- Grid-based map — not needed for either game format
 - Single-player mode — multiplayer only
+- Shared falling objects between players in Snus Catcher — each player has their own independent playfield
 
 ## Context
 
@@ -73,6 +79,12 @@ Existing snus brand definitions (`brands.ts`) may be adapted as the basis for ca
 | Turn-based simultaneous reveal | All players choose secretly then reveal — avoids turn order advantage | — Pending |
 | First to threshold wins | Cleaner win condition than timed rounds — creates a race dynamic | — Pending |
 | Beer as separate resource | Gives players a meaningful hold-or-combine decision each turn | — Pending |
+| Snus Catcher: independent playfields | Each player has their own falling objects — no shared board — simplifies sync and prevents one player dominating the other's lane | ✓ Good |
+| Snus Catcher: server-authoritative collision | Client sends bar X only; server resolves all catches and hits — prevents cheating | ✓ Good |
+| Snus Catcher: client-authoritative bar rendering | Bar renders at cursor position locally without waiting for server echo — eliminates input lag | ✓ Good |
+| Snus Catcher: 20Hz server tick | Balances physics accuracy vs Socket.IO overhead; client interpolates to 60fps | ✓ Good |
+| Snus Catcher: canvas rendering | 10–30 moving objects at 60fps — canvas over DOM avoids layout recalculation overhead | ✓ Good |
+| Snus Catcher: 3 lives per player | Classic arcade feel, matches discussion | ✓ Good |
 
 ---
-*Last updated: 2026-03-11 after initialization*
+*Last updated: 2026-03-14 after v2.0 milestone start*

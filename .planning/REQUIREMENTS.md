@@ -1,12 +1,11 @@
 # Requirements
 
-**Project:** Snusking
-**Version:** 1.0 — Card Game Engine
-**Updated:** 2026-03-12
+**Project:** Snusking Platform
+**Updated:** 2026-03-14
 
 ---
 
-## Functional Requirements
+## v1.0 Requirements — Snusking Card Game
 
 ### Game Core
 
@@ -59,34 +58,83 @@
 
 ---
 
-## Non-Functional Requirements
+## v2.0 Requirements — Snus Catcher
 
-- [ ] Server must never broadcast unified game state containing all players' hands
-- [ ] Action payloads validated at the Socket.IO boundary (Zod, server-side only)
-- [ ] Deck shuffling must use unbiased algorithm (`crypto.randomInt` Fisher-Yates)
-- [ ] Game engine must implement a `TurnBasedGameEngine` interface extension (not stretch the real-time `GameEngine` interface)
-- [ ] `GameType` registration must be propagated across shared types, DB enum, and client routing in a single coordinated commit
+### Game Core
+
+- [ ] **GAME-01**: Player can join a Snus Catcher 1v1 match from the lobby
+- [ ] **GAME-02**: Each player controls a bar via mouse on their own browser screen
+- [ ] **GAME-03**: Fresh snus pouches fall from the top of the screen continuously
+- [ ] **GAME-04**: Spent (nasty) snus pouches fall from the top and must be avoided
+- [ ] **GAME-05**: Catching a fresh pouch increments the player's score
+- [ ] **GAME-06**: Touching a spent pouch costs the player one life
+- [ ] **GAME-07**: Player starts with 3 lives
+- [ ] **GAME-08**: Player who loses all 3 lives first loses the match
+- [ ] **GAME-09**: Game ends and winner is declared when one player reaches 0 lives
+
+### Powerups
+
+- [ ] **PWR-01**: Snus Rain powerup — burst of extra fresh pouches falls briefly when caught
+- [ ] **PWR-02**: Narrow Curse powerup — opponent's bar shrinks for ~5s when caught
+- [ ] **PWR-03**: Shield powerup — next spent snus touched doesn't cost a life when caught
+- [ ] **PWR-04**: Score Multiplier powerup — next 5 pouches caught count double when caught
+- [ ] **PWR-05**: Powerups fall from the top like regular items and must be caught to activate
+
+### Platform Integration
+
+- [ ] **PLAT-01**: Snus Catcher appears as a selectable game in the lobby
+- [ ] **PLAT-02**: Game state syncs between both players via Socket.IO in real time
+- [ ] **PLAT-03**: Game result (winner/loser) is written to the leaderboard on game end
+- [ ] **PLAT-04**: Player can return to lobby after the game ends
 
 ---
 
-## Out of Scope (v1)
+## Out of Scope
 
-- Real-time movement or grid-based map
-- NPC AI enemies
-- Single-player mode
-- Player-triggered situations (spend resources to activate a context) — defer to v2
-- Spectator mode — defer to v2
-- In-game chat — defer to v2
-- Expanded card catalog beyond initial 8–12 brands — defer to v2
-- Deck building — not this game
+| Feature | Reason |
+|---------|--------|
+| Real-time movement or grid-based map in Snusking | Replaced entirely by turn-based card play |
+| NPC AI enemies | Player vs player only platform |
+| Single-player mode | Multiplayer only |
+| Player-triggered situations (Snusking) | Defer to v3 |
+| Spectator mode | Defer to future |
+| In-game chat | Defer to future |
+| Expanded card catalog beyond initial 8–12 brands | Defer to v3 |
+| Deck building | Not this game |
+| Shared playfield between players (Snus Catcher) | Independent boards simplify sync and prevent lane domination |
+| Speed boost / slow powerups (Snus Catcher) | Bar is always instant to cursor — no speed mechanic |
+| Wide bar / magnet / decoy powerups | Omitted in design — tighter powerup set chosen |
 
 ---
 
-## Deferred Ideas
+## Traceability — v2.0
 
-> Captured during planning — not acted on, not lost.
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| GAME-01 | Phase 5 | Pending |
+| GAME-02 | Phase 6 | Pending |
+| GAME-03 | Phase 6 | Pending |
+| GAME-04 | Phase 6 | Pending |
+| GAME-05 | Phase 6 | Pending |
+| GAME-06 | Phase 6 | Pending |
+| GAME-07 | Phase 6 | Pending |
+| GAME-08 | Phase 6 | Pending |
+| GAME-09 | Phase 6 | Pending |
+| PWR-01 | Phase 7 | Pending |
+| PWR-02 | Phase 7 | Pending |
+| PWR-03 | Phase 7 | Pending |
+| PWR-04 | Phase 7 | Pending |
+| PWR-05 | Phase 7 | Pending |
+| PLAT-01 | Phase 5 | Pending |
+| PLAT-02 | Phase 6 | Pending |
+| PLAT-03 | Phase 6 | Pending |
+| PLAT-04 | Phase 6 | Pending |
 
-- Player-triggered situations: players spend resources to activate a context/event favoring their hand
-- High-nicotine snus as a dedicated sabotage card type with balance tuning after playtesting
-- Expanded brand catalog beyond launch set
-- Spectator mode for watching friends play
+**Coverage:**
+- v2.0 requirements: 18 total
+- Mapped to phases: 18
+- Unmapped: 0 ✓
+
+---
+*Requirements defined: 2026-03-14*
+*Last updated: 2026-03-14 after v2.0 milestone start*
