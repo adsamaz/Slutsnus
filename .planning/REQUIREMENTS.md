@@ -63,14 +63,14 @@
 ### Game Core
 
 - [x] **GAME-01**: Player can join a Snus Catcher 1v1 match from the lobby
-- [ ] **GAME-02**: Each player controls a bar via mouse on their own browser screen
-- [ ] **GAME-03**: Fresh snus pouches fall from the top of the screen continuously
-- [ ] **GAME-04**: Spent (nasty) snus pouches fall from the top and must be avoided
-- [ ] **GAME-05**: Catching a fresh pouch increments the player's score
-- [ ] **GAME-06**: Touching a spent pouch costs the player one life
-- [ ] **GAME-07**: Player starts with 3 lives
-- [ ] **GAME-08**: Player who loses all 3 lives first loses the match
-- [ ] **GAME-09**: Game ends and winner is declared when one player reaches 0 lives
+- [x] **GAME-02**: Each player controls a bar via mouse on their own browser screen
+- [x] **GAME-03**: Fresh snus pouches fall from the top of the screen continuously
+- [x] **GAME-04**: Spent (nasty) snus pouches fall from the top and must be avoided
+- [x] **GAME-05**: Catching a fresh pouch increments the player's score
+- [x] **GAME-06**: Touching a spent pouch costs the player one life
+- [x] **GAME-07**: Player starts with 3 lives
+- [x] **GAME-08**: Player who loses all 3 lives first loses the match
+- [x] **GAME-09**: Game ends and winner is declared when one player reaches 0 lives
 
 ### Powerups
 
@@ -112,14 +112,14 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | GAME-01 | Phase 5 | Complete |
-| GAME-02 | Phase 6 | Pending |
-| GAME-03 | Phase 6 | Pending |
-| GAME-04 | Phase 6 | Pending |
-| GAME-05 | Phase 6 | Pending |
-| GAME-06 | Phase 6 | Pending |
-| GAME-07 | Phase 6 | Pending |
-| GAME-08 | Phase 6 | Pending |
-| GAME-09 | Phase 6 | Pending |
+| GAME-02 | Phase 6 | Complete |
+| GAME-03 | Phase 6 | Complete |
+| GAME-04 | Phase 6 | Complete |
+| GAME-05 | Phase 6 | Complete |
+| GAME-06 | Phase 6 | Complete |
+| GAME-07 | Phase 6 | Complete |
+| GAME-08 | Phase 6 | Complete |
+| GAME-09 | Phase 6 | Complete |
 | PWR-01 | Phase 7 | Pending |
 | PWR-02 | Phase 7 | Pending |
 | PWR-03 | Phase 7 | Pending |

@@ -4,12 +4,12 @@ milestone: v2.0
 milestone_name: Requirement Coverage
 current_plan: Not started
 status: roadmap created
-last_updated: "2026-03-14T22:57:41.263Z"
+last_updated: "2026-03-14T23:22:42.246Z"
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 7
+  completed_plans: 3
 ---
 
 ---
@@ -61,16 +61,16 @@ progress:
 
 **Project:** Snusking Platform
 **Updated:** 2026-03-14
-**Last session:** 2026-03-14T22:39:24.608Z
+**Last session:** 2026-03-14T23:22:42.243Z
 
 ---
 
 ## Current Status
 
 **Milestone:** 2.0 — Snus Catcher
-**Active Phase:** Phase 6 — Snus Catcher: Core Loop (0/N plans complete)
-**Current Plan:** Not started
-**Overall Progress:** [██████████] 100% — 19/19 plans complete across all phases
+**Active Phase:** Phase 6 — Snus Catcher: Core Loop (1/5 plans complete)
+**Current Plan:** 06-02 (next)
+**Overall Progress:** [████████░░] 83% — 20/24 plans complete across all phases
 
 ---
 
@@ -135,6 +135,9 @@ progress:
 - Snus Catcher: powerup timing via expiresAtTick (not wall-clock) — prevents client timer display divergence
 - Snus Catcher: powerup balance values are LOW confidence starting points — implement as named constants, tune from playtesting
 - Snus Catcher: lobby title must derive from gameType dynamically — hardcoded game name is a bug (caught during 05-02 verification)
+- Snus Catcher: SenusCatcherObject.type uses 'fresh'/'spent' string union (not boolean) — explicit discriminant for collision logic
+- Snus Catcher: objects array on SenusCatcherPlayerState (per-player, not top-level) — implements independent playfields model
+- Snus Catcher: SenusCatcherAction uses payload wrapper for bar-move xFraction — consistent with GameAction interface pattern
 
 ---
 
@@ -170,3 +173,4 @@ progress:
 - [x] Plan 05-01 complete — SenusCatcherEngine stub (20Hz tick, 4 GREEN tests), GameType union expanded, atomic registration in registry/GameContainer/Home/Lobby (~20 min)
 - [x] Plan 05-02 complete — Human verification passed (all 4 steps); lobby title bug fixed (dynamic gameType); GAME-01 and PLAT-01 satisfied (~10 min)
 - [x] Phase 5 complete — Snus Catcher foundation verified end-to-end
+- [x] Plan 06-01 complete — SenusCatcherState/PlayerState/Object/Action types in shared/src/types.ts; 22 RED it.todo() stubs for GAME-02–09 grouped by requirement in engine.test.ts (~5 min)
