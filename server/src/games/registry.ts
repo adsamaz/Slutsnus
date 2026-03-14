@@ -1,5 +1,6 @@
 import { GameAction, PlayerInfo } from '@slutsnus/shared';
 import { SnuskingEngine } from './snusking/engine';
+import { SenusCatcherEngine } from './snus-catcher/engine';
 
 export interface GameEngine {
     init(roomId: string, players: PlayerInfo[], onStateUpdate: (state: unknown) => void): void;
@@ -9,7 +10,7 @@ export interface GameEngine {
 }
 
 // Turn phase type for the Snusking FSM
-export type TurnPhase = 'draw' | 'planning' | 'reveal' | 'resolve' | 'ended';
+export type TurnPhase = 'playing' | 'ended';
 
 // Extension of GameEngine for turn-based games with simultaneous reveal.
 // SnuskingEngine implements this interface.
@@ -23,4 +24,5 @@ export interface TurnBasedGameEngine extends GameEngine {
 
 export const gameRegistry: Record<string, new () => GameEngine> = {
     'snusking': SnuskingEngine,
+    'snus-catcher': SenusCatcherEngine,
 };

@@ -2,6 +2,7 @@ import { createSignal, onCleanup, Show } from 'solid-js';
 import { useSocket } from '../stores/socket';
 import { useRoom } from '../stores/room';
 import { SnuskingGame } from './snusking/index';
+import { SenusCatcherGame } from './snus-catcher/index';
 import type { SnuskingProjectedState, GameAction } from '@slutsnus/shared';
 
 interface GameContainerProps {
@@ -17,6 +18,8 @@ export default function GameContainer(props: GameContainerProps) {
     const onState = ({ state }: { state: unknown }) => setGameState(state as SnuskingProjectedState);
 
     socket.on('game:state', onState);
+    // Request current state in case we navigated here after the initial emit
+    socket.emit('room:join', { roomCode: props.roomCode });
 
     onCleanup(() => {
         socket.off('game:state', onState);
@@ -39,6 +42,9 @@ export default function GameContainer(props: GameContainerProps) {
                         onAction={(action) => socket.emit('game:action', { roomCode: props.roomCode, action: action as GameAction })}
                     />
                 )}
+            </Show>
+            <Show when={gameType() === 'snus-catcher'}>
+                <SenusCatcherGame roomCode={props.roomCode} />
             </Show>
         </div>
     );

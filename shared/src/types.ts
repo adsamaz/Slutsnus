@@ -27,7 +27,7 @@ export interface AuthResponse {
 // Rooms
 // ─────────────────────────────────────────────────
 export type RoomStatus = 'waiting' | 'playing' | 'ended';
-export type GameType = 'snusking';
+export type GameType = 'snusking' | 'snus-catcher';
 
 export interface RoomPlayer {
     userId: string;
@@ -222,6 +222,7 @@ export interface SnuskingCardInstance {
   empirePoints: number;
   strength?: SnuskingCardStrength;
   flavor?: SnuskingCardFlavor;
+  traded?: boolean;
 }
 
 export interface SnuskingTradeOffer {
@@ -237,6 +238,7 @@ export interface SnuskingPlayerState {
   userId: string;
   username: string;
   hand: SnuskingCardInstance[];
+  spentSnus: number;
   empireScore: number;
   hasCommitted: boolean;
   isConnected: boolean;
@@ -258,23 +260,25 @@ export interface SnuskingOpponentState {
 }
 
 export interface SnuskingProjectedState {
-  phase: 'draw' | 'planning' | 'reveal' | 'resolve' | 'ended';
+  phase: 'playing' | 'ended';
   self: SnuskingPlayerState;
   opponents: SnuskingOpponentState[];
   deckCount: number;
   discardCount: number;
+  discardTop: SnuskingCardInstance | null;
   turnNumber: number;
   pendingTradeOffers: SnuskingTradeOffer[];
   status: 'active' | 'ended';
   endReason: GameEndReason | null;
   results: GameResult[] | null;
   currentEvent: SnuskingEventCard | null;
+  activePlayerId: string | null;
 }
 
 /** Server-only master state — NEVER emitted directly (contains all players' hands) */
 export interface SnuskingMasterState {
   roomId: string;
-  phase: 'draw' | 'planning' | 'reveal' | 'resolve' | 'ended';
+  phase: 'playing' | 'ended';
   players: Record<string, SnuskingPlayerState>;
   deck: SnuskingCardInstance[];
   discardPile: SnuskingCardInstance[];
@@ -284,6 +288,8 @@ export interface SnuskingMasterState {
   status: 'active' | 'ended';
   endReason: GameEndReason | null;
   results: GameResult[] | null;
+  activePlayerId: string | null;
+  turnOrder: string[];
 }
 
 // Snusking action discriminated union — validated by Zod at Socket.IO boundary (server-only)
@@ -294,6 +300,7 @@ export type SnuskingAction =
   | { type: 'snusking:trade-offer'; targetPlayerId: string; cardInstanceId: string; displayName?: string }
   | { type: 'snusking:trade-accept'; offerId: string }
   | { type: 'snusking:trade-decline'; offerId: string }
+  | { type: 'snusking:trade-offer-decoy'; targetPlayerId: string; decoyCardInstanceId: string }
+  | { type: 'snusking:activate-immunity' }
   | { type: 'snusking:sabotage-spentsnus'; targetPlayerId: string; cardInstanceId: string }
-  | { type: 'snusking:sabotage-highnic'; targetPlayerId: string; cardInstanceId: string }
-  | { type: 'snusking:activate-immunity' };
+  | { type: 'snusking:sabotage-highnic'; targetPlayerId: string; cardInstanceId: string };

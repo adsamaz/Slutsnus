@@ -16,6 +16,13 @@ const GAMES: Game[] = [
         description: 'Build a snus empire by collecting Swedish brands and spending strategically. Simultaneous reveal — everyone commits before anyone sees the result.',
         badges: ['2–4 Players', 'Strategy', 'Card Game'],
     },
+    {
+        id: 'snus-catcher',
+        name: 'Snus Catcher',
+        tagline: 'Catch or die.',
+        description: 'Catch fresh snus pouches falling from above. Dodge the spent ones. 1v1 arcade racing.',
+        badges: ['2 Players', 'Arcade', 'Real-time'],
+    },
 ];
 
 export default function Home() {

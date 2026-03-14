@@ -19,6 +19,13 @@ export default function Lobby() {
     const [starting, setStarting] = createSignal(false);
     const [joining, setJoining] = createSignal(true);
     const [error, setError] = createSignal('');
+    const [copied, setCopied] = createSignal(false);
+
+    const handleCopyCode = () => {
+        navigator.clipboard.writeText(params.code);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+    };
 
     createEffect(async () => {
         try {
@@ -86,10 +93,15 @@ export default function Lobby() {
                             <div class="lobby-header">
                                 <div class="lobby-title-row">
                                     <h2>Snusking — Lobby</h2>
-                                    <span class="lobby-code">Kod: <strong>{r().code}</strong></span>
+                                    <span class="lobby-code">
+                                        Kod: <strong>{r().code}</strong>
+                                        <button class="copy-code-btn" onClick={handleCopyCode} title="Kopiera rumskod">
+                                            {copied() ? '✓' : '⧉'}
+                                        </button>
+                                    </span>
                                 </div>
                                 <span class={`game-badge ${r().gameType}`}>
-                                    {r().gameType === 'snusking' ? '🫙 Snusking' : r().gameType}
+                                    {r().gameType === 'snusking' ? '🫙 Snusking' : r().gameType === 'snus-catcher' ? 'Snus Catcher' : r().gameType}
                                 </span>
                             </div>
 
