@@ -130,7 +130,7 @@ Plans:
 
 ## Phases
 
-- [x] **Phase 5: Foundation** - Register Snus Catcher game type and wire lobby entry point (completed 2026-03-14)
+- [x] **Phase 5: Foundation** - Register Snus Catcher game type and wire lobby entry point (completed 2026-03-14)
 - [ ] **Phase 6: Core Loop** - Full playable 1v1 arcade game with server tick engine and canvas client
 - [ ] **Phase 7: Powerups** - All 4 powerup types implemented, tunable, and balanced
 
@@ -166,7 +166,14 @@ Plans:
   4. The match result (winner and score) is written to the leaderboard and both players can return to the lobby
   5. Both players see each other's score and lives in real time throughout the match
   6. The canvas renders at 60fps smoothly without stutter between 20Hz server ticks
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Wave 0: Snus Catcher shared types + RED test stubs (GAME-02..09)
+- [ ] 06-02-PLAN.md — Physics engine: physics.ts helpers + full SenusCatcherEngine FSM, all stubs GREEN
+- [ ] 06-03-PLAN.md — Client contracts: GameContainer widening + render.ts draw functions + snus-catcher.css
+- [ ] 06-04-PLAN.md — Canvas client: SenusCatcherGame component (rAF loop, createStore, bar input, end screen)
+- [ ] 06-05-PLAN.md — Human verification: full 1v1 playthrough, leaderboard write, return to lobby
 
 ### Phase 7: Powerups
 **Goal**: All 4 powerup types fall as catchable items and activate correctly, with tunable balance constants
@@ -187,7 +194,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 5. Foundation | 2/2 | Complete   | 2026-03-14 |
-| 6. Core Loop | 0/? | Not started | - |
+| 6. Core Loop | 0/5 | Not started | - |
 | 7. Powerups | 0/? | Not started | - |
 
 ## v2.0 Requirement Coverage
