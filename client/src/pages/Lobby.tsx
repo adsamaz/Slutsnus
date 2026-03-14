@@ -92,7 +92,7 @@ export default function Lobby() {
                         <div class="lobby-main card">
                             <div class="lobby-header">
                                 <div class="lobby-title-row">
-                                    <h2>Snusking — Lobby</h2>
+                                    <h2>{r().gameType === 'snus-catcher' ? 'Snus Catcher' : 'Snusking'} — Lobby</h2>
                                     <span class="lobby-code">
                                         Kod: <strong>{r().code}</strong>
                                         <button class="copy-code-btn" onClick={handleCopyCode} title="Kopiera rumskod">
