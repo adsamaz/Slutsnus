@@ -2,11 +2,26 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Requirement Coverage
+current_plan: 06-04 (next)
+status: roadmap created
+last_updated: "2026-03-14T23:33:39.524Z"
+progress:
+  total_phases: 3
+  completed_phases: 1
+  total_plans: 7
+  completed_plans: 5
+  percent: 92
+---
+
+---
+gsd_state_version: 1.0
+milestone: v2.0
+milestone_name: Requirement Coverage
 current_plan: 06-02 (next)
 status: roadmap created
 last_updated: "2026-03-14T23:26:23.010Z"
 progress:
-  total_phases: 3
+  [█████████░] 92%
   completed_phases: 1
   total_plans: 7
   completed_plans: 4
@@ -76,16 +91,16 @@ progress:
 
 **Project:** Snusking Platform
 **Updated:** 2026-03-15
-**Last session:** 2026-03-14T23:25:28Z
+**Last session:** 2026-03-14T23:33:39.520Z
 
 ---
 
 ## Current Status
 
 **Milestone:** 2.0 — Snus Catcher
-**Active Phase:** Phase 6 — Snus Catcher: Core Loop (3/5 plans complete)
-**Current Plan:** 06-04 (next)
-**Overall Progress:** [█████████░] 88% — 21/24 plans complete across all phases
+**Active Phase:** Phase 6 — Snus Catcher: Core Loop (2/5 plans complete)
+**Current Plan:** 06-03 (next)
+**Overall Progress:** [█████████░] 92% — 22/24 plans complete across all phases
 
 ---
 
@@ -155,6 +170,9 @@ progress:
 - Snus Catcher: SenusCatcherAction uses payload wrapper for bar-move xFraction — consistent with GameAction interface pattern
 - Snus Catcher: GameContainer signal widened to createSignal<unknown> — each Show block casts internally to its own state type, avoiding game-specific leakage at shared signal boundary
 - Snus Catcher: render.ts is a pure module (no SolidJS imports, no signals) — drawFrame takes localBarX as pixel X, caller owns mouse-to-pixel conversion
+- Snus Catcher: objects spawned AFTER moveObjects in tick body — newly spawned objects have y=0 on creation tick, moved to y=0.008 on next tick
+- Snus Catcher: end() emits players with objects:[] in ended state — client end-screen has no use for in-flight objects
+- Snus Catcher: vi.restoreAllMocks() required in afterEach for any describe block using Math.random spy — prevents spy leakage between test cases
 
 ---
 
@@ -191,4 +209,5 @@ progress:
 - [x] Plan 05-02 complete — Human verification passed (all 4 steps); lobby title bug fixed (dynamic gameType); GAME-01 and PLAT-01 satisfied (~10 min)
 - [x] Phase 5 complete — Snus Catcher foundation verified end-to-end
 - [x] Plan 06-01 complete — SenusCatcherState/PlayerState/Object/Action types in shared/src/types.ts; 22 RED it.todo() stubs for GAME-02–09 grouped by requirement in engine.test.ts (~5 min)
+- [x] Plan 06-02 complete — physics.ts (pure helpers: spawnObject/moveObjects/resolveCollisions + PHYSICS constants); full SenusCatcherEngine FSM replacing Phase 5 stub; all 22 RED stubs turned GREEN (72 total tests passing) (~8 min)
 - [x] Plan 06-03 complete — GameContainer signal widened to unknown; SenusCatcherGame wired with state+onAction props; render.ts exports pure drawFrame; snus-catcher.css provides all layout and end-screen styles (~8 min)
