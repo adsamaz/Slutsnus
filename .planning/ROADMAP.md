@@ -194,7 +194,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 5. Foundation | 2/2 | Complete   | 2026-03-14 |
-| 6. Core Loop | 3/5 | In Progress|  |
+| 6. Core Loop | 4/5 | In Progress|  |
 | 7. Powerups | 0/? | Not started | - |
 
 ## v2.0 Requirement Coverage

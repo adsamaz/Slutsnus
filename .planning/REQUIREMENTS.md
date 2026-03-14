@@ -85,7 +85,7 @@
 - [x] **PLAT-01**: Snus Catcher appears as a selectable game in the lobby
 - [x] **PLAT-02**: Game state syncs between both players via Socket.IO in real time
 - [x] **PLAT-03**: Game result (winner/loser) is written to the leaderboard on game end
-- [ ] **PLAT-04**: Player can return to lobby after the game ends
+- [x] **PLAT-04**: Player can return to lobby after the game ends
 
 ---
 
@@ -128,7 +128,7 @@
 | PLAT-01 | Phase 5 | Complete |
 | PLAT-02 | Phase 6 | Complete |
 | PLAT-03 | Phase 6 | Complete |
-| PLAT-04 | Phase 6 | Pending |
+| PLAT-04 | Phase 6 | Complete |
 
 **Coverage:**
 - v2.0 requirements: 18 total

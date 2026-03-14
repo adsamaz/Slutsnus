@@ -2,11 +2,26 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Requirement Coverage
+current_plan: 06-03 (next)
+status: roadmap created
+last_updated: "2026-03-14T23:37:41.384Z"
+progress:
+  total_phases: 3
+  completed_phases: 1
+  total_plans: 7
+  completed_plans: 6
+  percent: 96
+---
+
+---
+gsd_state_version: 1.0
+milestone: v2.0
+milestone_name: Requirement Coverage
 current_plan: 06-04 (next)
 status: roadmap created
 last_updated: "2026-03-14T23:33:39.524Z"
 progress:
-  total_phases: 3
+  [██████████] 96%
   completed_phases: 1
   total_plans: 7
   completed_plans: 5
@@ -91,16 +106,16 @@ progress:
 
 **Project:** Snusking Platform
 **Updated:** 2026-03-15
-**Last session:** 2026-03-14T23:33:39.520Z
+**Last session:** 2026-03-14T23:37:41.381Z
 
 ---
 
 ## Current Status
 
 **Milestone:** 2.0 — Snus Catcher
-**Active Phase:** Phase 6 — Snus Catcher: Core Loop (2/5 plans complete)
-**Current Plan:** 06-03 (next)
-**Overall Progress:** [█████████░] 92% — 22/24 plans complete across all phases
+**Active Phase:** Phase 6 — Snus Catcher: Core Loop (4/5 plans complete)
+**Current Plan:** 06-05 (next)
+**Overall Progress:** [██████████] 96% — 23/24 plans complete across all phases
 
 ---
 
@@ -168,6 +183,7 @@ progress:
 - Snus Catcher: SenusCatcherObject.type uses 'fresh'/'spent' string union (not boolean) — explicit discriminant for collision logic
 - Snus Catcher: objects array on SenusCatcherPlayerState (per-player, not top-level) — implements independent playfields model
 - Snus Catcher: SenusCatcherAction uses payload wrapper for bar-move xFraction — consistent with GameAction interface pattern
+- Snus Catcher: useAuth() provides selfId in SenusCatcherGame (authState.user.id) — useRoom() returns RoomInfo which has no userId field
 - Snus Catcher: GameContainer signal widened to createSignal<unknown> — each Show block casts internally to its own state type, avoiding game-specific leakage at shared signal boundary
 - Snus Catcher: render.ts is a pure module (no SolidJS imports, no signals) — drawFrame takes localBarX as pixel X, caller owns mouse-to-pixel conversion
 - Snus Catcher: objects spawned AFTER moveObjects in tick body — newly spawned objects have y=0 on creation tick, moved to y=0.008 on next tick
@@ -211,3 +227,4 @@ progress:
 - [x] Plan 06-01 complete — SenusCatcherState/PlayerState/Object/Action types in shared/src/types.ts; 22 RED it.todo() stubs for GAME-02–09 grouped by requirement in engine.test.ts (~5 min)
 - [x] Plan 06-02 complete — physics.ts (pure helpers: spawnObject/moveObjects/resolveCollisions + PHYSICS constants); full SenusCatcherEngine FSM replacing Phase 5 stub; all 22 RED stubs turned GREEN (72 total tests passing) (~8 min)
 - [x] Plan 06-03 complete — GameContainer signal widened to unknown; SenusCatcherGame wired with state+onAction props; render.ts exports pure drawFrame; snus-catcher.css provides all layout and end-screen styles (~8 min)
+- [x] Plan 06-04 complete — SenusCatcherGame rewritten with createStore, 60fps rAF loop, client-authoritative bar, 30ms emit throttle, socket wiring, Swedish end screen with winner detection (~5 min)
