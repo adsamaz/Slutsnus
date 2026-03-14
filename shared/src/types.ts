@@ -304,3 +304,33 @@ export type SnuskingAction =
   | { type: 'snusking:activate-immunity' }
   | { type: 'snusking:sabotage-spentsnus'; targetPlayerId: string; cardInstanceId: string }
   | { type: 'snusking:sabotage-highnic'; targetPlayerId: string; cardInstanceId: string };
+
+// ─────────────────────────────────────────────────
+// Snus Catcher specific
+// ─────────────────────────────────────────────────
+
+export interface SenusCatcherObject {
+    id: string;
+    type: 'fresh' | 'spent';
+    x: number;   // 0.0–1.0 fraction of logical width
+    y: number;   // 0.0–1.0 fraction of logical height
+}
+
+export interface SenusCatcherPlayerState {
+    userId: string;
+    username: string;
+    score: number;
+    lives: number;              // 3 → 0
+    barXFraction: number;       // 0.0–1.0 — last-known server position
+    objects: SenusCatcherObject[];  // this player's independent falling items
+}
+
+export interface SenusCatcherState {
+    status: 'playing' | 'ended';
+    tickCount: number;
+    players: SenusCatcherPlayerState[];   // 2 entries for 1v1
+    results?: GameResult[];               // only present when status === 'ended'
+}
+
+export type SenusCatcherAction =
+    | { type: 'snus-catcher:bar-move'; payload: { xFraction: number } };
