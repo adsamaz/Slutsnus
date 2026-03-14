@@ -65,3 +65,49 @@ describe('SenusCatcherEngine', () => {
         expect(typeof state.tickCount).toBe('number');
     });
 });
+
+// ── GAME-07: Initial state ──────────────────────────────────────────────
+describe('GAME-07: Player starts with 3 lives', () => {
+    it.todo('init() sets lives = 3 for each player');
+    it.todo('init() sets score = 0 for each player');
+    it.todo('init() sets barXFraction = 0.5 for each player');
+    it.todo('init() creates empty objects array for each player');
+});
+
+// ── GAME-02: Bar movement ───────────────────────────────────────────────
+describe('GAME-02: Bar position updated by bar-move action', () => {
+    it.todo('handleEvent(bar-move) sets barXFraction on the correct player');
+    it.todo('handleEvent(bar-move) clamps xFraction to [0.0, 1.0] (negative input → 0)');
+    it.todo('handleEvent(bar-move) clamps xFraction to [0.0, 1.0] (>1.0 input → 1.0)');
+    it.todo('handleEvent(bar-move) ignores unknown player IDs without throwing');
+});
+
+// ── GAME-03 / GAME-04: Object spawning ─────────────────────────────────
+describe('GAME-03 + GAME-04: Object spawning over time', () => {
+    it.todo('after 20 ticks at least one object appears in a player objects array');
+    it.todo('spawned objects have x in [0.0, 1.0] and y = 0.0 initially');
+    it.todo('spawned objects have type "fresh" or "spent"');
+    it.todo('spent objects appear among spawned objects over 100 ticks (not always fresh)');
+});
+
+// ── GAME-03: Object movement ────────────────────────────────────────────
+describe('GAME-03: Objects move downward each tick', () => {
+    it.todo('object y increases each tick (falls toward bottom)');
+    it.todo('objects with y >= 1.1 are removed from objects array (fell off screen)');
+});
+
+// ── GAME-05 / GAME-06: Collision ────────────────────────────────────────
+describe('GAME-05 + GAME-06: Collision resolution', () => {
+    it.todo('catching a fresh object (bar overlaps, object at catch Y) increments player score and removes object');
+    it.todo('touching a spent object (bar overlaps, object at catch Y) decrements player lives and removes object');
+    it.todo('object not overlapping bar passes through without collision');
+    it.todo('collision is resolved independently per player (player A catching does not affect player B)');
+});
+
+// ── GAME-08 / GAME-09: Win condition ─────────────────────────────────────
+describe('GAME-08 + GAME-09: Game ends when a player loses all lives', () => {
+    it.todo('when a player lives reaches 0, onStateUpdate is called with status = "ended"');
+    it.todo('ended state includes results array with winner rank 1 and loser rank 2');
+    it.todo('ended state results[].userId and results[].score match the player states');
+    it.todo('tick interval stops after status becomes "ended" (no further onStateUpdate calls)');
+});
