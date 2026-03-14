@@ -49,7 +49,7 @@ export const RevealOverlay: Component<RevealOverlayProps> = (props) => {
             <For each={Array.from({ length: opp.handCount })}>
               {() => (
                 <div class="reveal-card-flip">
-                  <SnuskingCard />
+                  <SnuskingCard sm />
                 </div>
               )}
             </For>

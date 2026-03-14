@@ -64,8 +64,9 @@ export const Hand: Component<HandProps> = (props) => {
     const anchor = document.getElementById('discard-pile-anchor');
     const anchorRect = anchor?.getBoundingClientRect();
 
-    const targetX = anchorRect ? anchorRect.left + anchorRect.width / 2 : window.innerWidth / 2;
-    const targetY = anchorRect ? anchorRect.top + anchorRect.height / 2 : 0;
+    // Target: center of the discard pile element
+    const targetCX = anchorRect ? anchorRect.left + anchorRect.width / 2 : window.innerWidth / 2;
+    const targetCY = anchorRect ? anchorRect.top + anchorRect.height / 2 : 0;
 
     const cardEls = ids
       .map((id) => {
@@ -81,9 +82,15 @@ export const Hand: Component<HandProps> = (props) => {
       return;
     }
 
+    // Scale factor: card should arrive at the pile card's rendered size
+    const pileCardSize = anchorRect ? Math.min(anchorRect.width, anchorRect.height) : 0;
+
     const clones: HTMLElement[] = cardEls.map((el) => {
       const rect = el.getBoundingClientRect();
       const clone = el.cloneNode(true) as HTMLElement;
+      // Remove state classes so the clone has no CSS transform of its own —
+      // our animation keyframes start from translate(0,0) and need a clean baseline.
+      clone.classList.remove('selected', 'disabled', 'discarding');
       clone.style.cssText = `
         position:fixed;
         left:${rect.left}px;
@@ -91,10 +98,13 @@ export const Hand: Component<HandProps> = (props) => {
         width:${rect.width}px;
         height:${rect.height}px;
         margin:0;
-        z-index:999;
+        transform:none;
+        z-index:500;
         pointer-events:none;
         transform-origin:center center;
         will-change:transform,opacity;
+        border-radius:10px;
+        box-shadow:0 8px 24px rgba(0,0,0,0.6);
       `;
       document.body.appendChild(clone);
       return clone;
@@ -103,16 +113,25 @@ export const Hand: Component<HandProps> = (props) => {
     let done = 0;
     clones.forEach((clone, i) => {
       const rect = cardEls[i]!.getBoundingClientRect();
-      const dx = targetX - (rect.left + rect.width / 2);
-      const dy = targetY - (rect.top + rect.height / 2);
-      const delay = i * 40;
+      const cardCX = rect.left + rect.width / 2;
+      const cardCY = rect.top + rect.height / 2;
+      const dx = targetCX - cardCX;
+      const dy = targetCY - cardCY;
+      // Scale so the card shrinks to match the pile card height
+      const endScale = pileCardSize > 0 ? pileCardSize / rect.height : 0.45;
+      const rot = (i % 2 === 0 ? 1 : -1) * (10 + i * 5);
+      const delay = i * 55;
 
       const anim = clone.animate(
         [
-          { transform: 'translate(0,0) scale(1) rotate(0deg)', opacity: '1' },
-          { transform: `translate(${dx}px,${dy}px) scale(0.35) rotate(${(i % 2 === 0 ? 1 : -1) * 20}deg)`, opacity: '0' },
+          { transform: 'translate(0,0) scale(1) rotate(0deg)', opacity: '1', offset: 0 },
+          // arc peak — rise slightly before falling to pile
+          { transform: `translate(${dx * 0.5}px,${dy * 0.5 - 30}px) scale(${(1 + endScale) / 2}) rotate(${rot * 0.5}deg)`, opacity: '1', offset: 0.45 },
+          // land on pile at pile card scale, fade as it settles under the stack
+          { transform: `translate(${dx}px,${dy}px) scale(${endScale}) rotate(${rot}deg)`, opacity: '0.15', offset: 0.85 },
+          { transform: `translate(${dx}px,${dy}px) scale(${endScale}) rotate(${rot}deg)`, opacity: '0', offset: 1 },
         ],
-        { duration: 380, delay, easing: 'cubic-bezier(0.4,0,0.6,1)', fill: 'forwards' },
+        { duration: 420, delay, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)', fill: 'both' },
       );
 
       anim.onfinish = () => {

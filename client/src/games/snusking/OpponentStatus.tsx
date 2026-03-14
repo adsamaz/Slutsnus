@@ -7,49 +7,65 @@ interface OpponentStatusProps {
   phase: string;
 }
 
+// Map player count + seat index to a CSS class that places the zone
+// around the top arc of the table.
+function seatClass(total: number, index: number): string {
+  if (total === 1) return 'seat-top';
+  if (total === 2) return index === 0 ? 'seat-top-left' : 'seat-top-right';
+  if (total === 3) {
+    const positions = ['seat-top-left', 'seat-top', 'seat-top-right'];
+    return positions[index] ?? 'seat-top';
+  }
+  // 4-5 players: spread across an arc
+  const positions = ['seat-left', 'seat-top-left', 'seat-top', 'seat-top-right', 'seat-right'];
+  // center around the middle slot
+  const offset = Math.floor((positions.length - total) / 2);
+  return positions[offset + index] ?? 'seat-top';
+}
+
 export const OpponentStatus: Component<OpponentStatusProps> = (props) => {
   const showCards = () => props.phase === 'planning' || props.phase === 'reveal';
 
   return (
-    <div class="opponent-status">
+    <div class="opponents-area">
       <For each={props.opponents}>
-        {(opponent: SnuskingOpponentState) => (
-          <div class={`opponent-zone${!opponent.isConnected ? ' disconnected' : ''}`}>
-            <div class="opponent-header">
-              <span class="opponent-name">{opponent.username}</span>
-              <span class="opponent-score">{opponent.empireScore} poäng</span>
-              <Show when={opponent.beer > 0}>
-                <div class="beer-icons">
-                  <For each={Array.from({ length: Math.min(opponent.beer, 3) }, (_, i) => i)}>
-                    {() => <span class="beer-icon" style="font-size:0.8rem">🍺</span>}
-                  </For>
-                </div>
-              </Show>
-            </div>
-
-            <div class="opponent-commit-indicator">
-              <span class={`commit-dot${opponent.hasCommitted ? ' committed' : ' pending'}`} />
-              <span style={opponent.hasCommitted ? 'color:var(--color-accent)' : ''}>
-                {opponent.hasCommitted ? 'Redo' : 'Tänker...'}
-              </span>
-            </div>
-
+        {(opponent: SnuskingOpponentState, i) => (
+          <div
+            class={`opponent-zone ${seatClass(props.opponents.length, i())}${!opponent.isConnected ? ' disconnected' : ''}`}
+          >
+            {/* Face-down cards fanned toward the table center */}
             <Show when={showCards() && opponent.handCount > 0}>
-              <div class="opponent-face-down-cards">
-                <For each={Array.from({ length: Math.min(opponent.handCount, 6) }, (_, i) => i)}>
-                  {() => <SnuskingCard />}
+              <div class="opponent-hand-fan">
+                <For each={Array.from({ length: Math.min(opponent.handCount, 7) }, (_, i) => i)}>
+                  {(fanIdx) => (
+                    <div
+                      class="opponent-fan-card"
+                      style={`--fan-i:${fanIdx};--fan-total:${Math.min(opponent.handCount, 7)}`}
+                    >
+                      <SnuskingCard sm />
+                    </div>
+                  )}
                 </For>
-                <Show when={opponent.handCount > 6}>
-                  <span style="font-size:0.7rem;color:var(--color-muted);align-self:center">
-                    +{opponent.handCount - 6}
-                  </span>
+                <Show when={opponent.handCount > 7}>
+                  <span class="opponent-fan-overflow">+{opponent.handCount - 7}</span>
                 </Show>
               </div>
             </Show>
 
-            <Show when={!opponent.isConnected}>
-              <div class="opponent-disconnected-label">Frånkopplad</div>
-            </Show>
+            {/* Name plate */}
+            <div class="opponent-nameplate">
+              <span class={`commit-dot${opponent.hasCommitted ? ' committed' : ' pending'}`} />
+              <span class="opponent-name">{opponent.username}</span>
+              <span class="opponent-score">{opponent.empireScore}</span>
+              <Show when={opponent.beer > 0}>
+                <span class="opponent-beer">
+                  {'🍺'.repeat(Math.min(opponent.beer, 3))}
+                </span>
+              </Show>
+              <Show when={!opponent.isConnected}>
+                <span class="opponent-disconnected-label">✕</span>
+              </Show>
+            </div>
           </div>
         )}
       </For>

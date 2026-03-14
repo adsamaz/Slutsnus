@@ -52,13 +52,13 @@ export const SnuskingGame: Component<SnuskingGameProps> = (props) => {
       <ToastContainer />
 
       <Show when={props.state.status !== 'ended'}>
-        <PlayerHUD
-          self={props.state.self}
+        {/* Opponents seated around the far side of the table */}
+        <OpponentStatus
           opponents={props.state.opponents}
-          timeRemaining={timeRemaining()}
-          maxTime={45}
+          phase={props.state.phase}
         />
 
+        {/* Center table: deck, discard, event, phase info */}
         <Board
           phase={props.state.phase}
           deckCount={props.state.deckCount}
@@ -68,11 +68,7 @@ export const SnuskingGame: Component<SnuskingGameProps> = (props) => {
           eventFlashActive={eventFlashActive()}
         />
 
-        <OpponentStatus
-          opponents={props.state.opponents}
-          phase={props.state.phase}
-        />
-
+        {/* Player's hand at the bottom */}
         <Switch>
           <Match when={props.state.phase === 'planning'}>
             <Hand
@@ -95,6 +91,14 @@ export const SnuskingGame: Component<SnuskingGameProps> = (props) => {
             </div>
           </Match>
         </Switch>
+
+        {/* Player HUD pinned to bottom */}
+        <PlayerHUD
+          self={props.state.self}
+          opponents={props.state.opponents}
+          timeRemaining={timeRemaining()}
+          maxTime={45}
+        />
       </Show>
 
       <Show when={props.state.status === 'ended'}>

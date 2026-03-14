@@ -11,6 +11,7 @@ interface SnuskingCardProps {
   disabled?: boolean;
   comboLevel?: 'gold' | 'silver' | null;
   discarding?: boolean;
+  sm?: boolean;
   onClick?: () => void;
 }
 
@@ -21,31 +22,47 @@ const STRENGTH_LABELS: Record<SnuskingCardStrength, string> = {
   extreme: 'XTREME',
 };
 
-const FLAVOR_EMOJIS: Record<SnuskingCardFlavor, string> = {
-  tobacco: '\u{1F33F}',
-  mint: '\u{2744}\u{FE0F}',
-  citrus: '\u{1F34B}',
-  licorice: '\u{1F36B}',
-  sweet: '\u{1F36C}',
+// Large decorative art glyph per flavor — SVG path or unicode symbol
+const FLAVOR_ART: Record<SnuskingCardFlavor, string> = {
+  tobacco: '🌿',
+  mint:    '❄️',
+  citrus:  '🍋',
+  licorice:'🍫',
+  sweet:   '🍬',
 };
 
 const FLAVOR_LABELS: Record<SnuskingCardFlavor, string> = {
-  tobacco: 'TOBACCO',
-  mint: 'MINT',
-  citrus: 'CITRUS',
-  licorice: 'LICORICE',
-  sweet: 'SWEET',
+  tobacco: 'Tobacco',
+  mint:    'Mint',
+  citrus:  'Citrus',
+  licorice:'Licorice',
+  sweet:   'Sweet',
+};
+
+// Pip counts: low=1, medium=2, high=3, extreme=4
+const STRENGTH_PIPS: Record<SnuskingCardStrength, number> = {
+  low: 1, medium: 2, high: 3, extreme: 4,
+};
+
+const STRENGTH_LABELS_SHORT: Record<SnuskingCardStrength, string> = {
+  low: 'LOW', medium: 'MED', high: 'HIGH', extreme: 'XTREME',
 };
 
 export const SnuskingCard: Component<SnuskingCardProps> = (props) => {
   const classes = () => {
     const parts = ['snusking-card'];
-    if (!props.card) parts.push('face-down');
+    if (!props.card) {
+      parts.push('face-down');
+    } else {
+      if (props.card.flavor) parts.push(`card-flavor-${props.card.flavor}`);
+      if (props.card.strength) parts.push(`card-strength-${props.card.strength}`);
+    }
     if (props.selected) parts.push('selected');
     if (props.disabled) parts.push('disabled');
     if (props.comboLevel === 'gold') parts.push('combo-gold');
     if (props.comboLevel === 'silver') parts.push('combo-silver');
     if (props.discarding) parts.push('discarding');
+    if (props.sm) parts.push('card-sm');
     return parts.join(' ');
   };
 
@@ -55,34 +72,58 @@ export const SnuskingCard: Component<SnuskingCardProps> = (props) => {
         when={props.card}
         fallback={
           <div class="face-down-back">
-            <span class="face-down-icon">{'\u{1FAD9}'}</span>
+            <div class="face-down-pattern" />
+            <span class="face-down-icon">🫙</span>
             <span class="face-down-label">SNUS</span>
           </div>
         }
       >
         {(card) => (
-          <>
-            <div class="card-name">{card().name}</div>
-            <Show when={card().strength}>
-              {(strength) => (
-                <div class="card-strength-row">
-                  <span class={`strength-dot strength-${strength()}`}>&#9679;</span>
-                  <span class={`strength-badge strength-${strength()}`}>
-                    {STRENGTH_LABELS[strength()]}
+          <div class="card-face">
+            {/* Top row: name + strength badge */}
+            <div class="card-header">
+              <span class="card-name">{card().name}</span>
+              <Show when={card().strength}>
+                {(strength) => (
+                  <span class={`card-strength-badge card-strength-badge--${strength()}`}>
+                    {STRENGTH_LABELS_SHORT[strength()]}
                   </span>
-                </div>
-              )}
-            </Show>
-            <Show when={card().flavor}>
-              {(flavor) => (
-                <div class="card-flavor-row">
-                  <span class="flavor-emoji">{FLAVOR_EMOJIS[flavor()]}</span>
-                  <span class="flavor-badge">{FLAVOR_LABELS[flavor()]}</span>
-                </div>
-              )}
-            </Show>
-            <div class="card-points">{card().empirePoints} pts</div>
-          </>
+                )}
+              </Show>
+            </div>
+
+            {/* Decorative inner frame + art */}
+            <div class="card-art-frame">
+              <div class="card-art-inner">
+                <Show when={card().flavor}>
+                  {(flavor) => (
+                    <span class="card-art-glyph">{FLAVOR_ART[flavor()]}</span>
+                  )}
+                </Show>
+              </div>
+            </div>
+
+            {/* Bottom row: flavor label + pips + points */}
+            <div class="card-footer">
+              <Show when={card().flavor}>
+                {(flavor) => (
+                  <span class="card-flavor-label">{FLAVOR_LABELS[flavor()]}</span>
+                )}
+              </Show>
+              <div class="card-footer-right">
+                <Show when={card().strength}>
+                  {(strength) => (
+                    <div class="card-pips">
+                      {Array.from({ length: STRENGTH_PIPS[strength()] }).map((_, i) => (
+                        <span class={`card-pip card-pip--${strength()}`} />
+                      ))}
+                    </div>
+                  )}
+                </Show>
+                <span class="card-points-badge">{card().empirePoints}</span>
+              </div>
+            </div>
+          </div>
         )}
       </Show>
     </div>
