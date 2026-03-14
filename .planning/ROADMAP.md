@@ -118,3 +118,95 @@ Plans:
 2. Balance design before card implementation — the documented failure mode is assigning values before the combo matrix exists
 3. Client last — components receive typed state as props; build against the final shape
 4. Playtesting last — balance validation requires a complete game loop; incomplete games produce misleading feedback
+
+---
+
+---
+
+# Milestone v2.0 — Snus Catcher
+
+**Version:** 2.0 — Snus Catcher Arcade Game
+**Added:** 2026-03-14
+
+## Phases
+
+- [ ] **Phase 5: Foundation** - Register Snus Catcher game type and wire lobby entry point
+- [ ] **Phase 6: Core Loop** - Full playable 1v1 arcade game with server tick engine and canvas client
+- [ ] **Phase 7: Powerups** - All 4 powerup types implemented, tunable, and balanced
+
+## Phase Details
+
+### Phase 5: Foundation
+**Goal**: Snus Catcher is registered as a selectable game type and a player can enter a Snus Catcher room from the lobby, receiving server ticks
+**Depends on**: Phase 4 (existing platform must compile cleanly)
+**Requirements**: GAME-01, PLAT-01
+**Pitfall**: GameType must propagate atomically — `shared/src/types.ts`, `server/src/games/registry.ts`, `client/src/games/GameContainer.tsx`, and the Lobby UI must all be updated in a single commit or TypeScript errors cascade silently
+**Success Criteria** (what must be TRUE):
+  1. Lobby displays "Snus Catcher" as a selectable game option alongside Snusking
+  2. Player can create a Snus Catcher room from the lobby and a second player can join it
+  3. TypeScript compiles clean across shared, server, and client after the GameType addition
+  4. The server emits game ticks to both sockets once a Snus Catcher room starts
+**Plans**: TBD
+
+### Phase 6: Core Loop
+**Goal**: Two players can play a complete, scorable 1v1 Snus Catcher match — from lobby entry through win/loss — with server-authoritative physics and a 60fps canvas client
+**Depends on**: Phase 5
+**Requirements**: GAME-02, GAME-03, GAME-04, GAME-05, GAME-06, GAME-07, GAME-08, GAME-09, PLAT-02, PLAT-03, PLAT-04
+**Pitfall (bar input)**: Client bar must be client-authoritative — render at cursor position immediately, never wait for server echo. Bar position emits throttled to 30ms intervals
+**Pitfall (rAF)**: rAF loop must have `onCleanup(cancelAnimationFrame)` from day one — missing cleanup causes loops to accumulate on component remount
+**Pitfall (state signal)**: Use `createStore` not `createSignal` for 20Hz game state — a single top-level signal re-renders the entire canvas component on every tick
+**Success Criteria** (what must be TRUE):
+  1. Fresh snus pouches fall from the top of each player's screen continuously; catching one increments the score visible on the HUD
+  2. Spent snus pouches fall and touching one costs a life; the lives indicator decrements and shows 3 → 2 → 1 → 0
+  3. When one player loses their third life, the game ends and both screens show a winner/loser result
+  4. The match result (winner and score) is written to the leaderboard and both players can return to the lobby
+  5. Both players see each other's score and lives in real time throughout the match
+  6. The canvas renders at 60fps smoothly without stutter between 20Hz server ticks
+**Plans**: TBD
+
+### Phase 7: Powerups
+**Goal**: All 4 powerup types fall as catchable items and activate correctly, with tunable balance constants
+**Depends on**: Phase 6
+**Requirements**: PWR-01, PWR-02, PWR-03, PWR-04, PWR-05
+**Pitfall (balance)**: Powerup effect durations, spawn rates, and width modifiers are LOW confidence starting points — implement as named constants (e.g. `NARROW_CURSE_DURATION_TICKS`), not hardcoded literals, so they can be adjusted without touching logic
+**Pitfall (timing)**: Powerup expiry must use `expiresAtTick: number`, not wall-clock time — wall-clock drift between clients causes timer displays to diverge
+**Success Criteria** (what must be TRUE):
+  1. Powerup items fall from the top of the screen like regular items and catching one activates its effect immediately
+  2. Catching Snus Rain causes a burst of additional fresh pouches to appear in the catcher's lane
+  3. Catching Narrow Curse shrinks the opponent's bar for a visible duration shown on the opponent's HUD
+  4. Catching Shield absorbs the next spent snus hit without costing a life; the shield indicator disappears after absorbing
+  5. Catching Score Multiplier causes the next 5 pouches caught to count double, with a visible multiplier indicator
+**Plans**: TBD
+
+## Progress Table
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 5. Foundation | 0/? | Not started | - |
+| 6. Core Loop | 0/? | Not started | - |
+| 7. Powerups | 0/? | Not started | - |
+
+## v2.0 Requirement Coverage
+
+| Requirement | Phase |
+|-------------|-------|
+| GAME-01 | Phase 5 |
+| PLAT-01 | Phase 5 |
+| GAME-02 | Phase 6 |
+| GAME-03 | Phase 6 |
+| GAME-04 | Phase 6 |
+| GAME-05 | Phase 6 |
+| GAME-06 | Phase 6 |
+| GAME-07 | Phase 6 |
+| GAME-08 | Phase 6 |
+| GAME-09 | Phase 6 |
+| PLAT-02 | Phase 6 |
+| PLAT-03 | Phase 6 |
+| PLAT-04 | Phase 6 |
+| PWR-01 | Phase 7 |
+| PWR-02 | Phase 7 |
+| PWR-03 | Phase 7 |
+| PWR-04 | Phase 7 |
+| PWR-05 | Phase 7 |
+
+**Coverage: 18/18 v2.0 requirements mapped**

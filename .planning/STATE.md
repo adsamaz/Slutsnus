@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Snus Catcher
 current_plan: —
-status: defining requirements
+status: roadmap created
 last_updated: "2026-03-14T00:00:00Z"
 progress:
   total_phases: 3
@@ -17,16 +17,16 @@ progress:
 
 **Project:** Snusking Platform
 **Updated:** 2026-03-14
-**Last session:** Milestone v2.0 started — Snus Catcher arcade game. Requirements defined, roadmap pending.
+**Last session:** Milestone v2.0 roadmap created — Phases 5, 6, 7 defined for Snus Catcher arcade game.
 
 ---
 
 ## Current Status
 
 **Milestone:** 2.0 — Snus Catcher
-**Active Phase:** Not started (defining requirements)
+**Active Phase:** Not started (roadmap created, ready for Phase 5)
 **Current Plan:** —
-**Overall Progress:** [░░░░░░░░░░] 0% — roadmap not yet created
+**Overall Progress:** [░░░░░░░░░░] 0% — no plans executed
 
 ---
 
@@ -38,6 +38,9 @@ progress:
 | 2 | Card Design, Balance, and Game Economy | In progress — 1/5 plans complete |
 | 3 | Client UI and Reveal Experience | In progress — 1/5 plans complete (03-05 done) |
 | 4 | Integration, Playtesting, and Balance Iteration | Not started |
+| 5 | Snus Catcher: Foundation | Not started |
+| 6 | Snus Catcher: Core Loop | Not started |
+| 7 | Snus Catcher: Powerups | Not started |
 
 ---
 
@@ -76,6 +79,17 @@ progress:
 - Board receives eventFlashActive as prop from index.tsx — Board is purely presentational, index.tsx owns all reactive state
 - index.tsx applies snusking-highnic-blur class (matching CSS definition) when highNicEffect && phase === 'planning'
 - ToastContainer mounted at root of snusking-game div (above all fixed-position overlays in DOM order)
+- Snus Catcher: server-authoritative collision (client sends bar X fraction only; server resolves all catches)
+- Snus Catcher: client-authoritative bar rendering (render at cursor immediately, never wait for server echo)
+- Snus Catcher: 20Hz server tick (setInterval at 50ms) — balances physics accuracy vs Socket.IO overhead
+- Snus Catcher: canvas rendering for game viewport (avoids DOM layout recalculation at 60fps for 10–30 moving objects)
+- Snus Catcher: 3 lives per player — classic arcade feel
+- Snus Catcher: independent playfields — each player has their own falling objects
+- Snus Catcher: GameType propagation must be atomic (shared types + registry + GameContainer + lobby in one commit)
+- Snus Catcher: use createStore not createSignal for 20Hz game state — prevents full re-render on every tick
+- Snus Catcher: bar position emits throttled to 30ms intervals
+- Snus Catcher: powerup timing via expiresAtTick (not wall-clock) — prevents client timer display divergence
+- Snus Catcher: powerup balance values are LOW confidence starting points — implement as named constants, tune from playtesting
 
 ---
 
@@ -85,6 +99,7 @@ progress:
 - Maximum hand size (cards held simultaneously)? (resolve in Phase 2 balance design)
 - Are trades resolved during the same reveal cycle, or queued for next turn? (resolve in Phase 2)
 - Sabotage immunity card name and cost? (resolve in Phase 2)
+- Snus Catcher: lobby game type selection UI scope — REST route change at room creation? (confirm in Phase 5)
 
 ---
 
@@ -104,4 +119,6 @@ progress:
 - [x] Plan 02-03 complete — 12-card catalog with strength/flavor, SNUSKING_EVENTS pool (3 events), buildDeck() stamps strength/flavor on instances — all 12 tests GREEN (2 min)
 - [x] Plan 03-01 complete — SnuskingCard component (face-up/face-down/selected/combo/discard states, prop-driven, zero signals) + snusking.css (569 lines, all Phase 3 game styles + keyframes) — TypeScript clean (15 min)
 - [x] Plan 03-04 complete — RevealOverlay created (CSS 3D flip, self cards with comboLevel, opponents as face-down backs); Board rewritten (event flash full-screen overlay + persistent banner, Swedish labels); index.tsx rewritten (CSS import, ToastContainer, event flash timer via createEffect, highnic blur class, all Phase 3 components wired) (10 min)
-- [x] Plan 03-05 complete — EndScreen polished (Swedish copy, self-aware winner detection, results table with rank/username/score, return button); Lobby redesigned (Swedish l10n throughout, 🫙 Snusking game badge, snusking theme) (10 min)
+- [x] Plan 03-05 complete — EndScreen polished (Swedish copy, self-aware winner detection, results table with rank/username/score, return button); Lobby redesigned (Swedish l10n throughout, snusking theme) (10 min)
+- [x] v2.0 milestone started — requirements defined (18 requirements: GAME-01–09, PWR-01–05, PLAT-01–04)
+- [x] v2.0 roadmap created — Phases 5, 6, 7 defined with success criteria and 100% requirement coverage
