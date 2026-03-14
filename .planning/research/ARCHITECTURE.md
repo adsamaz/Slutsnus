@@ -1,27 +1,58 @@
-# Architecture Patterns
+# Architecture Patterns: Snus Catcher Arcade Game
 
-**Domain:** Turn-based multiplayer card game engine
-**Researched:** 2026-03-11
-**Confidence:** HIGH (based on direct codebase analysis + established patterns)
+**Domain:** Real-time arcade game (falling objects, mouse-controlled bar, collision) integrated into an existing turn-based multiplayer platform
+**Researched:** 2026-03-14
+**Confidence:** HIGH (based on direct codebase analysis of the existing engine contract, socket layer, and client patterns)
 
 ---
 
 ## Context
 
-This is a subsequent-milestone research document. The platform already exists and works. The task is
-adding a new game engine (`snusking`) to replace `snus-rpg`. The constraint is hard: the new engine
-**must** implement `GameEngine` from `server/src/games/registry.ts`:
+This is a subsequent-milestone research document. The platform already exists and runs a working turn-based card game (Snusking). The task is adding a second game — Snus Catcher — a real-time arcade game where snus pouches fall from the top of the screen and each player controls a horizontal bar via mouse to catch them. The game is 1v1: each player plays on their own independent screen. Powerups (Snus Rain, Narrow Curse, Shield, Score Multiplier) can target the opponent.
 
-```typescript
-interface GameEngine {
-    init(roomId: string, players: PlayerInfo[], onStateUpdate: (state: unknown) => void): void;
-    handleEvent(playerId: string, action: GameAction): void;
-    getState(): unknown;
-    destroy(): void;
-}
-```
+The critical integration question is: **how does a real-time arcade game with a continuous tick loop fit the existing `GameEngine` interface designed for turn-based action dispatch?**
 
-Everything below is designed to fit cleanly inside this interface.
+The answer: it fits cleanly. The `GameEngine` interface is generic enough to support both paradigms. The existing turn-based `SnuskingEngine` uses `handleEvent` for discrete player actions. The new `SenusCatcherEngine` uses `handleEvent` for the same purpose (bar movement updates), while adding its own server-side `setInterval` tick loop — the same pattern used by the now-removed `snus-rpg` engine. No interface changes are required.
+
+---
+
+## Existing Integration Points
+
+### What Already Exists (Unchanged)
+
+| Component | File | Role for Snus Catcher |
+|-----------|------|----------------------|
+| `GameEngine` interface | `server/src/games/registry.ts` | `SenusCatcherEngine` implements this; no changes needed |
+| `gameRegistry` map | `server/src/games/registry.ts` | Add `'snus-catcher': SenusCatcherEngine` (one-line change) |
+| `activeGames` map | `server/src/socket/index.ts` | Holds the engine instance; no changes needed |
+| `game:action` handler | `server/src/socket/game.ts` | Routes bar-move actions to `engine.handleEvent`; no changes needed |
+| `onStateUpdate` callback wiring | `server/src/socket/room.ts` | Already supports `{ forUserId, state }` per-player routing (added for Snusking); reuse as-is |
+| `game:state` reception | `client/src/games/GameContainer.tsx` | Add `'snus-catcher'` branch alongside `'snusking'`; minor change |
+| Room lifecycle (join, ready, start) | `server/src/socket/room.ts` | Fully reused; no changes needed |
+| Lobby, auth, leaderboard, friends | All client pages and server routes | Fully reused; no changes needed |
+| `GameType` union | `shared/src/types.ts` | Add `'snus-catcher'` to the type (one addition) |
+| `ServerToClientEvents['game:state']` | `shared/src/types.ts` | Already typed as `{ state: unknown }`; no changes needed |
+
+### What Must Be Modified
+
+| Component | File | Change Required |
+|-----------|------|-----------------|
+| `gameRegistry` | `server/src/games/registry.ts` | Add `'snus-catcher': SenusCatcherEngine` |
+| `GameType` union | `shared/src/types.ts` | Add `'snus-catcher'` literal |
+| `GameContainer.tsx` | `client/src/games/GameContainer.tsx` | Add `snus-catcher` game type branch |
+
+### What Is New
+
+| Component | Location | Notes |
+|-----------|----------|-------|
+| `SenusCatcherEngine` | `server/src/games/snus-catcher/engine.ts` | Core arcade engine, tick loop, collision, powerup scheduling |
+| Snus Catcher shared types | `shared/src/types.ts` (new section) | `SenusCatcherState`, `FallingObject`, `PowerupType`, action types |
+| `SenusCatcherGame` root component | `client/src/games/snus-catcher/index.tsx` | Top-level client component wired into `GameContainer` |
+| `ArcadeCanvas.tsx` | `client/src/games/snus-catcher/ArcadeCanvas.tsx` | Canvas renderer for falling objects and bar |
+| `PowerupHUD.tsx` | `client/src/games/snus-catcher/PowerupHUD.tsx` | Active powerup timers, lives remaining, score |
+| `OpponentStrip.tsx` | `client/src/games/snus-catcher/OpponentStrip.tsx` | Minimal opponent score + active-curse indicator |
+| `EndScreen.tsx` | `client/src/games/snus-catcher/EndScreen.tsx` | Can adapt the Snusking EndScreen pattern |
+| `snus-catcher.css` | `client/src/games/snus-catcher/snus-catcher.css` | Game-specific styles |
 
 ---
 
@@ -30,397 +61,428 @@ Everything below is designed to fit cleanly inside this interface.
 ### High-Level Component Map
 
 ```
-shared/src/types.ts              <-- SnuskingState, SnuskingCard, SnuskingPlayer, SnuskingAction types
-                                        (NEW section, parallel to existing SnusRpg* types)
+shared/src/types.ts
+  └── SenusCatcherState          (server master + projected, never mixes both)
+  └── SenusCatcherFallingObject  (id, x, y, type, active)
+  └── SenusCatcherPlayerState    (barX, score, lives, activeEffects)
+  └── SenusCatcherProjectedState (own player full, opponent score/effects only)
+  └── SenusCatcherAction         (type: 'sc:bar-move' | 'sc:powerup-activate')
 
-server/src/games/snusking/       <-- New engine package
-  engine.ts                      <-- SnuskingEngine implements GameEngine
-  deck.ts                        <-- Card definitions, deck builder, shuffle
-  rules.ts                       <-- Turn resolution, combo evaluation, win condition
-  events.ts                      <-- Round event cards and situational matching logic
+server/src/games/snus-catcher/
+  engine.ts                      (SenusCatcherEngine implements GameEngine)
+  physics.ts                     (pure: spawnObject, advanceObjects, checkCollisions)
+  powerups.ts                    (pure: applyPowerup, powerup definitions)
 
-server/src/games/registry.ts     <-- Add 'snusking': SnuskingEngine  (one-line change)
+server/src/games/registry.ts     (add 'snus-catcher': SenusCatcherEngine — one line)
 
-client/src/games/snusking/       <-- New renderer package
-  index.tsx                      <-- Root component, wired into GameContainer
-  Board.tsx                      <-- Table layout: round event, discard pile, player zones
-  Hand.tsx                       <-- Current player's cards (interactive)
-  OpponentHand.tsx               <-- Other players' card backs during planning phase
-  PlayerStatus.tsx               <-- Empire score, beer count, active effects per player
-  RevealOverlay.tsx              <-- Simultaneous reveal animation when all actions committed
-  EndScreen.tsx                  <-- Reuse/adapt existing pattern
+client/src/games/snus-catcher/
+  index.tsx                      (SenusCatcherGame: root, handles mouse events, emits actions)
+  ArcadeCanvas.tsx               (canvas renderer: falling objects, bar, visual effects)
+  PowerupHUD.tsx                 (lives, score, active powerup timers)
+  OpponentStrip.tsx              (opponent score and incoming-curse warning)
+  EndScreen.tsx                  (win/loss, results, adapts existing EndScreen pattern)
+  snus-catcher.css
 
-client/src/games/GameContainer.tsx  <-- Add 'snusking' branch  (minor change)
+client/src/games/GameContainer.tsx  (add 'snus-catcher' branch — minor change)
 ```
 
 ### Component Boundaries
 
 | Component | Responsibility | Communicates With |
 |-----------|----------------|-------------------|
-| `SnuskingEngine` | Authoritative game state, turn phase FSM, action buffering, reveal resolution | `onStateUpdate` callback only |
-| `deck.ts` | Card catalog, deck construction, shuffle | `SnuskingEngine` (no external deps) |
-| `rules.ts` | Turn resolution logic, combo scoring, event matching, win check | `SnuskingEngine` (pure functions) |
-| `events.ts` | Round event card pool, situational modifiers | `rules.ts`, `SnuskingEngine` |
-| `shared/types.ts` (Snusking section) | All cross-boundary type contracts | Server engine + client renderer |
-| `GameContainer.tsx` | Routes `game:state` events to the correct game renderer | `SnuskingGame` component |
-| `SnuskingGame` (`index.tsx`) | Orchestrates client-side UI, emits `game:action` events | Socket store, child components |
-| `Board.tsx` | Renders the shared table (event card, discard zone) | Receives state as props |
-| `Hand.tsx` | Renders local player's hand, handles card selection | Emits actions via callback |
-| `RevealOverlay.tsx` | Shows all players' chosen cards simultaneously on reveal | Driven by phase transition in state |
-| `PlayerStatus.tsx` | Scores, beer, effects per seat | Derived from state props |
+| `SenusCatcherEngine` | Authoritative game loop, falling object positions, collision detection, powerup scheduling, life tracking | `onStateUpdate` callback only |
+| `physics.ts` | Pure functions: spawn objects, advance Y positions per tick, detect bar collision | Called by `SenusCatcherEngine` only |
+| `powerups.ts` | Powerup definitions, effect application, duration tracking | Called by `SenusCatcherEngine` only |
+| `SenusCatcherGame` (index.tsx) | Orchestrates client UI, captures mouse position, emits `sc:bar-move` actions at throttled rate | Socket store, child components |
+| `ArcadeCanvas.tsx` | Renders falling objects and bar on a 2D canvas using `requestAnimationFrame` | Receives `SenusCatcherProjectedState` as props |
+| `PowerupHUD.tsx` | Shows lives, score, active powerup timers as DOM overlay on canvas | Receives projected state as props |
+| `OpponentStrip.tsx` | Shows opponent score and any incoming curse indicator | Receives projected opponent state as props |
 
 ---
 
-## Turn Phase State Machine (Server-Authoritative)
+## Server-Side Authority Boundary
 
-The central architectural insight: the engine is a finite state machine with four phases per round.
-This replaces the real-time tick loop of `snus-rpg` entirely.
+### What the Server Controls
 
-```
-          ┌──────────────────────────────────────────────────────┐
-          │                     ROUND LOOP                       │
-          │                                                      │
-          │  DRAW ──► PLANNING ──► REVEAL ──► RESOLVE ──► DRAW  │
-          │                                          │           │
-          │                                     (win check)      │
-          └──────────────────────────────────────────────────────┘
-```
+Everything that affects game outcome is server-authoritative:
 
-### Phase Definitions
+- **Falling object positions** — the server computes Y positions on every tick; the client never invents object coordinates
+- **Collision detection** — the server checks whether a falling object's Y has crossed the bar's Y at the bar's X position; the client result is purely visual
+- **Powerup spawning** — the server decides when powerups appear and which type; clients display what the server emits
+- **Life deductions** — when an object reaches the bottom without being caught, the server deducts a life; the client shows the result
+- **Game end** — the server detects 0 lives and emits the final `status: 'ended'` state
 
-| Phase | Duration | What Happens |
-|-------|----------|--------------|
-| `draw` | Instant (server-triggered) | Each player draws to hand limit; round event card is drawn |
-| `planning` | Until all players commit OR timeout | Each player picks a card to play; choice stored privately |
-| `reveal` | Brief broadcast pause | All committed cards sent to all clients simultaneously |
-| `resolve` | Instant (server-triggered) | Cards scored, beer/sabotage/combos applied, empire points awarded |
+### What the Client Controls
 
-### Why This Model
+- **Bar X position input** — the client emits `sc:bar-move` with the mouse X fraction (0.0–1.0 relative to game area width); the server stores and uses this on the next tick for collision checks
+- **Visual interpolation** — the client can smoothly animate the bar between server-confirmed positions for feel; the server state is always authoritative for collision
 
-The simultaneous-reveal requirement means the server cannot process actions greedily as they arrive
-(unlike `snus-rpg` which calls `handleEvent` immediately on each action). Instead, the engine must:
+### The Accepted Lag Model
 
-1. **Buffer** each player's chosen action during `planning`
-2. **Gate reveal** until every seated player has committed (or timeout fires)
-3. **Resolve** all committed actions atomically before emitting a new state snapshot
+At 60fps client rendering and ~20 tick/sec server simulation, there is inherent visual lag between "I moved the bar" and "the server confirmed the catch." This is acceptable for this genre. The bar position sent to the server should be the raw mouse position at emit time — no client-side prediction needed at this scale.
 
-This is a standard "commit-then-reveal" pattern used in card games (Dominion, Exploding Kittens, etc.).
-The server is the only party that ever knows the full committed-but-unrevealed state.
+The server tick rate should be 30–60ms (17–33 ticks/sec). This is fast enough that missed catches due to network lag are rare at normal latency. A tick rate below 30ms adds server load without meaningful accuracy improvement.
 
 ---
 
-## Server-Side State Structure
+## Server-Side Game Loop
 
-### SnuskingState (canonical shape in shared/types.ts)
+### Engine Lifecycle
 
-```typescript
-type TurnPhase = 'draw' | 'planning' | 'reveal' | 'resolve';
+```
+engine.init(roomId, players, onStateUpdate)
+  → build initial master state (objects=[], bar positions centered, lives=3, score=0)
+  → start setInterval(tick, TICK_MS)
 
-interface SnuskingState {
-    phase: TurnPhase;
-    round: number;
-    currentEvent: SnuskingEventCard | null;
-    players: Record<string, SnuskingPlayer>;
-    discardPile: SnuskingCard[];
-    status: 'playing' | 'ended';
-    results?: GameResult[];
+engine.handleEvent(playerId, action)
+  → action.type === 'sc:bar-move': update masterState.players[playerId].barX
+  → action.type === 'sc:powerup-activate': apply powerup effect if eligible
+
+tick()
+  → advance all falling object Y positions by speed (accounts for active SpeedCurse effects)
+  → check collisions for each player: object Y >= bar Y AND |object X - bar X| <= barHalfWidth
+  → caught objects: add score (modified by active ScoreMultiplier), remove object
+  → missed objects: deduct 1 life, remove object
+  → apply active Narrow Curse: reduce barHalfWidth for target player
+  → apply active Shield: block one life deduction
+  → spawn new objects at random X at top of screen on schedule
+  → schedule powerup spawns at intervals
+  → check win/end condition (any player lives === 0)
+  → call onStateUpdate per-player (projected state only)
+
+engine.destroy()
+  → clearInterval on tick loop
+```
+
+### State Projection
+
+The master state contains both players' full state. Per-player projection strips the opponent's bar position (no strategic value to see it), but exposes the opponent's score and active powerup effects (relevant for opponent awareness).
+
+```
+MasterState {
+  players: {
+    [playerId]: { barX, score, lives, activeEffects[] }
+  }
+  objects: FallingObject[]    // shared — same objects, both players see them
+  tick: number
+  status: 'playing' | 'ended'
+  results?: GameResult[]
 }
 
-interface SnuskingPlayer {
-    userId: string;
-    username: string;
-    empireScore: number;
-    beer: number;
-    hand: SnuskingCard[];        // Full hand sent ONLY to the owning player (see below)
-    hasCommitted: boolean;       // True once player has submitted action this planning phase
-    lastPlayedCard: SnuskingCard | null;  // Populated only after reveal phase
-    activeEffects: SnuskingEffect[];
+ProjectedState (per player) {
+  self: { barX, score, lives, activeEffects[] }
+  opponent: { score, lives, activeEffects[] }  // barX omitted — not needed, not strategic
+  objects: FallingObject[]    // same array — objects are on a shared logical field
+  tick: number
+  status: 'playing' | 'ended'
+  results?: GameResult[]
 }
 ```
 
-### Critical: Per-Player State Projection
+Each player sees the same falling objects. This is correct — the game field is shared visually; each player simply has their own bar and interacts with objects independently.
 
-This is the most important architectural decision. The engine holds a **master state** containing
-all players' hands. But `onStateUpdate` must emit **different projections** per player — a player
-must see their own hand but only card-back counts for opponents.
+---
 
-**Implementation approach:** `onStateUpdate` is called once per player with a projected state, NOT
-once globally.
+## Client Architecture
 
-In `server/src/socket/room.ts`, the existing pattern emits the same state to the whole room:
+### Canvas vs DOM
+
+Falling objects and the bar are rendered on a 2D canvas using `requestAnimationFrame`. This is the correct choice here — unlike card games (where DOM is better), arcade games with many moving objects per frame benefit from canvas:
+
+- No per-object DOM reconciliation overhead at 60fps
+- Direct pixel control for smooth movement
+- Easy to handle object spawning/despawning without diffing
+- Solid.js reactivity is still used for HUD overlay (lives, score, powerup timers) — DOM elements laid over the canvas
+
+The client renders the last-received server state. Between server ticks, the client linearly interpolates object Y positions based on the known tick rate and object speed — this produces smooth visuals without waiting for the next server tick.
+
+### Client-Side Interpolation Pattern
 
 ```typescript
-io.to(roomCode).emit('game:state', { state });
+// In ArcadeCanvas.tsx
+createEffect(() => {
+  const state = props.state;
+  const tickMs = TICK_MS; // match server constant, exposed in shared types
+  let lastTickTime = performance.now();
+
+  const render = (now: number) => {
+    const elapsed = now - lastTickTime;
+    const interpolationFactor = Math.min(elapsed / tickMs, 1.0);
+
+    // Draw objects at interpolated Y
+    for (const obj of state.objects) {
+      const interpolatedY = obj.y + obj.speed * interpolationFactor;
+      drawObject(ctx, obj, interpolatedY);
+    }
+
+    drawBar(ctx, state.self.barX, state.self.activeEffects);
+    rafId = requestAnimationFrame(render);
+  };
+
+  // Reset interpolation anchor on new server state
+  lastTickTime = performance.now();
+  rafId = requestAnimationFrame(render);
+
+  onCleanup(() => cancelAnimationFrame(rafId));
+});
 ```
 
-This is fine for `snus-rpg` (shared visible map). For `snusking`, the engine's `onStateUpdate`
-callback must receive a `roomCode` reference so it can emit per-socket. There are two implementation
-options:
+When a new `game:state` event arrives, `lastTickTime` resets to `now` and objects snap to server-confirmed positions, preventing drift.
 
-**Option A — Engine holds io reference (breaks the interface contract):** Do not use this.
+### Mouse Input Throttling
 
-**Option B — onStateUpdate returns a Map of projections (extends the interface implicitly):**
-The engine calls `onStateUpdate` once per player with per-player data. The callback in `room.ts`
-routes each projection to the correct socket. The `onStateUpdate` signature stays `(state: unknown)
-=> void` but the engine invokes it once per player, each time with `{ forUserId, state: projection }`.
-The room handler checks for `forUserId` and emits to the right socket.
+Emitting a `sc:bar-move` action on every `mousemove` event would produce 200–400 emissions/sec. This saturates the socket and the server action queue. Throttle to 30–50ms:
 
-This is the recommended approach. It requires a small change to the `room:start` handler in
-`room.ts`, but the `GameEngine` interface stays the same — only the callback implementation changes.
-
-### What Each Player Receives
-
-| Field | Own Player | Other Players |
-|-------|------------|---------------|
-| `hand` | Full card array | Empty array (or omitted) |
-| `hasCommitted` | True/false | True/false (safe to share — they can't deduce card from this) |
-| `lastPlayedCard` | Full card (after reveal) | Full card (after reveal) — this is public |
-| `empireScore` | Score | Score (always public) |
-| `beer` | Count | Count (always public) |
-
-### Engine Internal State vs Emitted State
-
-The engine holds two representations:
-
-```
-engine.masterState         — full truth, never sent to clients
-engine.projectState(id)    — derived per-player view, safe to emit
+```typescript
+// In SenusCatcherGame (index.tsx)
+let lastEmit = 0;
+const handleMouseMove = (e: MouseEvent) => {
+  const now = performance.now();
+  if (now - lastEmit < 30) return;
+  lastEmit = now;
+  const rect = canvasRef.getBoundingClientRect();
+  const fraction = (e.clientX - rect.left) / rect.width;
+  props.onAction({ type: 'sc:bar-move', x: Math.max(0, Math.min(1, fraction)) });
+};
 ```
 
-`getState()` (used for debug/admin) may return `masterState`. All socket emissions use `projectState`.
+Server uses the most recently received `barX` when collision-checking on each tick. Intermediate positions are not needed.
+
+---
+
+## Powerup Architecture
+
+### Powerup Types
+
+| Powerup | Effect | Scope | Duration |
+|---------|--------|-------|----------|
+| Snus Rain | Extra objects spawn for 5s | Self (benefit) | 5 ticks × TICK_MS |
+| Narrow Curse | Opponent bar width reduced 50% for 8s | Opponent (debuff) | 8 ticks × TICK_MS |
+| Shield | Next missed object does not cost a life | Self (defensive) | Until consumed |
+| Score Multiplier | Caught objects worth 2× for 6s | Self (benefit) | 6 ticks × TICK_MS |
+
+### Powerup Sync
+
+Powerups are server-spawned as special `FallingObject` entries with `type: 'powerup'` and a `powerupKind` field. When a player catches a powerup object, the server applies the effect immediately and emits the updated state.
+
+Powerup effects that target the opponent (`Narrow Curse`) are applied to the opponent's `activeEffects` array in the master state and included in the opponent's projected state for that player's UI. The affected player sees their own `activeEffects` and can show a "Cursed!" indicator.
+
+There is no client-side powerup activation — the server authorizes all powerup application via collision detection. This prevents clients from claiming powerups they did not actually catch.
 
 ---
 
 ## Data Flow
 
-### Planning Phase (action submission)
+### Bar Movement (high frequency)
 
 ```
-Client (Player A)
-  Hand.tsx clicks card
-    → sock.emit('game:action', { roomCode, action: { type: 'commit', payload: { cardId } } })
-
-Server (socket/game.ts)
-  game:action handler
-    → engine.handleEvent(userId, action)
-      → engine validates card is in player's hand
-      → engine stores choice in masterState.pendingActions[userId] (private, not emitted)
-      → engine marks player.hasCommitted = true
-      → engine calls onStateUpdate per player (hand hidden, hasCommitted flags updated)
-        → io.to(socketId).emit('game:state', { state: playerProjection })
-
-Client receives update:
-  GameContainer.tsx setGameState(state)
-    → SnuskingGame re-renders
-      → OpponentHand shows committed indicator (e.g. card face-down glow)
-      → Hand.tsx disables card selection (player already committed)
+Client mouse move → throttled emit 'game:action' { type: 'sc:bar-move', x: 0.63 }
+  → server socket/game.ts routes to engine.handleEvent(userId, action)
+    → engine.masterState.players[userId].barX = 0.63
+    (no state emission on handleEvent — bar position used next tick)
 ```
 
-### Reveal Phase (all players committed or timeout)
+### Game Tick (server-driven)
 
 ```
-Server (SnuskingEngine)
-  All players committed (or timeout fires)
-    → engine transitions phase to 'reveal'
-    → engine populates player.lastPlayedCard from pendingActions for ALL players
-    → engine calls onStateUpdate per player (all lastPlayedCards now visible)
-      → io.to(socketId).emit('game:state', { state: playerProjection })
-
-Client receives update (phase === 'reveal'):
-  RevealOverlay.tsx animates all cards flipping face-up simultaneously
-  (Brief timer — 1500ms — then client sends no action; server auto-advances)
-
-Server (SnuskingEngine)
-  After reveal pause (setInterval or resolve triggered immediately after emit)
-    → engine transitions to 'resolve'
-    → rules.ts scores all committed cards
-    → empire points awarded, beer updated, effects applied, sabotage resolved
-    → pendingActions cleared
-    → engine transitions to 'draw' (or 'ended' if win condition met)
-    → engine calls onStateUpdate per player
+Server setInterval fires (every ~33ms)
+  → physics.ts advances object Y positions
+  → physics.ts checks collisions against each player's barX
+  → catches: score++, object removed
+  → misses: lives--, object removed
+  → powerup effects applied/decremented
+  → new objects spawned per schedule
+  → win check: any player.lives === 0
+  → onStateUpdate({ forUserId: playerAId, state: projectedStateA })
+  → onStateUpdate({ forUserId: playerBId, state: projectedStateB })
+    → room.ts routes each to target player's socket(s)
+      → socket.emit('game:state', { state: projected })
 ```
 
-### Win Condition Check
+### Client State Reception
 
 ```
-Server (rules.ts, called from engine after resolve)
-  Any player.empireScore >= WIN_THRESHOLD?
-    → engine.state.status = 'ended'
-    → engine.state.results = sorted GameResult[]
-    → onStateUpdate emits final state
-    → room.ts handler detects status === 'ended', emits game:end, persists to DB
-    → engine.destroy() called
+socket on 'game:state' → setGameState(state as SenusCatcherProjectedState)
+  → SenusCatcherGame passes state as props to ArcadeCanvas + PowerupHUD + OpponentStrip
+  → ArcadeCanvas: lastTickTime reset, next RAF frame renders from new baseline
+  → PowerupHUD: reactive DOM update (lives, score, timers)
+  → OpponentStrip: opponent score, curse indicator
 ```
 
 ---
 
-## Client Rendering in Solid.js
+## GameContainer Integration
 
-### State-Driven, Not Loop-Driven
+The existing `GameContainer.tsx` hardcodes `SnuskingProjectedState` as the type for `gameState`. This must be generalized to support Snus Catcher without breaking the existing Snusking path.
 
-The existing `snus-rpg` client uses a `requestAnimationFrame` loop pulling state from a canvas
-renderer. This is appropriate for real-time spatial rendering. For a card game UI, it is wrong.
-
-Solid.js reactive primitives are the correct model for card game rendering:
-
-- `createSignal<SnuskingState | null>` in `GameContainer` (already exists as `gameState`)
-- Pass signal value as props to `SnuskingGame` (already the pattern)
-- Child components derive their display from props reactively — no RAF loop needed
-- `createMemo` for expensive derivations (e.g., "which cards in my hand are boosted by current event")
+### Required Change to GameContainer
 
 ```typescript
-// In SnuskingGame (index.tsx)
-const boostedCards = createMemo(() => {
-    const event = props.state.currentEvent;
-    const hand = props.state.players[myId()]?.hand ?? [];
-    return hand.filter(card => card.situation === event?.situation);
-});
+// Before (Snusking-only):
+const [gameState, setGameState] = createSignal<SnuskingProjectedState | null>(null);
+
+// After (multi-game):
+const [gameState, setGameState] = createSignal<unknown>(null);
+
+// Add Snus Catcher branch alongside the existing Snusking branch:
+<Show when={gameType() === 'snus-catcher' ? gameState() : null}>
+  {(state) => (
+    <SenusCatcherGame
+      state={state() as SenusCatcherProjectedState}
+      roomCode={props.roomCode}
+      onAction={(action) => socket.emit('game:action', { roomCode: props.roomCode, action: action as GameAction })}
+    />
+  )}
+</Show>
 ```
 
-### Phase-Conditional Rendering
+The `unknown` type for `gameState` is safe — the type cast happens at the game-specific component boundary where the correct type is known from the `gameType()` check.
 
-Use Solid.js `<Switch>/<Match>` to render phase-appropriate UI:
+---
 
-```typescript
-<Switch>
-    <Match when={props.state.phase === 'planning'}>
-        <Hand cards={myHand()} onCommit={handleCommit} disabled={hasCommitted()} />
-    </Match>
-    <Match when={props.state.phase === 'reveal'}>
-        <RevealOverlay players={props.state.players} />
-    </Match>
-    <Match when={props.state.phase === 'resolve'}>
-        <ResolveAnimation results={lastRoundResults()} />
-    </Match>
-</Switch>
+## New vs Modified Summary
+
+### New Files
+
+```
+server/src/games/snus-catcher/engine.ts      — SenusCatcherEngine (tick loop, collision, lives)
+server/src/games/snus-catcher/physics.ts     — pure functions: spawn, advance, collide
+server/src/games/snus-catcher/powerups.ts    — powerup definitions, effect application
+
+client/src/games/snus-catcher/index.tsx      — SenusCatcherGame root component
+client/src/games/snus-catcher/ArcadeCanvas.tsx — canvas renderer + RAF loop
+client/src/games/snus-catcher/PowerupHUD.tsx — DOM overlay: lives, score, timers
+client/src/games/snus-catcher/OpponentStrip.tsx — opponent score + curse indicator
+client/src/games/snus-catcher/EndScreen.tsx  — end screen (adapt Snusking pattern)
+client/src/games/snus-catcher/snus-catcher.css
 ```
 
-### No Canvas Required
+### Modified Files
 
-The existing renderer (`renderer.ts`) uses a 2D canvas for map rendering. Cards are better rendered
-as DOM elements — they support CSS transitions, hover states, and accessibility. The canvas approach
-should not be carried over to `snusking`.
+```
+shared/src/types.ts                          — add GameType 'snus-catcher', add SenusCatcher* types
+server/src/games/registry.ts                 — add 'snus-catcher': SenusCatcherEngine
+client/src/games/GameContainer.tsx           — generalize gameState type, add snus-catcher branch
+```
 
-Each card is a component. CSS classes handle face-up/face-down state and boost highlights. This is
-significantly simpler to build and maintain than a canvas card renderer.
+### Untouched Files
 
-### Trade/Sabotage Interaction
+```
+server/src/socket/game.ts                    — no changes: routes any game:action to engine
+server/src/socket/room.ts                    — no changes: forUserId routing already in place
+server/src/socket/index.ts                   — no changes
+server/src/socket/friends.ts                 — no changes
+server/src/routes/*                          — no changes
+client/src/stores/*                          — no changes
+client/src/pages/* (except possibly Lobby)  — Lobby needs snus-catcher as a selectable game type
+client/src/games/snusking/*                  — untouched
+```
 
-Trade offers (player-to-player card exchanges) and sabotage (giving opponents worthless/negative
-cards) follow the same `game:action` pattern already established. The server resolves them in the
-`resolve` phase, not the `planning` phase. Players submit trade offers during `planning` alongside
-their main action — the server buffers both and processes together at resolve time.
+**Note on Lobby:** The Lobby page currently shows game type. If game type selection exists in the UI, `'snus-catcher'` must be added as an option. If the game type is set at room creation via the API, the REST route handling room creation may also need to accept the new type. Confirm this is handled alongside the `GameType` registration change.
 
 ---
 
 ## Suggested Build Order
 
-Dependencies flow strictly from bottom to top. Each layer can be built and tested independently.
+Dependencies flow from types down to UI. Each layer is independently testable.
 
 ### Layer 1 — Shared Types (no deps)
-Define `SnuskingState`, `SnuskingCard`, `SnuskingPlayer`, `SnuskingEffect`, `SnuskingEventCard`,
-and associated action payload types in `shared/src/types.ts`. Also extend `GameType` to include
-`'snusking'`.
 
-**Why first:** Every subsequent layer imports from here. Getting types right early prevents churn.
+Add `'snus-catcher'` to `GameType` union. Define `SenusCatcherMasterState`, `SenusCatcherProjectedState`, `SenusCatcherPlayerState`, `FallingObject`, `PowerupType`, `SenusCatcherActiveEffect`, and `SenusCatcherAction` discriminated union in `shared/src/types.ts`. Export `TICK_MS` as a constant (or include in a shared config) so client and server use the same value for interpolation.
 
-### Layer 2 — Card Catalog and Deck (`deck.ts`, `events.ts`)
-Define all snus card definitions and the event card pool. Pure data — no socket, no state machine.
+**Why first:** All other layers import from here. Types define the seam.
 
-**Why second:** `rules.ts` and `engine.ts` both depend on card definitions. Adapt existing
-`brands.ts` for card data, extending with `situation`, `effect`, and `sabotage` fields.
+### Layer 2 — Physics and Powerup Pure Functions
 
-### Layer 3 — Rules Engine (`rules.ts`)
-Pure functions: `scoreCards(players, event, actions)`, `applyEffects(state, scoringResult)`,
-`checkWin(state)`. No I/O, no state mutation — takes state and returns new state.
+Implement `physics.ts` (spawnObject, advanceObjects, checkCollisions) and `powerups.ts` (powerup definitions, applyPowerup, tickEffects) as pure functions that take state and return new state. No I/O, no side effects.
 
-**Why third:** Pure functions are independently testable before the engine wires them together.
+**Why second:** These are independently unit-testable. The engine depends on them; the client does not.
 
-### Layer 4 — Game Engine (`engine.ts`)
-Implements `GameEngine` interface. Owns the turn phase FSM, action buffering, timeout management,
-and per-player state projection. Calls into `rules.ts` for all scoring logic.
+### Layer 3 — Server Engine
 
-**Why fourth:** Requires types (Layer 1), deck (Layer 2), and rules (Layer 3) to be complete.
+Implement `SenusCatcherEngine` in `engine.ts`. Owns the `setInterval` tick loop, calls into `physics.ts` and `powerups.ts`, manages master state, projects per-player state, calls `onStateUpdate`. Implement `handleEvent` for `sc:bar-move` and `sc:powerup-activate`.
 
-### Layer 5 — Registry Wiring (one-line change to `registry.ts`)
-Add `'snusking': SnuskingEngine`. Extend `GameType` union. Update `GameContainer.tsx` switch.
+**Why third:** Requires types (Layer 1) and physics/powerups (Layer 2).
 
-**Why fifth:** Engine must exist before it can be registered.
+### Layer 4 — Registry and Type Registration
 
-### Layer 6 — Client Components (board, hand, reveal)
-Build `Board.tsx`, `Hand.tsx`, `OpponentHand.tsx`, `RevealOverlay.tsx`, `PlayerStatus.tsx`.
-Each component receives typed state as props and has no side effects beyond emitting actions.
+Add `'snus-catcher': SenusCatcherEngine` to `gameRegistry`. Confirm `GameType` is already updated (Layer 1). Update Lobby UI / room creation to accept the new game type if applicable.
 
-**Why sixth:** Client rendering is the UI layer — all logic lives in the server engine. Client
-components should be built against the finalized types from Layer 1.
+**Why fourth:** Engine must exist before it can be registered.
 
-### Layer 7 — Integration and Polish
-Wire `SnuskingGame` into `GameContainer`, test end-to-end with multiple sockets, add CSS transitions
-for reveal and resolve phases, implement trade/sabotage UI modals.
+### Layer 5 — Canvas Renderer and HUD
+
+Build `ArcadeCanvas.tsx` with RAF loop and client-side interpolation. Build `PowerupHUD.tsx` and `OpponentStrip.tsx` as DOM overlays. These receive `SenusCatcherProjectedState` as props and have no side effects beyond rendering.
+
+**Why fifth:** Requires finalized types (Layer 1). Does not require the server engine to be running — can develop against a mock state signal.
+
+### Layer 6 — Root Game Component and Mouse Input
+
+Build `SenusCatcherGame` (index.tsx) that captures mouse events, throttles and emits `sc:bar-move` actions, and wires the child components. Wire into `GameContainer.tsx`.
+
+**Why sixth:** Requires canvas/HUD components (Layer 5) and the action shape (Layer 1).
+
+### Layer 7 — Integration and End-to-End Testing
+
+Connect two browser tabs to the same room, confirm tick loop runs, collision is detected server-side, powerup effects propagate to opponent, game ends on 0 lives. Build `EndScreen.tsx`, wire to leaderboard persistence.
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Emitting Full Master State to All Players
-**What:** Calling `io.to(roomCode).emit('game:state', { state: masterState })` — same as snus-rpg
-**Why bad:** Exposes every player's hand to all connected sockets. Any client can read opponent cards
-from the socket payload, even if the UI hides them.
-**Instead:** Emit per-socket projections with opponents' hands stripped.
+### Anti-Pattern 1: Client-Side Collision Detection
 
-### Anti-Pattern 2: Processing Commits Greedily
-**What:** Scoring a player's card the moment `handleEvent` is called during planning phase
-**Why bad:** Players who act last see an unfair disadvantage (they can time their submit to react
-after server state changes if greedy processing leaks information).
-**Instead:** Buffer all commits in `pendingActions`, resolve atomically only when all players
-have committed.
+**What:** Having the client detect its own catches and report them to the server
+**Why bad:** Any client can fake catches. Score becomes exploitable. More importantly, two clients may report different collision results for the same game state due to timing.
+**Instead:** Server computes collisions on every tick using the bar position last reported by the client. The client's catch visuals are cosmetic — the server result is authoritative.
 
-### Anti-Pattern 3: Tick Loop for Turn-Based Logic
-**What:** Using `setInterval` at 100ms to drive card game state (inherited pattern from snus-rpg)
-**Why bad:** Card game phases are event-driven (all players submitted, reveal complete) not time-
-driven. A tick loop adds unnecessary complexity and CPU load.
-**Instead:** Use promise/callback chains triggered by player commit completion and phase transitions.
-A single timeout (planning phase deadline) is appropriate; general tick loop is not.
+### Anti-Pattern 2: Emitting State on Every Bar Move
 
-### Anti-Pattern 4: Canvas Rendering for Card UI
-**What:** Drawing cards on a 2D canvas with a `requestAnimationFrame` loop
-**Why bad:** Canvas loses all browser accessibility features, requires manual hit-testing for card
-clicks, and makes CSS animations much harder.
-**Instead:** DOM components per card with CSS classes for state. Solid.js reactive rendering handles
-updates efficiently without a manual animation loop.
+**What:** Calling `onStateUpdate` inside `handleEvent` when a `sc:bar-move` action is received
+**Why bad:** Bar moves arrive 30–50 times/sec. Broadcasting state to all clients on each move floods the socket and creates unnecessary rendering load. The bar position is only meaningful in the context of collision detection, which happens on the tick.
+**Instead:** Store `barX` on `handleEvent`, read it on tick. Emit state only from the tick callback.
 
-### Anti-Pattern 5: Client-Side Reveal Timing
-**What:** Client waits a fixed delay after seeing all `hasCommitted: true` then renders reveal
-**Why bad:** Network latency means different clients render the reveal at different times. Animation
-feels desynchronized.
-**Instead:** Server controls phase transitions. When the server emits `phase: 'reveal'`, all
-clients render the reveal simultaneously from that single state update.
+### Anti-Pattern 3: Using a Turn-Based Interface Extension for Arcade Logic
+
+**What:** Implementing `TurnBasedGameEngine` (the Snusking-specific extension) for the arcade engine
+**Why bad:** The arcade game has no turns, no phases, no planning windows. The `TurnBasedGameEngine` extension (`projectState`, `getCurrentPhase`) is Snusking-specific and does not model arcade state. Mixing them pollutes the interface.
+**Instead:** Implement only the base `GameEngine` interface. The arcade engine is the same contract as the now-removed `snus-rpg` engine: `init`, `handleEvent`, `getState`, `destroy`. State projection is handled the same way as for Snusking — call `onStateUpdate` per player with per-player data — but this does not require the `TurnBasedGameEngine` interface.
+
+### Anti-Pattern 4: Unbounded Object Count
+
+**What:** Spawning objects at a rate faster than they can be caught or missed, or never clearing missed objects
+**Why bad:** Object array grows unboundedly, making each tick's collision check O(n) with a growing n. At high tick rates this adds meaningful CPU overhead.
+**Instead:** Objects are removed from the array the tick they are caught or missed. Spawn rate is bounded (e.g., max N objects on screen at any time). Powerup Snus Rain increases spawn rate temporarily but the cap prevents unbounded growth.
+
+### Anti-Pattern 5: Blocking Game Type Registration
+
+**What:** Adding `'snus-catcher'` to `gameRegistry` without updating `shared/src/types.ts` `GameType`, the DB enum, and room creation validation simultaneously
+**Why bad:** The `room:start` handler in `room.ts` checks `gameRegistry[room.gameType]`. If `GameType` does not include the new value, TypeScript will flag it at compile time. If the DB enum does not include it, Prisma will reject room creation. All four touch points must be updated in one coordinated change.
+**Instead:** Update `GameType`, registry, DB migration (if DB enum-constrained), and any room creation validation in the same commit. See existing `CONCERNS.md` for this pattern.
 
 ---
 
 ## Scalability Considerations
 
-This is a 2–4 player per-room game. Scalability concerns are room-level, not global.
+This is a 1v1 game. The primary concern is server-side tick loop overhead at concurrent game scale.
 
-| Concern | For 2–4 players per room | Notes |
-|---------|-------------------------|-------|
-| State size | Very small (~5KB per room) | Card hands + scores fit easily in memory |
-| Socket messages per round | ~10–20 per round (4 commits + 2 phase broadcasts per player) | Trivial load |
-| Per-player projection overhead | O(players) per phase transition | Negligible at 4 players |
-| Planning timeout | 30–60 second deadline per planning phase | One `setTimeout` per active game |
-| Concurrent games | Limited only by Node.js memory; each engine is a small object | Fine at reasonable scale |
-
-No architectural changes are needed for the game's scale. The existing `activeGames` Map pattern
-scales adequately for this use case.
+| Concern | For 1v1 (this game) | Notes |
+|---------|---------------------|-------|
+| Tick loop CPU | One `setInterval` per active game, ~30ms interval | 100 concurrent games = 3,333 ticks/sec total. Trivial for Node.js at this object count. |
+| State emission volume | ~30 emissions/sec × 2 players = 60 socket messages/sec per game | Low. Well within Socket.IO defaults. |
+| Object array size | Bounded by design (max N objects on screen) | Recommend cap of 20–30 simultaneous objects. |
+| Bar move action rate | Throttled client-side to 30–50ms | Max 33 actions/sec per player; 66/sec per game. Handled synchronously in `handleEvent` without state emission. |
+| Memory per game | ~1KB (2 players, ~20 objects, tick counter) | Negligible. |
 
 ---
 
 ## Sources
 
-- Direct analysis of `server/src/games/registry.ts` — `GameEngine` interface (HIGH confidence)
-- Direct analysis of `server/src/games/snus-rpg/engine.ts` — existing engine pattern (HIGH confidence)
-- Direct analysis of `server/src/socket/room.ts` — `onStateUpdate` callback wiring (HIGH confidence)
-- Direct analysis of `client/src/games/GameContainer.tsx` — `game:state` reception pattern (HIGH confidence)
-- Direct analysis of `client/src/games/snus-rpg/index.tsx` — existing renderer approach (HIGH confidence)
-- Direct analysis of `shared/src/types.ts` — type contract baseline (HIGH confidence)
-- Established commit-then-reveal pattern from multiplayer card games (Dominion, Hanabi, etc.) — MEDIUM confidence (training data, not verified against external source)
+- Direct analysis of `server/src/games/registry.ts` — `GameEngine` interface contract (HIGH confidence)
+- Direct analysis of `server/src/games/snusking/engine.ts` — existing engine pattern, per-player onStateUpdate, setImmediate for turn advance (HIGH confidence)
+- Direct analysis of `server/src/socket/room.ts` — `forUserId` per-player state routing already implemented (HIGH confidence)
+- Direct analysis of `server/src/socket/game.ts` — `game:action` routing; requires no changes (HIGH confidence)
+- Direct analysis of `client/src/games/GameContainer.tsx` — `game:state` reception, gameType branching pattern (HIGH confidence)
+- Direct analysis of `client/src/games/snusking/index.tsx` — RAF-based animation patterns already used in the codebase (HIGH confidence)
+- Direct analysis of `shared/src/types.ts` — `GameType` union, `ServerToClientEvents`, `ClientToServerEvents` (HIGH confidence)
+- Canvas rendering + client interpolation pattern for arcade games — standard technique, verified against existing codebase patterns (MEDIUM confidence — training data, no external source checked)

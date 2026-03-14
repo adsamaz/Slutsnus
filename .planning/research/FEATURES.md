@@ -1,150 +1,174 @@
 # Feature Landscape
 
-**Domain:** Turn-based multiplayer card game (Snusking)
-**Researched:** 2026-03-11
-**Confidence:** MEDIUM — core game design theory is HIGH confidence from training; specific balancing numbers are LOW confidence and need playtesting to validate
+**Domain:** 1v1 real-time falling-object arcade game (Snus Catcher)
+**Researched:** 2026-03-14
+**Confidence:** HIGH for game loop architecture and genre conventions (stable domain, decades of established patterns); MEDIUM for powerup interaction design (well-understood patterns but specific balance requires playtesting); HIGH for platform integration (existing codebase fully audited)
+
+---
+
+## Context: This is a Subsequent Milestone
+
+The platform already provides (do not re-research or re-implement):
+
+- Auth, JWT session, httpOnly cookie — existing
+- Lobby, room creation/joining, room code routing — existing
+- Socket.IO 4.8.1 real-time infrastructure, `game:action` / `game:state` / `game:end` events — existing
+- Game engine registry pattern (`GameEngine` interface, `gameRegistry` map) — existing
+- Friends system, leaderboard persistence (GameSession, LeaderboardEntry tables) — existing
+- `GameContainer.tsx` wrapper that routes by game type — existing
+- `@slutsnus/shared` types package — existing, needs new types added
+
+The new game must plug into all of the above without altering existing infrastructure.
 
 ---
 
 ## Table Stakes
 
-Features users expect from a turn-based card game. Missing any of these and the game feels broken, incomplete, or unplayable.
+Features that must exist for the game to feel functional and fair. Missing any one of these produces a broken or unplayable experience.
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| **Authoritative game state on server** | Without this, clients desync and cheating is trivial in any multiplayer game | Low | Already established by the existing Socket.IO architecture. Turn-based makes this easier than real-time. |
-| **Turn structure with clear phase progression** | Players need to know: whose turn is it? What phase am I in? What can I do? | Medium | Simultaneous-reveal design (PROJECT.md) means phases are: Choose → Reveal → Resolve → Draw. All players must know when each phase transitions. |
-| **Hand management — draw, hold, discard** | Players need a hand of cards they can see and reason about. Without a visible hand, there is no game. | Medium | Each player draws snus cards each turn. Hand size limit prevents hoarding. Must sync hand state per-player (private) while syncing board state (public). |
-| **Win condition with visible progress** | Players must always know how far they are from winning. No progress visibility = no tension. | Low | Empire score threshold. Every player's current score must be permanently visible on screen. |
-| **Turn timer / action timeout** | Without a timer, one AFK or slow player blocks all others indefinitely | Medium | Critical for multiplayer. Suggest 60–90 seconds for simultaneous-choose phase. Auto-pass if timer expires. |
-| **Reconnect / rejoin support** | Network drops happen. Losing your game session because your WiFi blipped is a game-breaking failure mode. | Medium | Existing Socket.IO infrastructure handles reconnect at connection level. Game state must be resendable to a rejoining player. |
-| **Game end screen with results** | Players need closure and a summary. Already exists in the prior engine's EndScreen component. | Low | Show final scores, rank, MVP card play. Wire to existing leaderboard persistence. |
-| **Legible card display** | Cards must show: name, value, effect, context requirement (if any), beer-combo indicator. Unreadable cards = unplayable. | Medium | This is a UI challenge in Solid.js. Cards must work on mobile-width screens too. |
-| **Action confirmation before commit** | In a simultaneous-reveal game, committing the wrong action is frustrating. A "lock in / change mind" UX prevents misclicks. | Low | Simple two-step: select action → confirm. Locked-in state shown to all (without revealing what action). |
-| **Player identification on board** | At all times, which cards/resources belong to which player must be clear. | Low | Avatar color, username badge on hand area. |
+| Feature | Why Expected | Complexity | Platform Dependency |
+|---------|--------------|------------|---------------------|
+| **Authoritative server game loop** | Without server authority, clients can desync immediately. Catching items locally and reporting to server is trivially exploitable. | Medium | Extends existing `GameEngine` interface. New game type registered in `gameRegistry`. |
+| **Server-managed falling item spawning** | Item position, type, and fall speed must originate on server. Clients render what the server says exists — never the other way. | Medium | Server tick loop (like existing snus-rpg 100ms interval). Items are entities in server state. |
+| **Mouse-controlled catch bar** | The core interaction. Player moves a horizontal bar by mouse position. Missing this = no game. | Low | Client emits `game:action` with `{ type: 'move', payload: { x: number } }`. Thin input layer over existing socket action pattern. |
+| **Two item types: fresh snus (catch) vs spent snus (avoid)** | The fundamental catch/dodge mechanic. Without this binary, there is no decision-making. | Low | Item type field on each entity. Server spawns both types. |
+| **Lives system (3 lives each)** | Standard arcade lives UI. Touching a spent snus item costs 1 life. At 0 lives, player loses. | Low | Per-player state field. Loss condition triggers game end. |
+| **Score accumulation** | Each caught fresh snus = +points. Score is the secondary win condition (tiebreaker) and the engagement metric. | Low | Per-player score field in server state. |
+| **Win/loss condition: opponent loses all lives** | Primary win condition for 1v1. When one player reaches 0 lives, the other wins. | Low | Server detects, emits `game:end`. Wires to existing end-screen and leaderboard write. |
+| **Per-player isolated playfield** | Each player has their own vertical lane/canvas. Items falling in your lane do not affect your opponent's lane. | Medium | Server maintains two independent item sets (one per player). State projection sends each player only their own lane + opponent score/lives. |
+| **Score and lives HUD** | Both players must see: own score, own lives, opponent score, opponent lives — at all times. | Low | HUD component in Solid.js. Opponent values received via per-player state projection (opponent summary only, not full state). |
+| **Game end screen with result** | Shows winner, final scores. Existing EndScreen component pattern already established in the platform. | Low | Reuses existing `game:end` event, end-screen Solid.js component. Wires to leaderboard write. |
+| **Reconnect / rejoin support** | Network drops must not discard the game. State snapshot resent on socket reconnect. | Medium | Existing pattern from Snusking engine. Server keeps state, resends on `room:join` if game is active. |
 
 ---
 
 ## Differentiators
 
-Features that make Snusking distinct and worth playing repeatedly. Not expected by genre convention, but what creates the "just one more game" feeling.
+Features that make Snus Catcher distinct, replayable, and memorable. None are expected by genre convention alone — they are the "why play this instead of any other falling-object game" layer.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Simultaneous-reveal action resolution** | Eliminates turn-order advantage. Every player chooses secretly, all reveal at once, then effects resolve. Creates genuine strategic tension without "going last is better." | High | This is the most important differentiator. Requires a locked-in state model. Resolution order for conflicts must be deterministic and public. See dependencies. |
-| **Contextual snus cards (Fishsnus, Bastusnus)** | Cards that are stronger in matching situations add a layer of "set up your own context" strategy beyond just playing the highest-value card. Creates asymmetric information and planning depth. | Medium | Each card has an optional `contextTag` (e.g. `fishing`, `sauna`, `party`). Base value applies always; bonus only when matching event is active. |
-| **Event cards that shift the active context** | "Sauna Night" active: all Bastusnus cards deal +50% empire points. Players plan around upcoming/current events. Creates a shared board state to react to. | Medium | Event deck is drawn each round, visible to all. Creates a "public information" layer on top of private hands. |
-| **Player-triggered situations** | Players can spend resources to trigger a specific event context, setting up their own combo. Creates aggressive counterplay — trigger the context your hand is built for, forcing rivals to adapt. | High | Triggering a situation must cost a meaningful resource (beer? a discard? spent snus). Must not be so cheap that every turn is a trigger. |
-| **Beer as a hold-or-combine resource** | Beer as a separate holdable resource that modifies snus card effects when combined. The decision "do I combine now or hold beer for a bigger play later?" is a meaningful per-turn choice. | Medium | Beer does not score directly. It amplifies. A player sitting on beer is a threat. Beer should have a carry limit (max 2–3 units) to prevent hoarding stall strategies. |
-| **Sabotage via deceptive trading** | You can trade "spent snus" (worthless) disguised as good snus, or offer high-nicotine snus with negative side effects to an opponent. The trade system carries strategic deception. | High | Existing snus-rpg had deceptive trade (displayedName vs realBrandId). Carry this forward. Deception creates social tension and memorable moments. The target sees the offered name, not the real card — until they accept. |
-| **Snus brand identity on cards** | Real Swedish snus brand names (General, Siberia, Göteborgs Rapé, Ettan) as card identities gives the game its distinct personality and gives players with snus knowledge an in-joke meta layer. | Low | Brand data already exists in `brands.ts`. Adapt nicotineStrength → card power curve. |
-| **Spending snus cards as empire investment** | Rather than just collecting points, players actively spend their hand to "invest" in empire points. This means holding cards is a choice — spend now for certain points, or hold for a combo/trade. | Medium | The core economy. Each card has a base empire value. Spending removes it from hand. Playing cards face-up on a "spent pile" signals what was used, creating information for other players. |
+| **Powerup: Snus Rain** | All-fresh-snus rain for 5 seconds — pure score explosion opportunity. Creates a "quick, go!" frenzy moment that makes skill visible. | Medium | Server spawns a burst of fresh items for the triggering player's lane only. Duration tracked in server state. Does not affect opponent. |
+| **Powerup: Narrow Curse (opponent)** | Shrinks the opponent's catch bar width for 10 seconds. Classic competitive interference. Forces opponent to micro-manage mouse precision. | Medium | Targeted debuff. Server stores `barWidthModifier` per player. Opponent's catch bar shrinks client-side when modifier active. Server enforces actual hitbox width, not client. |
+| **Powerup: Shield** | Blocks the next 1 spent-snus hit. Creates a strategic "save it or use it" question — activate now or hold for a worse moment. | Low | Server stores `shieldActive: boolean` per player. On next spent-snus collision: absorb hit, clear shield. |
+| **Powerup: Score Multiplier** | 2x points on all fresh-snus catches for 8 seconds. Best used during Snus Rain if timed correctly. Creates skill expression through powerup synergy. | Low | Server stores `scoreMultiplier` and `multiplierExpiresAt` per player. Synergy with Snus Rain is intentional and a skill differentiator. |
+| **Powerup items fall like regular items** | Powerups appear as distinct falling items — player must catch the powerup item to activate it. Not a button. The cost of getting a powerup is catching it (potentially while dodging spent snus). | Low | Powerup entities have a `kind: 'powerup'` field and a `powerupType` field. Same collision system as regular items. |
+| **Snus-themed visual identity** | Fresh snus pouches look appetizing; spent snus looks nasty/used. Powerup items have brand-appropriate visual identities. Gives the game a distinct personality consistent with the platform. | Low | CSS/asset work. No engine complexity. Aligns with existing snus brand identity on the platform. |
+| **Speed escalation over time** | Items fall faster as game progresses. Creates natural difficulty curve. Prevents matches from stalling. Adds urgency without an explicit timer. | Low | Server tick: fall speed = baseFallSpeed + (tickCount * escalationFactor). Cap at maxFallSpeed to keep it playable. |
+| **Opponent status visibility** | Seeing opponent's lives drain in real-time makes every mistake feel meaningful. Creates emotional investment in both your own performance and your opponent's. | Low | Opponent summary (score, lives, active effects) included in each per-player state push. No hidden-state concerns — lives and score are public information. |
 
 ---
 
 ## Anti-Features
 
-Features to deliberately NOT build, with explicit reasoning.
+Features to explicitly NOT build, with reasoning.
 
 | Anti-Feature | Why Avoid | What to Do Instead |
 |--------------|-----------|-------------------|
-| **Real-time continuous action** | Already scoped out in PROJECT.md. Incompatible with simultaneous-reveal design. Creates turn-order inequity and requires tick-loop complexity that the new engine replaces. | Turn-based phases with explicit commit step. |
-| **NPC/AI opponents** | Out of scope per PROJECT.md. Adding AI adds enormous complexity for diminishing returns in a social/deception game. The deception mechanic is meaningless against AI. | 2–4 human players only. |
-| **Single-player mode** | Out of scope per PROJECT.md. The core value loop (sabotage, trading, bluffing) requires human opponents. Solo play would be a hollow shell of the real game. | Multiplayer only. Can add "practice mode" later if demand emerges. |
-| **Complex deck-building between games** | Pre-game deck construction (Magic: The Gathering style) adds a meta-game layer that kills session-start friction for a casual platform. | Fixed shared deck per game with known composition. Players strategize with what they draw, not what they built. |
-| **Health points / combat damage** | The existing snus-rpg had HP and NPC combat. This belongs to the scrapped engine. Card games with HP introduce a second loss condition that splits focus from the empire score race. | Empire score is the only resource that matters for winning. Effects can be disruptive but not elimination-based. |
-| **Grid/map movement** | Scoped out in PROJECT.md. Spatial positioning adds cognitive overhead irrelevant to the card game. The trade mechanic should be global (any player can trade any player), not proximity-gated. | Global player board. Trade is available to any player at any time (not proximity-limited like the old engine). |
-| **Gacha / loot boxes / paid card unlocks** | This is a social game on an existing platform. Monetization complexity or perceived pay-to-win immediately poisons the social trust the sabotage mechanic requires. | Fixed card set available to all players. |
-| **Persistent card upgrades / progression** | Inter-session progression creates power imbalance for new players in a deduction/deception game. | Session-scoped. Everyone starts equal each game. Leaderboard tracks wins, not card power. |
-| **Spectator mode** | Nice-to-have but adds significant implementation complexity (partial information visibility, real-time feed). Not needed for MVP. | Defer indefinitely. Core game loop first. |
-| **In-game chat** | Chat during a deception/sabotage game is tempting but creates harassment vectors and "kingmaking" through out-of-band coordination. The game should speak for itself. | Optional: post-game only chat. No in-game text chat. |
+| **Client-side hit detection** | Trusting client to report its own catches is the #1 exploitability vector in arcade games. Any player can fake catches. | Server owns all collision detection. Client sends mouse X position only. Server resolves hits. |
+| **Shared playfield (both players on same canvas)** | Shared field creates read-confusion (whose items are whose?), layout problems on different screen sizes, and unnecessary collision complexity between two independent games. | Per-player isolated lanes on server. Two side-by-side views on client. Clean and clear. |
+| **Real-time mouse position broadcast to opponent** | Broadcasting raw mouse X to opponent every frame is wasteful traffic and creates a "read your opponent's inputs" meta that cheapens the game. | Opponent sees only score/lives/active powerup effects. No raw position sharing. |
+| **Player-vs-player item interference (direct)** | Items physically crossing over into opponent's lane, or one player "throwing" items at the other, creates a fundamentally different and more complex game. | Narrow Curse powerup provides indirect interference (shrinks opponent bar). Direct lane invasion is out of scope. |
+| **AI/bot opponent** | Bot adds complexity without adding the social context that makes the game fun. | 2 human players only for this game. |
+| **Power-ups available via button press (not caught)** | Button-activated powerups remove the arcade skill expression. If powerups are free, every player always has every powerup. | Powerups must be caught as falling items. Getting them is part of the skill expression. |
+| **Persistent powerup unlocks between sessions** | Unlockable powerup sets create power imbalance and add meta-game complexity. | All powerups available to all players in every match. Session-scoped only. |
+| **Game timer as primary win condition** | Pure timed scoring turns the game into a math problem ("I'm 50 points ahead, I'll just avoid everything"). A lives system forces engagement. | Lives-based elimination. Score is tiebreaker. Timer could be a hard upper-bound safety net only (e.g., 5-minute max), not the primary win condition. |
+| **Spectator mode** | Significant implementation complexity for partial-information rendering. Not needed for MVP. | Defer indefinitely. Core loop first. |
+| **In-game chat** | Harassment vector with minimal value in a real-time arcade game where players are focused on the screen. | No in-game chat. Post-game result screen is the social moment. |
+| **Mobile touch controls** | Mouse-bar mechanic is fundamentally mouse/trackpad driven. Touch controls require a different interaction model (tap to move bar? drag?). Out of scope for this milestone. | Desktop browser only for this game. Can revisit if demand emerges. |
 
 ---
 
 ## Feature Dependencies
 
 ```
-Turn structure (phases)
-  └── Simultaneous-reveal resolution  ← most complex dependency
-        └── Action lock-in UX
-        └── Conflict resolution rules (what happens if two players target same card?)
+Server game loop (tick-based)
+  └── Falling item spawning (per-player, independent lanes)
+        └── Item types: fresh snus, spent snus, powerup items
+        └── Speed escalation (fall speed increases with tick count)
+        └── Collision detection (server-side, per player)
+              └── Lives decrement on spent snus hit
+              └── Score increment on fresh snus catch
+              └── Powerup activation on powerup catch
+                    └── Snus Rain effect (spawn burst in catcher's lane)
+                    └── Narrow Curse effect (set barWidthModifier on opponent)
+                    └── Shield effect (set shieldActive on catcher)
+                    └── Score Multiplier effect (set scoreMultiplier + expiry on catcher)
 
-Hand management (draw/hold/discard)
-  └── Card legibility (display)
-  └── Hand size limit
-  └── Spend mechanic (empire points)
+Mouse input (client)
+  └── Mouse X → game:action { type: 'move', x: number }
+        └── Server updates playerBarX per player
+        └── Server uses playerBarX in collision detection only
+        └── Client renders bar at locally-tracked X (no round-trip lag for visuals)
 
-Beer resource
-  └── Hold-or-combine decision
-  └── Beer carry limit (anti-hoarding)
-  └── Beer + snus combo effects
+Per-player state projection
+  └── Each player receives: own lane items, own score, own lives, own active effects
+  └── Each player receives: opponent score, opponent lives, opponent active effects (summary only)
+  └── Neither player receives: opponent's raw bar position or item list
 
-Contextual snus cards (e.g. Fishsnus)
-  └── Event card system (active context)
-        └── Player-triggered situations (spend resources to set context)
+Win/loss detection
+  └── Lives system (3 lives each)
+        └── 0 lives → player loses → game:end emitted
+        └── Opponent wins → leaderboard write → end screen
 
-Sabotage via deceptive trading
-  └── Trade offer/accept flow (inherited from snus-rpg: displayedName vs realBrandId)
-  └── Spent snus card type (worthless card variant)
-  └── High-nicotine negative-effect snus (powerful but harmful)
-
-Win condition (score threshold)
-  └── Score visibility on HUD at all times
-  └── Game end detection → end screen → leaderboard write
-
-Reconnect support
-  └── State resend on rejoin
-  └── Turn timer auto-pass (AFK player doesn't block reconnectors)
+Existing platform (already built, no changes needed)
+  └── room:start → gameRegistry.instantiate('snus-catcher') → engine.init()
+  └── game:action → engine.handleEvent(playerId, action)
+  └── game:state → per-player projection sent to each socket
+  └── game:end → existing leaderboard persistence
+  └── GameContainer.tsx → routes to Snus Catcher client component by game type
 ```
 
 ---
 
 ## MVP Recommendation
 
-The MVP is the smallest playable game that demonstrates all three layers of the design: resource race + context combo + social deception.
+The MVP is the smallest playable 1v1 game that demonstrates the core catch/dodge loop and at least one powerup interaction.
 
 **Prioritize for MVP:**
 
-1. Turn structure with simultaneous-reveal (phases: Choose → Reveal → Resolve → Draw) — the game cannot exist without this
-2. Hand management with draw, hold, spend (empire points), and discard
-3. 8–12 snus brand cards with base values derived from existing `brands.ts`
-4. Beer as a holdable resource with at least one snus+beer combo
-5. 3 event card types (Sauna Night / Fishing Trip / Party) with matching contextual snus bonus
-6. Deceptive trade mechanic (offer with displayed name, real card hidden)
-7. Sabotage via spent snus transfer
-8. Turn timer (60 seconds) with auto-pass
-9. Win condition: first to 200 empire points
-10. Score HUD, game end screen, leaderboard write
+1. Server tick loop with per-player item spawning (fresh snus + spent snus, no powerups yet)
+2. Mouse-controlled catch bar: client emits X position, server uses for collision
+3. Lives system (3 lives), score accumulation
+4. Win condition: 0 lives = lose, opponent wins
+5. Per-player state projection via existing `game:state` event
+6. Speed escalation over time (simple linear increase)
+7. HUD: own score, own lives, opponent score, opponent lives
+8. Game end screen + leaderboard write (reuse existing patterns)
+9. Reconnect support (reuse existing state-resend pattern)
+10. All 4 powerup types as falling items (after core loop is stable)
 
 **Defer post-MVP:**
 
-- Player-triggered situations (adds complexity to event system; needs event system solid first)
-- Expanded card catalog beyond initial 8–12 brands
-- High-nicotine negative-effect snus as sabotage vector (needs balance testing before shipping)
-- Conflict resolution edge cases beyond common cases
+- Powerups (Snus Rain, Narrow Curse, Shield, Score Multiplier) — get core loop solid first, then layer powerups in
+- Snus Rain + Score Multiplier synergy tuning — needs playtesting data
+- Speed escalation curve tuning — start simple, adjust from playtesting
+- Visual polish (brand-specific snus art) — functional placeholder assets first
 
 ---
 
-## Balancing Principles
+## Complexity Notes
 
-These are design constraints, not features to implement — but they must inform every feature decision.
-
-**Principle 1: No dominant strategy.** If spending beer on every card is always correct, beer adds nothing. Beer combos must be contextually better (when event matches) but not universally optimal.
-
-**Principle 2: Information asymmetry creates skill.** Players see their own hand, all players' scores, and the current event. They do not see other players' hands. The skill ceiling is reading opponents from their spend patterns and trades.
-
-**Principle 3: Tempo matters.** Holding good cards while behind on score is a losing strategy. The race-to-threshold win condition means passive play loses. Events and beer should reward tempo, not stalling.
-
-**Principle 4: Sabotage has a cost.** Setting up a deceptive trade requires spending a slot (giving away even a worthless card costs you a trade opportunity). If sabotage is costless it becomes the dominant strategy and the game devolves into who-screws-who, killing the empire-building tension.
-
-**Principle 5: Lucky draws must not decide games.** The strongest snus brands (Siberia, Oden's Extreme) must not be so powerful that drawing one guarantees a win. Event multipliers plus beer give skilled players a path to overcome a weaker hand draw.
+| Component | Complexity | Reason |
+|-----------|------------|--------|
+| Server game loop (tick, items, collision) | Medium | New real-time loop, but existing 100ms snus-rpg tick pattern is a clear template |
+| Per-player state projection | Medium | Must send different state snapshots to each player. Existing card game did this for private hands — same pattern applies. |
+| Mouse input → server bar position | Low | Client emits X on `mousemove`, server stores per player. No interpolation needed for this genre at typical tick rates. |
+| Powerup: Shield | Low | Boolean flag + single collision intercept |
+| Powerup: Score Multiplier | Low | Numeric multiplier + timestamp expiry |
+| Powerup: Snus Rain | Medium | Server-controlled item burst; duration tracking |
+| Powerup: Narrow Curse | Medium | Cross-player effect; opponent bar width modifier enforced at server collision boundary |
+| Speed escalation | Low | Single formula on tick count |
+| Client canvas rendering | Medium | Solid.js + Canvas API. Existing snus-rpg had a canvas renderer — adapt the render loop pattern. |
+| New shared types (SnusCatcherState, etc.) | Low | Straightforward type addition to `shared/src/types.ts`. Must also add game type to DB enum and `gameRegistry`. |
 
 ---
 
 ## Sources
 
-- **HIGH confidence:** Established game design theory (simultaneous-reveal from Cosmic Encounter, Diplomacy; hand management from standard CCG design; tempo and information asymmetry from combinatorial game theory)
-- **HIGH confidence:** Project requirements from `.planning/PROJECT.md` (validated requirements section)
-- **HIGH confidence:** Existing engine analysis from `server/src/games/snus-rpg/engine.ts` (trade mechanic, brands, effects — all reusable)
-- **MEDIUM confidence:** Specific card counts (8–12 for MVP), turn timer (60s), score threshold (200) — these are reasonable starting points from genre conventions but require playtesting to validate
-- **LOW confidence:** WebSearch and Context7 unavailable during this session. No external verification of current best practices was possible. Core design theory is stable and unlikely to have changed materially.
+- **HIGH confidence:** Game loop and architecture patterns from established browser arcade game design (Breakout, Tetris, Fruit Ninja browser ports — all use server-tick + client-render separation for networked play)
+- **HIGH confidence:** Platform integration points from audited codebase files (`.planning/codebase/ARCHITECTURE.md`, `.planning/codebase/STACK.md`, `.planning/codebase/INTEGRATIONS.md`)
+- **HIGH confidence:** Existing engine patterns from `server/src/games/snus-rpg/engine.ts` architecture as documented in `ARCHITECTURE.md`
+- **HIGH confidence:** Socket.IO game event contracts from `.planning/codebase/INTEGRATIONS.md` (events: `game:action`, `game:state`, `game:end`)
+- **MEDIUM confidence:** Powerup design patterns (well-established in falling-object genre — Tetris attack items, Tetris Battle powerups, Puzzle Bobble powerups) — specific balance values (durations, widths) are LOW confidence and require playtesting
+- **NOTE:** WebSearch unavailable during this session. External sources could not be verified. Core game loop theory for this genre is highly stable and unlikely to have changed materially.

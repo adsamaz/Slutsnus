@@ -1,288 +1,362 @@
 # Domain Pitfalls
 
-**Domain:** Turn-based simultaneous-reveal multiplayer card game
-**Project:** Snusking — card game engine replacing snus-rpg on an existing platform
-**Researched:** 2026-03-11
-**Confidence:** HIGH (grounded in direct codebase analysis + established multiplayer game design patterns)
+**Domain:** Adding a real-time arcade game to a turn-based multiplayer platform
+**Project:** Snus Catcher — arcade minigame integrated into the existing Snusking platform
+**Researched:** 2026-03-14
+**Confidence:** HIGH (grounded in direct codebase analysis of existing architecture)
+
+---
+
+## Context: Why This Is a Distinct Problem Space
+
+The existing Snusking platform was designed around a pull-based, event-driven model: players submit discrete actions, the server resolves them, and pushes state snapshots. There is no game loop, no continuous timer, and no physics. Adding a real-time arcade game with a falling-objects loop is not merely "another game type" — it is an architectural category change that conflicts with several assumptions baked into the platform.
+
+The key structural facts:
+
+- `GameEngine` interface: `init / handleEvent / getState / destroy` — no `tick()`, no server-side loop
+- `game:action` socket handler calls `engine.handleEvent()` then returns — no streaming, no rate limiting
+- `onStateUpdate` callback emits state to clients — designed for discrete turn snapshots, not 60fps positions
+- `GameContainer.tsx` receives `game:state` events and sets a Solid.js signal — fine for turns, problematic for streaming
+- The `activeGames` map in `socket/index.ts` holds live engine instances — cleanup is only on `game:end` or 5-minute timeout
+
+These facts make several pitfalls highly likely without deliberate prevention.
 
 ---
 
 ## Critical Pitfalls
 
-Mistakes that cause rewrites, broken fairness guarantees, or irrecoverable game state corruption.
+Mistakes that cause rewrites, broken gameplay, or platform instability.
 
 ---
 
-### Pitfall 1: Simultaneous Reveal Without Commit-Then-Reveal Protocol
+### Pitfall 1: Forcing Arcade Loop Into the handleEvent Pattern
 
-**What goes wrong:** The game requires all players to choose actions simultaneously then reveal them. If the server processes actions as they arrive (first-come-first-served), a fast player's action can be visible to or influence a slow player before that slow player submits. This breaks the fairness guarantee entirely — the whole point of simultaneous reveal is that no player sees others' choices before committing.
+**What goes wrong:** The existing `GameEngine` interface has `handleEvent(playerId, action)` as the only way to push input into the engine. For the turn-based game, this is perfect — each action is a meaningful game event. For an arcade game, the natural instinct is to call `handleEvent` with something like `{ type: 'arcade:move', x: 450 }` on every `mousemove`. This creates a tight coupling where the physics loop is driven by client-to-server events rather than a server-side timer. The result is that the game speed and physics fidelity become dependent on client event emission rate and network round-trip time — broken by design.
 
-The existing `game:action` handler in `server/src/socket/game.ts` calls `engine.handleEvent()` immediately on receipt with no buffering, no waiting for all players, and no reveal phase. This pattern is correct for the real-time snus-rpg but is architecturally wrong for simultaneous reveal.
-
-**Why it happens:** Developers carry over the immediate-action pattern from real-time games. The Socket.IO event fires, the handler runs, done. It feels correct because it works — just unfairly.
-
-**Consequences:** A player on a low-latency connection submits first and their sabotage resolves before their target has a chance to submit a defensive move. Players with better connections win structurally. The game cannot be trusted as a skill contest.
-
-**Prevention:**
-- Implement a two-phase turn cycle in the new engine: **collect phase** (buffer all player actions) then **resolve phase** (apply all buffered actions simultaneously).
-- The engine must track which players have submitted for the current turn. Only when `submittedCount === activePlayers.length` does the resolve phase execute.
-- The `handleEvent()` contract in the `GameEngine` interface needs to accommodate this: an action submission should return "pending" state (action locked in, waiting for others), and the engine triggers resolution internally.
-- Never emit `game:state` with resolve results until all players have submitted.
-
-**Detection (warning signs):**
-- Engine calls `onStateUpdate` inside `handleEvent` for a submit-type action.
-- State changes are visible to clients before all players have submitted that turn.
-- The engine has no concept of "turn phase" or "players who have submitted this turn."
-
-**Phase:** Core game engine foundation (Phase 1 of the new engine).
-
----
-
-### Pitfall 2: Leaking Opponent Hand State to All Clients
-
-**What goes wrong:** The server emits the full game state to all players in the room via `io.to(roomCode).emit('game:state', { state })`. In the existing snus-rpg this is fine — players see each other on the map, inventory is partially visible by design. In the card game, each player has a private hand of cards. If the server broadcasts a single state object containing all players' hands, any client can inspect the WebSocket frame and see opponents' cards.
-
-This is not a paranoid concern — browser DevTools Network tab shows all WebSocket frames in plaintext. In a sabotage-heavy game, knowing an opponent's hand before choosing your action is game-breaking.
-
-**Why it happens:** The `onStateUpdate` callback in `room.ts` line 118 does `io.to(roomCode).emit('game:state', { state })` — one broadcast, one object, all players. This was fine for a game with no hidden information. It is catastrophically wrong for hidden hands.
-
-**Consequences:** Any technically-minded player can cheat trivially. The deception layer of the sabotage mechanic (giving opponents fake card names) is completely undermined if opponents can read the real card in the state.
-
-**Prevention:**
-- The new engine must emit **per-player state projections** rather than a single shared state. For each player in the room, compute a view that includes: their own full hand, other players' public-only information (score, card count, held beer, active effects).
-- Change the emit pattern from `io.to(roomCode).emit(...)` to `io.to(playerSocketId).emit(...)` for each player.
-- The `GameEngine` interface needs a `getStateForPlayer(playerId: string)` method, not just `getState()`.
-- The `TradeOffer` structure already hides `realBrandId` behind `displayedName` — this pattern must be preserved and extended.
-
-**Detection (warning signs):**
-- A single call to `onStateUpdate` broadcasts to the entire room.
-- `getState()` returns a monolithic object with all player hands.
-- No per-player filtering logic exists in the engine or socket layer.
-
-**Phase:** Core game engine foundation (Phase 1). Cannot be retrofitted cleanly after the UI is built around a shared state model.
-
----
-
-### Pitfall 3: Game State Desync on Disconnect and Reconnect
-
-**What goes wrong:** The existing known bug documented in `CONCERNS.md` states: "New players joining room midgame see empty/outdated game state — engine doesn't store state snapshots." For a turn-based card game, this is worse than for a real-time game. In real-time, a reconnecting player misses a few ticks and catches up. In turn-based, if a player disconnects mid-turn, the collect phase stalls forever waiting for their submission — the game deadlocks.
-
-**Why it happens:** The current architecture has no reconnect state snapshot. The `activeGames` map holds the engine, but there is no mechanism to (1) emit current state to a newly reconnected socket, or (2) handle a disconnected player's pending turn submission.
+**Why it happens:** The registry pattern looks like a universal adapter. `handleEvent` is there, it takes an action, it seems extensible. Developers naturally reach for the existing hammer.
 
 **Consequences:**
-- Player disconnects during collect phase → game stalls, other players cannot proceed.
-- Player reconnects → sees blank state, doesn't know what phase the game is in or what cards they hold.
-- If the game auto-advances past a disconnected player's turn, they rejoin mid-game with no context.
+- Bar position is only as smooth as the client's event throttle and the socket latency allows
+- On high-latency connections the bar lags behind the mouse by hundreds of milliseconds
+- The physics tick count diverges between players because each client drives the server at a different rate
+- Multiple simultaneous position updates from different players produce interleaved `handleEvent` calls with no ordering guarantee
 
 **Prevention:**
-- The engine must have a **disconnect policy** for the collect phase: after a configurable timeout (e.g. 30 seconds), auto-submit a null/pass action for a disconnected player so the game can resolve.
-- Track socket-to-userId mapping carefully. When a socket reconnects with the same JWT, detect it as a rejoin (not a new player) and immediately emit that player's current state view.
-- Fix the existing snapshot gap: on `room:join` or socket reconnect while `activeGames.has(roomCode)`, emit the player's projected state from `engine.getStateForPlayer(userId)`.
-- Add a `playerStatus` field per player: `'connected' | 'disconnected' | 'submitted'` so other players can see who is causing a delay.
+- The arcade engine must own its own server-side `setInterval` tick loop started in `init()` and stopped in `destroy()`. The loop drives physics: advancing object positions, running collision detection, emitting state.
+- `handleEvent` (or a new method, see Pitfall 2) is used only for discrete input events: `{ type: 'arcade:setBarX', x: number }` updates a mutable bar position variable that the loop reads on the next tick. The loop is not triggered by input.
+- The bar position variable is the only shared mutable state driven by client input. Everything else (object positions, score, spawn timing) is driven by the server loop.
 
-**Detection (warning signs):**
-- `room:join` handler does not check `activeGames` for an in-progress game.
-- Engine collect phase has no timeout or absent-player handling.
-- No socket-level reconnect detection (distinguishing new connection vs. rejoin).
-
-**Phase:** Core engine (Phase 1) for the policy; reconnect UX (Phase 2) for the client feedback.
+**Phase:** Engine architecture decision — must be settled before writing a single line of arcade engine code.
 
 ---
 
-### Pitfall 4: Sabotage Mechanic Enabling Runaway Kingmaker Scenarios
+### Pitfall 2: Extending GameEngine Interface Instead of Defining a New One
 
-**What goes wrong:** The sabotage mechanic (give opponents spent/worthless snus, or strong snus with negative side effects) can trivially be used to target the second-place player by the leader, or to coordinate attacks on the leader. In 3-4 player games this creates kingmaker dynamics: one player decides who wins not by playing well but by whom they choose to harm. This degrades the experience, especially if the losing player is always the sabotage target with no recourse.
+**What goes wrong:** The existing `GameEngine` interface is already extended once with `TurnBasedGameEngine` (in `registry.ts`). The arcade engine may seem to fit the base interface if the game loop is hidden inside `init()`. But `getState()` returns `unknown` — for arcade, the callers (`room.ts` `onUpdate` and the client `GameContainer`) must know the state shape to route it. If the arcade engine uses the same `onStateUpdate` callback signature as the turn-based engine, the caller code in `room.ts` will attempt to check `s.forUserId` (the Snusking-specific projection pattern) on arcade state, causing silent routing failures.
 
-**Why it happens:** Sabotage mechanics without counterplay feel oppressive. The current design has no stated protection against repeat targeting, no limit on how many sabotages can be directed at one player per turn, and no recourse card.
+The existing code in `room.ts` at the `onUpdate` closure (lines 136–183) already contains game-specific logic: it checks `s.forUserId` to decide per-player routing. Adding arcade state through this same path without explicitly handling the different shape will silently fall through to the room-broadcast fallback and emit everything to everyone.
 
-**Consequences:** Players feel helpless when targeted, particularly in the end-game where sabotage can flip the result. A player who was winning loses due to coordinated targeting — this feels unfair even if it was technically legal play. Players quit early.
+**Why it happens:** The `GameEngine` interface satisfies TypeScript at compile time. The mismatch only surfaces at runtime when routing logic branches incorrectly on undefined fields.
+
+**Consequences:**
+- Arcade state (which contains positions of all falling objects) is broadcast to all players without filtering — fine for arcade, but the routing is accidental, not intentional
+- If a second arcade feature needs per-player state, the untyped fallback masks the problem until it's deeply entrenched
+- Adding another game type later requires understanding the hidden Snusking-specific logic in `room.ts`
 
 **Prevention:**
-- Each player should be able to receive at most **one sabotage per turn** (resolve them all simultaneously, but if multiple sabotages target the same player only the strongest or first-to-resolve applies).
-- Include at least one card type that provides **sabotage immunity** for a turn (a "Snus Shield" equivalent — perhaps a pouch holder card).
-- The beer mechanic can function as a partial defense: holding beer should give a resistance bonus to negative snus effects.
-- Design the event/situation system so that the active event provides context-specific protection (e.g., "Fishing Trip" event reduces the effectiveness of sabotage cards against the player who triggered it).
-- Playtest specifically: give all players only sabotage cards for 5 turns and verify the game doesn't devolve into mutual destruction.
+- Define a `RealTimeGameEngine` interface extending `GameEngine` with an explicit tick-loop contract: `startLoop() / stopLoop()` or just document that `init()` starts and `destroy()` stops the loop.
+- Add a discriminant to the `onStateUpdate` callback payload: `{ broadcast: true, state: unknown }` vs `{ forUserId: string, state: unknown }`. The arcade engine always uses `broadcast: true`. The routing logic in `room.ts` becomes explicit, not coincidental.
+- Add the arcade game type to `GameType` in `shared/src/types.ts` as a coordinated change (same issue as existing Pitfall 9 for Snusking).
+- `GameContainer.tsx` currently hardcodes `gameType() === 'snusking'` as the only branch. The arcade game needs its own `Show` branch with its own state type. Do not cast arcade state as `SnuskingProjectedState`.
 
-**Detection (warning signs):**
-- No per-turn sabotage limit per target player.
-- No card or mechanic in FEATURES that provides immunity or resistance to sabotage.
-- Sabotage resolves before the target has any chance to react (only possible if simultaneous reveal is broken — see Pitfall 1).
-
-**Phase:** Card design and balance (Phase 2). Add immunity mechanics before first playtest.
+**Phase:** Interface definition, before engine implementation.
 
 ---
 
-### Pitfall 5: Replacing the Engine Without Isolating the Registry Boundary
+### Pitfall 3: Socket.IO Flooding From Position Update Broadcasts
 
-**What goes wrong:** The new Snusking engine must replace `snus-rpg` entirely. The registry pattern (`server/src/games/registry.ts`) and the `GameEngine` interface are the intended isolation boundary. However, the existing interface is:
+**What goes wrong:** The existing `onStateUpdate` callback in `room.ts` emits a Socket.IO event immediately every time it is called. For Snusking this happens at most once per player action — a handful of times per minute. For an arcade game with a 60fps server loop and 2–4 players, `onStateUpdate` would be called 60 times per second, emitting 60 Socket.IO events per second to each client. Socket.IO serializes state to JSON on each call. For a state containing the positions of 10–20 falling objects, this is substantial CPU and bandwidth per tick.
 
-```typescript
-interface GameEngine {
-    init(roomId, players, onStateUpdate): void
-    handleEvent(playerId, action): void
-    getState(): unknown
-    destroy(): void
-}
-```
+Worse: Socket.IO's default TCP-based transport guarantees delivery and ordering. If the server emits faster than the network can drain the buffer, frames queue up. The client receives stale positions followed by "catch up" bursts — the bar cannot keep up, collisions register late.
 
-This interface was designed for the real-time tick-loop model. Turn-based simultaneous reveal requires fundamentally different lifecycle semantics: phases, buffered submissions, per-player state views. If the team extends `handleEvent` piecemeal to accommodate turn phases (e.g., adding a `type: 'submit_turn'` action with side effects that block other actions), the game logic leaks into the generic socket layer.
+**Why it happens:** The callback-per-update pattern is invisible during local development (loopback latency is ~0.01ms). It only surfaces under real network conditions or when profiled.
 
-**Why it happens:** The registry interface looks reusable, so developers try to stretch it rather than evolving the contract. The `GameAction` type (`{ type: string; payload?: unknown }`) encourages cramming turn-phase logic into action dispatch.
-
-**Consequences:** The `game.ts` socket handler and `room.ts` `onUpdate` callback accumulate game-specific logic. The engine is not truly encapsulated. If a second game type is ever added, the socket layer breaks because it has hidden assumptions about the turn-based engine's state shape.
+**Consequences:**
+- On a 50ms round-trip connection, the client is always ~3 frames behind
+- Queued frames produce rubber-band catch-up jerks
+- Server CPU spikes because JSON serialization runs 60x per second per game room
+- Multiple simultaneous arcade rooms multiply the problem linearly
 
 **Prevention:**
-- Define a `TurnBasedGameEngine` interface that extends `GameEngine` with turn-aware methods: `submitAction(playerId, action)`, `getStateForPlayer(playerId)`, `getCurrentPhase()`.
-- The socket handler should be game-type-aware enough to call the right interface methods — or the engine should fully handle phase transitions internally without requiring the socket layer to know about them.
-- The `onStateUpdate` callback signature must support per-player emission: `onStateUpdate(perPlayerStates: Map<string, unknown>)` so the socket layer can route correctly.
-- Do not start client UI work until the engine interface contract is finalized. Changing the state shape after the client renderer is built costs significant rework.
+- Run the server physics loop at the authoritative rate (e.g. 20 ticks/second) and emit state only on each tick — not at 60fps. 20 ticks/second is sufficient for a casual falling-objects game and matches what players can perceive over a typical home connection.
+- Add a tick-rate constant to the arcade engine: `const TICK_RATE_MS = 50;` (20 ticks/second). Do not use `requestAnimationFrame` server-side (Node.js does not have it natively without polyfills).
+- Consider emitting only a diff (changed positions) rather than full state each tick. For 10 falling objects, the diff is small. This is an optimization to apply if profiling shows a problem, not upfront.
+- Use Socket.IO's `volatile` flag for position updates: `socket.volatile.emit('game:state', ...)`. Volatile events are dropped if the client is not ready to receive, rather than queued. This trades occasional missed frames for no queue buildup. Appropriate for position data; **not** appropriate for score events, catch events, or powerup spawns.
 
-**Detection (warning signs):**
-- `game.ts` handler contains `if/else` branching on action type beyond simple routing.
-- `onStateUpdate` in `room.ts` interprets state fields to make routing decisions (already visible: it checks `s.status === 'ended'`).
-- `getState()` returns `unknown` and callers cast it repeatedly.
+**Phase:** Server engine implementation. The tick rate must be a constant from day one — it affects physics determinism.
 
-**Phase:** Foundation — define the interface before writing any engine code (Phase 1, first task).
+---
+
+### Pitfall 4: Client Authority Confusion — Who Owns the Bar Position?
+
+**What goes wrong:** Real-time arcade games have a fundamental design question: does the client show the bar at the mouse position immediately (client-side prediction), or does it wait for the server to echo back the authoritative position? If the client waits for the server, there is 1–2 RTT of latency between mouse movement and visual response — the bar feels broken. If the client moves the bar immediately and the server also sends back position confirmations, the client will occasionally snap back when the server disagrees (rubber-banding).
+
+For a casual falling-objects game where multiple players catch snus simultaneously, there is also the question: does each player see the other players' bars in real time, or only their own? If all bar positions are server-authoritative, every player's bar feels laggy to that player.
+
+**Why it happens:** The existing platform has no client-side prediction anywhere — the turn-based game has no movement at all. Developers coming from the turn-based pattern will wait for server acknowledgment for everything, including the local bar.
+
+**Consequences:**
+- Client-waits-for-server: local bar is sluggish by exactly the network RTT. On a 100ms connection this is a 200ms lag between moving the mouse and seeing the bar move — unacceptable for a skill-based catching game.
+- Applying Snusking's "server emits state, client renders state" pattern naively breaks the feel of the game entirely.
+
+**Prevention:**
+- Adopt a split authority model: **local bar is always client-authoritative**. The Solid.js arcade component reads mouse/touch position from DOM events and moves the local bar immediately — no server round-trip. The bar position the client sends to the server is used only to compute collisions server-side; the visual position on the client is never overridden by the server response.
+- **Remote bars** (other players' bars) are server-authoritative. The client interpolates between received positions to smooth motion. No prediction needed for remote bars because no local player controls them.
+- Catching events (score increments, caught objects disappearing) are server-authoritative and acknowledged via a state update. The client can show an optimistic "catch flash" effect but must reconcile with server state.
+- Document this model explicitly in the arcade engine architecture. It is a departure from every other pattern in the codebase.
+
+**Phase:** Client architecture, before building the arcade canvas/DOM renderer.
+
+---
+
+### Pitfall 5: rAF Loop Not Cleaned Up on Solid.js Component Unmount
+
+**What goes wrong:** The arcade game's client renderer requires a `requestAnimationFrame` loop to animate falling objects and smooth bar movement between server ticks. In Solid.js, a component can unmount when the player navigates away, the game ends, or the socket disconnects. If the rAF loop is started in the component body without registering a cleanup, it continues running after unmount — attempting to read stale signals, write to DOM elements that no longer exist, and potentially holding references that prevent garbage collection.
+
+The existing `SnuskingGame` component shows the correct pattern: `createEffect` with `setInterval` and `onCleanup(() => clearInterval(id))`. But `setInterval` is synchronous and returns an ID that's easy to track. `requestAnimationFrame` uses a recursive structure (`function tick() { rAF(tick); }`) that is easier to forget to cancel.
+
+**Why it happens:** rAF loops are self-perpetuating. There is no error when they run against an unmounted component — the component just silently continues consuming CPU and potentially reading stale closed-over values.
+
+**Consequences:**
+- Memory leak: the arcade component's closures are kept alive by the rAF callback, preventing GC
+- CPU waste: the loop continues running at vsync rate (typically 60fps) in a hidden tab or after navigation
+- Silent state corruption: if the loop reads a Solid.js signal after the owner scope is disposed, Solid.js warns in dev mode and silently returns stale values in production
+- Multiple games played in one session accumulate leaked loops — page performance degrades with each game
+
+**Prevention:**
+- Always cancel the rAF loop with `onCleanup(() => cancelAnimationFrame(rafId))`. Store the return value of `requestAnimationFrame` in an outer variable updated each frame: `rafId = requestAnimationFrame(tick)`.
+- Use Solid.js `createEffect` with `onCleanup` as the canonical place to start the loop, not the component body directly.
+- Add a `mounted` boolean ref that the loop checks at the top of each tick. If `!mounted`, the loop exits and does not re-schedule. This is a belt-and-suspenders guard against the rAF firing one last time after cleanup has already run.
+- Test cleanup explicitly: navigate away from the game mid-session and verify CPU usage drops to baseline in browser DevTools.
+
+**Phase:** Client component implementation. Must be present from the first working renderer — do not add cleanup "later."
+
+---
+
+### Pitfall 6: Server-Side setInterval Not Stopped When Game Ends or Room Empties
+
+**What goes wrong:** The arcade engine starts a server-side `setInterval` (or equivalent) for its physics loop in `init()`. The existing `GameEngine.destroy()` contract requires cleanup. However, the `destroy()` call in `room.ts` only happens in two cases: (1) the game emits `status: 'ended'` and the `activeGames.delete` path runs, or (2) the 5-minute all-players-offline cleanup timer fires. If the arcade engine emits `game:end` from inside the loop but the loop is not stopped synchronously before the `activeGames.delete`, there is a race: the loop ticks once more after deletion, calls `onStateUpdate`, which the `room.ts` handler tries to route, finds no `roomCode` in `activeGames` (since it was deleted), and silently drops the event — or worse, emits to a room that may no longer exist in Socket.IO's room tracking.
+
+**Why it happens:** The existing Snusking engine does not have a tick loop, so this race condition does not exist for it. The arcade engine introduces it for the first time.
+
+**Consequences:**
+- One or more "phantom ticks" after game end: falling objects continue to move and collide server-side after the game is declared over, potentially changing scores post-result
+- Orphaned `setInterval` if `destroy()` is not called (e.g., if `room:leave` triggers cleanup but `destroy()` is not invoked on the engine — the current `room:leave` handler in `room.ts` does not call `engine.destroy()`)
+- In a long session with many arcade games, leaked intervals accumulate and the server becomes progressively slower
+
+**Prevention:**
+- `destroy()` must call `clearInterval(this.loopId)` as its **first** action, before any state cleanup. The sequence must be: stop loop → clear state → deregister.
+- When the game ends by score condition, the loop should set a `this.ended = true` flag and let the current tick complete normally, then not re-schedule. Do not call `clearInterval` from inside the loop body — call it from `destroy()`.
+- Audit `room.ts` for all places where a room is torn down (`room:leave`, `room:start` error path, `room:delete`) and ensure each path calls `engine.destroy()` if an active game exists.
+- Add a test: create a game, trigger end condition, wait 200ms, assert no further `onStateUpdate` calls.
+
+**Phase:** Server engine implementation and room lifecycle integration.
+
+---
+
+### Pitfall 7: Collision Detection Bugs (Missed Catches, False Positives)
+
+**What goes wrong:** Server-side collision detection between a bar (horizontal rectangle) and falling objects (circles or rectangles) is conceptually simple but fails at edge cases. Two common bugs: (1) "tunnel through" — a fast-falling object moves more than its own height in one tick, skipping past the bar zone entirely; (2) "phantom catch" — the bar's hitbox is wider than its visual representation, causing the player to catch objects they visually missed, or vice versa.
+
+For a multiplayer game, both players' bars must be checked against all falling objects on the same tick. If the resolution order is player-A-first, player-B-second, and the same object collides with both bars simultaneously, the first player always gets credit — the second player is silently denied a catch they achieved.
+
+**Why it happens:** Single-player catching game collision is simple. Multiplayer adds the simultaneous-hit resolution problem. Physics at discrete tick intervals adds the tunneling problem for fast objects.
+
+**Consequences:**
+- Missed catches feel random and unfair — players lose trust in the game's responsiveness
+- False positives feel like the game is cheating for other players
+- Simultaneous catches assigned to only one player without explanation cause confusion
+
+**Prevention:**
+- Use swept collision (check if the object's trajectory crossed the bar zone during the tick, not just whether it overlaps at tick-end). For a bar catching a falling object, the swept check is: did the object's Y position transition from above the bar to below the bar during this tick?
+- Make hitboxes slightly forgiving (larger than visual by ~10px on each side). This is standard practice in catching games and is more important than pixel-perfect accuracy.
+- For simultaneous catches, define an explicit resolution policy before implementation: either both players get credit (cooperative mode), or a tie-break rule applies (e.g., whose bar center is closer to the object center). Document this policy. Do not let the resolution be determined by iteration order.
+- The bar hitbox width must exactly match the server-side width value used for collision, which must match the CSS width sent to clients. Store this as a shared constant in `@slutsnus/shared`.
+
+**Phase:** Server physics implementation. Write unit tests for edge cases before integration testing.
+
+---
+
+### Pitfall 8: Powerup State Desync Between Players
+
+**What goes wrong:** If the game includes powerups (wider bar, slow-down, point multiplier), each powerup has a state on the server: spawned, collected by player X, active until tick Y. The server broadcasts this state to all clients. If the client renders powerup activation effects based on received state, there is typically one tick of delay between the server deciding "player X collected powerup" and the client showing the effect. This is acceptable. The desync problem arises when the client shows a powerup as "available for collection" based on an old state snapshot while the server has already assigned it to another player — the client shows a false pickup opportunity.
+
+For timed powerups (active for N seconds), the client must not derive remaining duration from its local clock. If client A has a 20ms clock drift from client B, they will disagree on when the powerup expires, producing visual inconsistency.
+
+**Why it happens:** Clients naturally interpolate or extrapolate state between server ticks for visual smoothness. Powerup timing is a case where extrapolation produces visible errors.
+
+**Consequences:**
+- Player reaches for a powerup they can see, it "disappears" on contact because another player already took it — feels like a bug
+- Powerup duration bar shows different remaining time on each player's screen
+- In the worst case, a powerup registers as active on the client but the server has already ended it — the client shows an effect that has no gameplay impact
+
+**Prevention:**
+- Powerup availability must be determined **only** by the server. Clients never predict powerup collection — they render only what the current server state says.
+- Powerup remaining duration must be computed from tick count, not wall-clock time. The server sends `expiresAtTick: number` and the client displays `(expiresAtTick - currentTick) * TICK_DURATION_MS`. Tick count is authoritative; local clock drift is irrelevant.
+- When a powerup transitions from "available" to "collected" in the server state, the client must treat this as a discrete event (play collect animation for the correct player) rather than a smooth interpolated transition. Use a `createEffect` that compares previous and current powerup state to detect the transition.
+
+**Phase:** Powerup design and server state schema. Settle the tick-based timing model before implementing any powerup.
+
+---
+
+### Pitfall 9: Game Loop Continuing After Match Ends (Score, Timeout, or Disconnect)
+
+**What goes wrong:** The arcade game ends when a score target is reached, the round timer expires, or the last remaining player disconnects. In all three cases, the server-side loop must be stopped cleanly. The tricky case is a player disconnecting mid-game with one remaining opponent: the existing disconnect cleanup in `room.ts` starts a **5-minute timer** before calling `engine.destroy()`. For a turn-based game this is correct — disconnects are temporary network interruptions and 5 minutes is a reasonable rejoin window. For a real-time arcade game, a 5-minute wait with only one player left is not acceptable — the game should end (or at least pause) immediately on disconnect.
+
+Additionally, the loop must not emit score updates after the end condition triggers. If the loop runs one extra tick after scoring, an object that was in mid-air might cross the bar after the winner was declared, adding phantom score.
+
+**Why it happens:** The disconnect cleanup policy is shared across all game types via the same `room.ts` code path. It was designed for Snusking; the arcade game inherits it without consideration.
+
+**Consequences:**
+- Solo player left in a room continues the arcade game against no one for up to 5 minutes of server CPU
+- End-state race: the loop ticks once more after `activeGames.delete`, causing phantom state emission (see Pitfall 6)
+- If the single remaining player leaves, the loop has no players to broadcast to but continues running silently until the cleanup timer fires
+
+**Prevention:**
+- The arcade engine must have explicit disconnect policy configuration: `disconnectPolicy: 'immediate-end' | 'wait-for-rejoin'`. A falling-objects game should default to `immediate-end` — when a player disconnects, emit `status: 'ended'` from the engine immediately.
+- The `destroy()` call path from immediate-end must not wait for the 5-minute timer. The engine signals the end via `onStateUpdate` with `status: 'ended'`, which causes `room.ts` to call `activeGames.delete` and the engine's `destroy()`. This already works for the Snusking case — use the same signal, just trigger it faster.
+- Add a `this.ended` guard at the start of every loop tick: if `this.ended`, exit immediately without processing or emitting.
+- Handle the single-player-remaining case explicitly: if `connectedPlayers.length < MINIMUM_PLAYERS_TO_CONTINUE`, end the game.
+
+**Phase:** Server engine lifecycle and disconnect handling integration.
 
 ---
 
 ## Moderate Pitfalls
 
-Mistakes that cause rework, balance problems, or poor player experience but are recoverable.
+Mistakes that cause rework, polish debt, or degraded player experience but are recoverable.
 
 ---
 
-### Pitfall 6: Card Value Balance Ignoring Combo Multipliers
+### Pitfall 10: Canvas vs DOM Rendering Choice Regret
 
-**What goes wrong:** The existing `brands.ts` assigns flat point values to snus cards (e.g. General = 20, Siberia -80 = 65). The new game adds event cards that boost contextual cards (Fishsnus is stronger on Fishing Trip), and beer as a combo resource. If base card values are balanced against each other in isolation, the combo system will create outlier strategies that are strictly dominant (always take Fishsnus, trigger Fishing Trip, hold beer — win every time).
+**What goes wrong:** The falling-objects arcade game can be rendered either on a `<canvas>` element (imperative 2D drawing) or as DOM elements with CSS transforms (declarative, Solid.js-native). The wrong choice causes pain proportional to how far the UI is built before the decision is reconsidered.
 
-**Why it happens:** Designers balance individual cards early, then add combo systems late. The two are not re-balanced together.
+Canvas is more performant for many animated objects but requires imperative rendering code that works against Solid.js's reactive model. DOM/CSS is naturally reactive and integrates with Solid.js signals, but animating 20+ falling objects with CSS transforms can cause layout thrash if not done carefully.
 
-**Consequences:** The metagame collapses to one dominant strategy. Players who discover it always win; players who don't are confused why their reasonable play loses. Rebalancing after launch feels unfair to early learners.
+The existing codebase uses DOM + CSS animations exclusively (see the `flyCard` animation functions in `snusking/index.tsx`). There is no canvas infrastructure anywhere.
+
+**Why it happens:** Game developers default to canvas; web developers default to DOM. For a falling-objects game with ~10–20 simultaneous objects, the DOM approach is entirely viable and far easier to integrate with Solid.js.
+
+**Consequences (wrong choice):**
+- Canvas chosen: custom rendering loop required, no Solid.js reactivity, manual hit-testing for UI elements (score displays, buttons), accessibility lost, no CSS transitions
+- DOM chosen without `will-change` and transform-only animations: jank from layout recalculation, potential reflow on each frame
 
 **Prevention:**
-- Do not assign final card values until the full combo matrix is mapped: for each card, list every event that boosts it and the effective value including the boost.
-- Use a spreadsheet or design doc that shows the **maximum possible value** of each card across all combinations, not just its base value.
-- The highest-value card in any single combo should not exceed 2.5x the base value of the best non-combo card. This prevents a single strategy from being overwhelmingly dominant.
-- Design events to boost diverse card types, not to create a single "obvious" combo.
+- Use DOM + CSS transforms with `will-change: transform` on falling objects. Solid.js's fine-grained reactivity allows updating individual object positions without re-rendering the entire list.
+- Represent each falling object as a `<div>` with `style={{ transform: \`translateY(${y}px) translateX(${x}px)\` }}`. Update position via a Solid.js store keyed by object ID.
+- Use `translateY/translateX` (not `top/left`) to keep all animations on the compositor thread, avoiding layout recalculation.
+- Only revisit canvas if profiling shows DOM performance is genuinely the bottleneck. Do not optimize before measuring.
 
-**Detection (warning signs):**
-- Card values exist in code before the event/situation system is designed.
-- No design document maps combo multipliers.
-- Playtest feedback: "I just always do X and win."
-
-**Phase:** Card and event design (Phase 2). Must be complete before Phase 3 playtesting.
+**Phase:** Client component architecture, before first render implementation.
 
 ---
 
-### Pitfall 7: Turn Timer Miscalibration Killing the Social Dynamic
+### Pitfall 11: Solid.js Store Update Frequency Causing Excessive Reactive Propagation
 
-**What goes wrong:** Simultaneous-reveal works because all players think at the same time. If the turn timer is too short, players feel rushed and cannot enjoy the strategic layer. If it is too long, players who decide quickly sit idle. If there is no timer, a single indecisive player holds 3 others hostage indefinitely.
+**What goes wrong:** Solid.js's fine-grained reactivity tracks individual property accesses. If the arcade game state is stored as a single nested store object (`createStore<ArcadeState>({...})`), updating `state.objects[id].y` on each tick causes only the component reading that specific path to re-render — this is correct and efficient. However, if the state is stored as a single `createSignal` (as `GameContainer.tsx` currently does: `createSignal<SnuskingProjectedState | null>(null)`), every tick replaces the entire signal value, causing every component that reads any part of the state to re-run.
 
-**Why it happens:** Timer values are often set arbitrarily in early development and never revisited. The timer that works in solo testing (0 network latency, developer knows the rules) is not the timer that works with real players over the network who are still learning.
+At 20 ticks/second with 15 falling objects, an entire-state replacement fires reactive updates 20 times per second across all components that read any field.
 
-**Consequences:** Short timer: casual players feel excluded, the game becomes a speed contest. Long timer: experienced players are bored and frustrated. No timer: one player ruins the session for everyone.
+**Why it happens:** `GameContainer.tsx` uses `createSignal` with the full state object. This is fine for Snusking (state updates happen a few times per minute). The arcade game inherits this pattern and the costs multiply.
+
+**Consequences:**
+- Score display re-renders 20 times per second even when the score hasn't changed
+- Opponent bar positions re-render even when the player's own bar state is unchanged
+- In Solid.js dev mode, the excessive re-renders are visible as reactive graph noise; in production they cause measurable frame drops at high object counts
 
 **Prevention:**
-- Start with a 45-second turn timer for the collect phase. This is long enough for a new player to read their hand and think, short enough to maintain pace.
-- Show a countdown to all players with clear indication of who has and has not submitted (without revealing what they submitted).
-- Allow early resolution: if all players submit before the timer expires, resolve immediately.
-- The auto-submit for disconnected players (Pitfall 3) should kick in at the timer expiry, not before.
-- Make the timer value a configurable engine parameter (not hardcoded) so it can be adjusted without a deploy.
+- The arcade game's `GameContainer` branch should use `createStore` rather than `createSignal`. `createStore` allows surgical updates: `setStore('objects', id, 'y', newY)` updates only that path.
+- Decompose the arcade state into logically stable regions: `{ objects: {...}, bars: {...}, score: {...}, phase: '...' }`. Objects change every tick; score changes on catch events; phase changes rarely. Components subscribe to the granularity they need.
+- Do not apply this change to the existing Snusking state flow — it works fine with `createSignal` for the turn-based update cadence.
 
-**Detection (warning signs):**
-- Timer value is hardcoded in the engine with no configuration parameter.
-- No UI indication of who has submitted vs. who is still deciding.
-- Turn timer is the same value regardless of game phase (early turns when players are learning vs. late turns when experienced players decide quickly).
-
-**Phase:** Core engine (Phase 1) for the configurable parameter; UI feedback (Phase 2) for the submission status display.
+**Phase:** Client state management, before building the arcade component tree.
 
 ---
 
-### Pitfall 8: Beer Resource Creates Dominant Hold-Forever Strategy
+### Pitfall 12: Shared GameType Union Breaks TypeScript When Arcade Is Added
 
-**What goes wrong:** Beer is described as a "separate holdable resource that combines with snus cards for bonus effects." If the bonus is always better than spending beer, the optimal play is always to hold beer as long as possible for maximum combo value. If there is no cost or risk to holding beer, players never spend it on sub-optimal turns, creating a degenerate "hoard everything until you have the perfect combo" strategy that is both dominant and anti-social (no interaction with other players).
+**What goes wrong:** `shared/src/types.ts` defines `type GameType = 'snusking'`. Adding `'snus-catcher'` to this union requires coordinated changes across: shared types, `GameContainer.tsx` (which branches on `gameType() === 'snusking'`), server `room.ts` (which reads `room.gameType`), the Prisma schema (if `gameType` is an enum at the database level), and any leaderboard queries filtered by game type. Missing any one of these causes silent runtime failures.
 
-**Why it happens:** Resources that are strictly better when held tend to be hoarded. Without a holding cost (opportunity cost, risk, decay), rational players hoard them.
+This is the same class of problem as existing PITFALLS.md Pitfall 9 — it recurs with each new game type added.
 
-**Consequences:** Players never drink the beer, the resource feel mechanical and pointless, or alternatively one player hoards beer for 10 turns then wins in a single blowout turn. Neither is fun.
+**Why it happens:** TypeScript's type union is a compile-time check. The database may store game type as a raw string, meaning a missing database migration is not caught by the type checker.
+
+**Consequences:**
+- Room start fails silently with `room:error` because `!gameRegistry[room.gameType]` evaluates as true for the new type
+- The client's `GameContainer` falls through to the loading spinner because no `Show` branch matches the new game type
+- Leaderboard entries are stored under the correct game type string but the UI never renders them because no filter matches
 
 **Prevention:**
-- Beer should have a **holding limit** (e.g. maximum 2 beers held at once) so players cannot hoard indefinitely.
-- Sabotage should be able to target beer (e.g. a "spilled beer" card removes one beer from the target) — this creates risk in holding and makes the decision meaningful.
-- Alternatively, beer provides a diminishing-returns bonus (first beer = +30%, second beer = +20% on top) so the value of each additional held beer decreases.
-- Make the beer bonus event-conditional: beer only gives its bonus when the active event is a social event (Party, Midsommar) — not a passive always-on multiplier.
+- Make this a checklist item for every new game type: add to (1) `GameType` union in shared types, (2) `gameRegistry` in `registry.ts`, (3) `GameContainer.tsx` with a new `Show` branch, (4) verify Prisma schema stores game type as a string (not an enum) to avoid migration requirements.
+- Add a runtime assertion in `room:start` that throws a descriptive error (not a swallowed catch) when `gameType` is not in `gameRegistry`. This surfaces the registration gap immediately.
 
-**Detection (warning signs):**
-- No holding limit on beer in the design spec.
-- Playtesting shows players consistently hold beer until the last 2 turns.
-- No mechanism to lose or be deprived of held beer.
-
-**Phase:** Card and event design (Phase 2). Identify during balance review.
+**Phase:** Platform integration, first task when adding the arcade game type.
 
 ---
 
-### Pitfall 9: Engine Replacement Breaks Existing Room/Lobby Flow
+### Pitfall 13: Object Spawn Randomness Diverges Between Players
 
-**What goes wrong:** The new Snusking engine must register as a new game type (e.g. `'snusking'`) in `gameRegistry`. The existing `GameType` union in `shared/src/types.ts` is `type GameType = 'snus-rpg'`. The `RoomInfo.gameType`, the `LeaderboardEntry.gameType`, and the database `room.gameType` column all use this literal type. Adding a new game type requires coordinated changes across: shared types, database schema (possibly a migration), the registry, the client router, and the game selection UI.
+**What goes wrong:** If each player's client independently generates falling object positions using `Math.random()`, their screens will show different objects in different positions. Catches will be impossible to validate because the server doesn't know where the objects are. Alternatively, if the server seeds object positions but uses `Math.random()` without a deterministic seed, server restarts or reconnects will produce different object sequences for players who rejoin.
 
-If the team adds the engine without updating all these coordination points, game sessions will be created with an unrecognized `gameType`, silently failing (the registry already returns undefined for unknown types and emits a `room:error`, but that error is swallowed by the catch block in `room.ts` line 153).
+**Why it happens:** Random number generation in game loops is easy to add without thinking about reproducibility or multi-player consistency.
 
-**Why it happens:** Type changes in a monorepo feel local but have wide blast radius. The shared package is compiled separately; a type mismatch may not surface until runtime.
-
-**Consequences:** Creating a Snusking room results in a silent `room:error`. Players cannot start a game. The error is invisible because the catch in `room.ts` swallows it. This will be diagnosed as a backend bug rather than a type registration issue.
+**Consequences:**
+- Player A sees a rare powerup falling at x=200; player B sees it at x=600 on their screen. Server checks collision at x=200 (its own random seed), player B misses because server disagrees on position.
+- A reconnecting player sees a fresh random sequence of objects that doesn't match what the server currently has in play — they are catching different objects than the server knows about.
 
 **Prevention:**
-- Make `GameType` an enum or an extensible string union, not a hardcoded literal.
-- Add the new game type to the registry, shared types, and database in a single coordinated commit.
-- Add input validation that explicitly checks `gameType` against the registry before persisting (the `CONCERNS.md` already flags this gap for `gameType` validation).
-- The `room:start` handler already checks `if (!gameRegistry[room.gameType])` — ensure this emits a visible error, not a swallowed one.
+- Object spawn positions are generated exclusively by the server and included in the emitted state. Clients never generate object positions. The server's RNG state is authoritative.
+- Use a seeded PRNG (e.g., a simple LCG with a per-game seed derived from room ID + session start timestamp) so that the object sequence for a given game is reproducible. This aids debugging and allows reconnecting clients to verify they are in sync.
+- The state emitted to clients must include the current position and identity of every active falling object each tick (or just the diff). Clients render what the server sends — no client-side object simulation.
 
-**Detection (warning signs):**
-- `GameType` is `'snus-rpg'` literal in `shared/src/types.ts` and nowhere else is tracked.
-- No migration prepared for the new game type string in the database.
-- The client game selection page still only shows snus-rpg.
-
-**Phase:** Platform integration (Phase 1, during engine registration). Do this on day one of the new engine work.
+**Phase:** Server physics implementation, before any client rendering work.
 
 ---
 
 ## Minor Pitfalls
 
-Mistakes that cause minor friction, polish debt, or localized bugs.
+Mistakes that cause localized bugs or minor friction.
 
 ---
 
-### Pitfall 10: Event Card Draw Timing Creates Perceived Unfairness
+### Pitfall 14: Tick Rate Mismatch Between Animation and Server Updates
 
-**What goes wrong:** Event cards (Sauna night, Fishing trip, Party) are drawn each round and boost certain card types. If the event is revealed **before** players choose their turn actions, smart players always play the contextually boosted card. This is correct and intended — but if the event draw is not clearly visible to all players simultaneously, some players will miss it and feel cheated when their card underperforms.
+**What goes wrong:** If the server ticks at 20Hz (every 50ms) but the client rAF loop runs at 60fps, the client will receive 1 server update for every 3 animation frames. Without interpolation, falling objects will visually stutter — they jump by 3 ticks of distance every 3 frames rather than moving smoothly.
 
-**Prevention:** Reveal the event card at the start of each turn as a prominent animation before the collect phase opens. Never draw a new event mid-turn.
+**Prevention:** The client rAF loop interpolates object positions between the last received server tick and the next expected one. Store the `lastTickTime` and `prevPositions` alongside `currentPositions`. Each rAF frame, compute `alpha = (now - lastTickTime) / TICK_DURATION_MS` and linearly interpolate between prev and current. This produces smooth 60fps visuals from 20Hz server updates.
 
-**Phase:** UI and turn flow (Phase 2).
-
----
-
-### Pitfall 11: Inventory Index Instability During Trade
-
-**What goes wrong:** The existing trade system uses `inventoryIndex` to identify a card in the offerer's hand. When the trade offer is created, the index is stored. If between offer creation and acceptance the offerer plays another card (shifting indices) or receives a card (via another trade), the index may point to the wrong card.
-
-The new turn-based model mitigates this because actions resolve simultaneously (the offerer cannot play a card in the same turn they offered a trade). However, if trades can span multiple turns (an offer from turn N is still pending in turn N+1), the problem returns.
-
-**Prevention:** Store the card's unique identifier (`cardId`) in the trade offer rather than its inventory position. The existing `TradeOffer` already uses `realBrandId` — extend this pattern to the new engine and never use positional indices for deferred operations.
-
-**Phase:** Engine trade implementation (Phase 2).
+**Phase:** Client rendering loop implementation.
 
 ---
 
-### Pitfall 12: Leaderboard Score Semantics Change
+### Pitfall 15: Mouse Position Not Adjusted for Canvas/Container Offset
 
-**What goes wrong:** The existing `LeaderboardEntry` stores a raw `score` integer per session. The snus-rpg score represents items collected. The Snusking score represents empire points accumulated. If both game types share the same leaderboard without a `gameType` filter, scores are not comparable — a 65-point snus-rpg game and a 65-point Snusking game mean entirely different things.
+**What goes wrong:** Mouse events give positions in viewport coordinates. The game container may be centered, padded, or scrolled. Using raw `event.clientX` as the bar position without subtracting the container's `offsetLeft` places the bar offset from where it should be.
 
-**Prevention:** The `leaderboard.ts` route already scopes by `gameType` on the leaderboard table. Ensure the new engine uses a different `gameType` string so historical snus-rpg entries are not mixed with Snusking entries. Add a `gameType` label to the leaderboard UI.
+**Prevention:** In the `mousemove` handler, subtract the container element's `getBoundingClientRect().left` from `event.clientX`. Store the container ref via Solid.js's `ref` attribute and read its bounding rect. Clamp the result to `[barHalfWidth, containerWidth - barHalfWidth]` to prevent the bar from leaving the play area.
 
-**Phase:** Platform integration (Phase 1, before first game session is persisted).
+**Phase:** Client input handling, first working build.
+
+---
+
+### Pitfall 16: Reconnect State Missing Arcade-Specific Snapshot
+
+**What goes wrong:** The existing reconnect path in `room.ts` calls `turnEngine.projectState(userId)` — a `TurnBasedGameEngine`-specific method. If the arcade engine implements only the base `GameEngine` interface without a `projectState` equivalent, a reconnecting player gets no state snapshot and sees the loading spinner indefinitely.
+
+**Prevention:** The arcade engine must implement `getState()` (the base interface) to return the current tick's full broadcast state. The `room:join` reconnect path in `room.ts` must be extended to handle `RealTimeGameEngine` types with a simple `engine.getState()` call, not just `TurnBasedGameEngine`. Add the instance check alongside the existing `TurnBasedGameEngine` check.
+
+**Phase:** Reconnect handling, during server engine integration.
 
 ---
 
@@ -290,18 +364,22 @@ The new turn-based model mitigates this because actions resolve simultaneously (
 
 | Phase Topic | Likely Pitfall | Mitigation |
 |-------------|----------------|------------|
-| Engine interface definition | Stretching the real-time `GameEngine` interface to fit turn-based semantics (Pitfall 5) | Define `TurnBasedGameEngine` extending `GameEngine` before writing any implementation code |
-| Simultaneous action collect | Processing actions on receipt instead of buffering for all players (Pitfall 1) | Engine must gate resolution on all-players-submitted condition |
-| State broadcast | Broadcasting full game state including opponent hands to all clients (Pitfall 2) | Per-player state projection from day one; no shared `getState()` return value |
-| Disconnect handling | Game deadlocks when a player disconnects during collect phase (Pitfall 3) | Implement auto-pass after turn timer expiry; handle rejoin snapshot |
-| GameType registration | New game type not propagated across types, DB schema, and registry (Pitfall 9) | Coordinated single commit across shared/server/client |
-| Card balance | Flat card values assigned before combo matrix is mapped (Pitfall 6) | Build combo multiplier spreadsheet before coding card definitions |
-| Beer resource design | Hold-forever dominance with no holding cost or risk (Pitfall 8) | Add holding limit and sabotage-beer interaction in design before implementation |
-| Turn timer | Hardcoded timer that doesn't account for network latency or player experience level (Pitfall 7) | Configurable parameter from the start; start at 45 seconds |
-| Sabotage balance | Kingmaker targeting with no counterplay (Pitfall 4) | One-sabotage-per-target-per-turn limit; at least one immunity card type |
-| Trade system | Inventory index instability for multi-turn pending trades (Pitfall 11) | Use card ID not index; extend existing `realBrandId` pattern |
-| Leaderboard | Mixed snus-rpg and Snusking scores on shared leaderboard (Pitfall 12) | Confirm `gameType` scoping before first game session is persisted |
-| Event card reveal | Event drawn or changed mid-turn creating perceived unfairness (Pitfall 10) | Reveal event at turn start, before collect phase opens |
+| Engine architecture decision | Forcing arcade loop into handleEvent (Pitfall 1) | Define server-owned tick loop in init(); handleEvent for discrete input only |
+| Interface definition | Stretching existing GameEngine/TurnBasedGameEngine (Pitfall 2) | Define RealTimeGameEngine before writing engine code |
+| Server physics loop | setInterval not stopped on game end or room teardown (Pitfall 6) | destroy() clears interval first; audit all room teardown paths |
+| Socket.IO emit rate | Broadcasting 60fps state causes flooding and queue buildup (Pitfall 3) | 20 ticks/second; volatile flag for position data |
+| Client authority model | Waiting for server echo before moving local bar (Pitfall 4) | Local bar is client-authoritative; only remote bars use server state |
+| Client rendering | rAF loop not cleaned up on unmount (Pitfall 5) | onCleanup + mounted guard from day one |
+| Canvas vs DOM decision | Switching rendering strategy mid-build (Pitfall 10) | Decide before first render: DOM + CSS transforms for Solid.js integration |
+| Solid.js state | createSignal for full arcade state causes excessive re-renders (Pitfall 11) | createStore with fine-grained path updates for arcade component |
+| Collision detection | Tunneling and simultaneous-catch resolution order (Pitfall 7) | Swept collision check; explicit tie-break policy documented before impl |
+| Powerup timing | Client-side clock drift causing desync (Pitfall 8) | Tick-count-based expiry, never wall-clock |
+| Game end on disconnect | 5-minute cleanup timer inherited from turn-based game (Pitfall 9) | Arcade engine signals immediate end; does not rely on cleanup timer |
+| Object spawning | Client-side random generation diverges between players (Pitfall 13) | Server-only spawn; positions included in every emitted tick state |
+| GameType registration | New type not propagated across shared/server/client (Pitfall 12) | Checklist: shared types + registry + GameContainer branch + Prisma string |
+| Client animation smoothness | 20Hz server ticks produce stutter at 60fps without interpolation (Pitfall 14) | Linear interpolation in rAF loop between tick snapshots |
+| Reconnect handling | Arcade engine has no projectState method (Pitfall 16) | Extend room:join reconnect path to handle RealTimeGameEngine.getState() |
+| Mouse input | Raw clientX used without container offset subtraction (Pitfall 15) | getBoundingClientRect().left subtracted; result clamped to play area |
 
 ---
 
@@ -309,7 +387,8 @@ The new turn-based model mitigates this because actions resolve simultaneously (
 
 **Confidence levels:**
 
-- Pitfalls 1, 2, 3, 5, 9, 11, 12: HIGH — Derived directly from codebase analysis of `server/src/socket/game.ts`, `room.ts`, `registry.ts`, `engine.ts`, and `shared/src/types.ts`. The code patterns cited are real and observable.
-- Pitfalls 4, 6, 7, 8, 10: MEDIUM — Derived from established multiplayer card game design patterns and game balance theory. Cannot be verified against official documentation sources (no web access in this session), but these are well-understood domain patterns in card game design literature (Dominion, Race for the Galaxy, Hanabi post-mortems).
+- Pitfalls 1, 2, 3, 5, 6, 9, 12, 16: HIGH — Derived directly from codebase analysis of `server/src/socket/game.ts`, `room.ts`, `socket/index.ts`, `registry.ts`, `GameContainer.tsx`, `snusking/index.tsx`, and `shared/src/types.ts`. The code patterns and structural constraints cited are directly observable.
+- Pitfalls 4, 7, 8, 10, 13, 14: HIGH — Standard established patterns in real-time multiplayer game development. Client-authoritative local bar, server-authoritative spawning, interpolation between server ticks, swept collision, and tick-based powerup timing are canonical solutions to canonical problems in this genre.
+- Pitfalls 11, 15: MEDIUM — Solid.js-specific reactivity optimization and input coordinate handling. Patterns derived from Solid.js documentation conventions and DOM event handling fundamentals.
 
-*Analysis performed from direct codebase reads, no external sources consulted in this session.*
+*Analysis performed from direct codebase reads. No external sources consulted in this session.*
