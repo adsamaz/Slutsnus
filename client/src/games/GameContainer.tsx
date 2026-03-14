@@ -3,7 +3,7 @@ import { useSocket } from '../stores/socket';
 import { useRoom } from '../stores/room';
 import { SnuskingGame } from './snusking/index';
 import { SenusCatcherGame } from './snus-catcher/index';
-import type { SnuskingProjectedState, GameAction } from '@slutsnus/shared';
+import type { SnuskingProjectedState, SenusCatcherState, GameAction } from '@slutsnus/shared';
 
 interface GameContainerProps {
     roomCode: string;
@@ -13,9 +13,9 @@ export default function GameContainer(props: GameContainerProps) {
     const socket = useSocket();
     const [roomState] = useRoom();
 
-    const [gameState, setGameState] = createSignal<SnuskingProjectedState | null>(null);
+    const [gameState, setGameState] = createSignal<unknown>(null);
 
-    const onState = ({ state }: { state: unknown }) => setGameState(state as SnuskingProjectedState);
+    const onState = ({ state }: { state: unknown }) => setGameState(state);
 
     socket.on('game:state', onState);
     // Request current state in case we navigated here after the initial emit
@@ -43,8 +43,14 @@ export default function GameContainer(props: GameContainerProps) {
                     />
                 )}
             </Show>
-            <Show when={gameType() === 'snus-catcher'}>
-                <SenusCatcherGame roomCode={props.roomCode} />
+            <Show when={gameType() === 'snus-catcher' ? gameState() : null}>
+                {(s) => (
+                    <SenusCatcherGame
+                        state={s() as SenusCatcherState}
+                        roomCode={props.roomCode}
+                        onAction={(action) => socket.emit('game:action', { roomCode: props.roomCode, action: action as GameAction })}
+                    />
+                )}
             </Show>
         </div>
     );

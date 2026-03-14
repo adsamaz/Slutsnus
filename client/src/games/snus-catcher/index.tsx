@@ -1,5 +1,9 @@
+import type { SenusCatcherState, SenusCatcherAction } from '@slutsnus/shared';
+
 interface SenusCatcherGameProps {
     roomCode: string;
+    state: SenusCatcherState;
+    onAction: (action: SenusCatcherAction) => void;
 }
 
 export function SenusCatcherGame(_props: SenusCatcherGameProps) {
