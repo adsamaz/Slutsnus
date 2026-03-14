@@ -2,11 +2,26 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Requirement Coverage
+current_plan: 06-02 (next)
+status: roadmap created
+last_updated: "2026-03-14T23:26:23.010Z"
+progress:
+  total_phases: 3
+  completed_phases: 1
+  total_plans: 7
+  completed_plans: 4
+  percent: 88
+---
+
+---
+gsd_state_version: 1.0
+milestone: v2.0
+milestone_name: Requirement Coverage
 current_plan: Not started
 status: roadmap created
 last_updated: "2026-03-14T23:22:42.246Z"
 progress:
-  total_phases: 3
+  [█████████░] 88%
   completed_phases: 1
   total_plans: 7
   completed_plans: 3
@@ -60,17 +75,17 @@ progress:
 # Project State
 
 **Project:** Snusking Platform
-**Updated:** 2026-03-14
-**Last session:** 2026-03-14T23:22:42.243Z
+**Updated:** 2026-03-15
+**Last session:** 2026-03-14T23:25:28Z
 
 ---
 
 ## Current Status
 
 **Milestone:** 2.0 — Snus Catcher
-**Active Phase:** Phase 6 — Snus Catcher: Core Loop (1/5 plans complete)
-**Current Plan:** 06-02 (next)
-**Overall Progress:** [████████░░] 83% — 20/24 plans complete across all phases
+**Active Phase:** Phase 6 — Snus Catcher: Core Loop (3/5 plans complete)
+**Current Plan:** 06-04 (next)
+**Overall Progress:** [█████████░] 88% — 21/24 plans complete across all phases
 
 ---
 
@@ -138,6 +153,8 @@ progress:
 - Snus Catcher: SenusCatcherObject.type uses 'fresh'/'spent' string union (not boolean) — explicit discriminant for collision logic
 - Snus Catcher: objects array on SenusCatcherPlayerState (per-player, not top-level) — implements independent playfields model
 - Snus Catcher: SenusCatcherAction uses payload wrapper for bar-move xFraction — consistent with GameAction interface pattern
+- Snus Catcher: GameContainer signal widened to createSignal<unknown> — each Show block casts internally to its own state type, avoiding game-specific leakage at shared signal boundary
+- Snus Catcher: render.ts is a pure module (no SolidJS imports, no signals) — drawFrame takes localBarX as pixel X, caller owns mouse-to-pixel conversion
 
 ---
 
@@ -174,3 +191,4 @@ progress:
 - [x] Plan 05-02 complete — Human verification passed (all 4 steps); lobby title bug fixed (dynamic gameType); GAME-01 and PLAT-01 satisfied (~10 min)
 - [x] Phase 5 complete — Snus Catcher foundation verified end-to-end
 - [x] Plan 06-01 complete — SenusCatcherState/PlayerState/Object/Action types in shared/src/types.ts; 22 RED it.todo() stubs for GAME-02–09 grouped by requirement in engine.test.ts (~5 min)
+- [x] Plan 06-03 complete — GameContainer signal widened to unknown; SenusCatcherGame wired with state+onAction props; render.ts exports pure drawFrame; snus-catcher.css provides all layout and end-screen styles (~8 min)
