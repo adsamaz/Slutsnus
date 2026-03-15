@@ -1,5 +1,4 @@
 import { GameAction, PlayerInfo } from '@slutsnus/shared';
-import { SnuskingEngine } from './snusking/engine';
 import { SenusCatcherEngine } from './snus-catcher/engine';
 
 export interface GameEngine {
@@ -23,6 +22,5 @@ export interface TurnBasedGameEngine extends GameEngine {
 }
 
 export const gameRegistry: Record<string, new () => GameEngine> = {
-    'snusking': SnuskingEngine,
     'snus-catcher': SenusCatcherEngine,
 };
