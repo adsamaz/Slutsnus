@@ -723,6 +723,24 @@ h5 {
     border-radius: var(--radius);
     border: 1px solid var(--color-border);
     letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.copy-code-btn {
+    background: none;
+    border: none;
+    color: var(--color-muted);
+    cursor: pointer;
+    padding: 0 2px;
+    font-size: 0.85rem;
+    line-height: 1;
+    transition: color 0.15s;
+}
+
+.copy-code-btn:hover {
+    color: var(--color-accent);
 }
 
 .badge,
@@ -810,9 +828,9 @@ h5 {
 .game-wrapper {
     flex: 1;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1.5rem;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
     background: #0a0a0a;
 }
 

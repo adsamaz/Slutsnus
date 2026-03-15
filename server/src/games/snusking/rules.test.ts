@@ -117,14 +117,14 @@ function makeState(opts: { scores: number[]; deckSize: number; discardSize: numb
   opts.scores.forEach((score, i) => {
     const id = `player${i}`;
     players[id] = {
-      userId: id, username: `Player ${i}`, hand: [], empireScore: score,
+      userId: id, username: `Player ${i}`, hand: [], spentSnus: 0, empireScore: score,
       hasCommitted: false, isConnected: true, beer: 0,
       skipNextTurn: false, pendingDiscard: false, highNicEffect: false, immunityActive: false,
     };
   });
   return {
     roomId: 'test-room',
-    phase: 'resolve',
+    phase: 'playing',
     players,
     deck: Array(opts.deckSize).fill(null),
     discardPile: Array(opts.discardSize).fill(null),

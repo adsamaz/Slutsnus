@@ -10,7 +10,8 @@
   display: grid;
   grid-template-rows: auto 1fr auto auto;
   /* rows: opponents-area | table-center | hand/phase | player-hud */
-  min-height: 100dvh;
+  flex: 1;
+  min-height: 0;
   /* Felt table background */
   background:
     radial-gradient(ellipse 80% 60% at 50% 40%, #0e2d1a 0%, #091a0f 55%, #050e08 100%);
@@ -20,8 +21,8 @@
 /* ── Card base ──────────────────────────────────────── */
 
 .snusking-card {
-  width: 110px;
-  height: 160px;
+  width: 140px;
+  height: 200px;
   flex-shrink: 0;
   position: relative;
   border-radius: 12px;
@@ -105,6 +106,15 @@
   cursor: default;
 }
 
+/* ── Traded card ────────────────────────────────────── */
+
+.snusking-card.card-traded {
+  border-color: #e05c00;
+  box-shadow: 0 0 0 2px #e05c00,
+              0 0 14px 3px rgba(224,92,0,0.45),
+              0 4px 16px rgba(0,0,0,0.5);
+}
+
 /* ── Combo glows ────────────────────────────────────── */
 
 .snusking-card.combo-gold {
@@ -125,10 +135,17 @@
   animation: card-discard 400ms ease-in forwards;
 }
 
+.snusking-card.card-staged {
+  opacity: 0.25;
+  pointer-events: none;
+  transform: scale(0.92);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
 /* Small variant — used for opponent face-down cards */
 .snusking-card.card-sm {
-  width: 44px;
-  height: 62px;
+  width: 56px;
+  height: 78px;
   border-radius: 7px;
   border-width: 1px;
 }
@@ -165,7 +182,7 @@
 }
 
 .card-name {
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   font-weight: 800;
   color: rgba(255,255,255,0.92);
   line-height: 1.25;
@@ -176,7 +193,7 @@
 }
 
 .card-strength-badge {
-  font-size: 0.52rem;
+  font-size: 0.62rem;
   font-weight: 900;
   letter-spacing: 0.08em;
   padding: 2px 4px;
@@ -352,11 +369,46 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  transition: opacity 200ms ease;
+  position: relative;
+  border-radius: var(--radius);
+  border: 2px solid transparent;
+  padding: 4px;
+  transition: opacity 200ms ease, border-color 150ms ease, background 150ms ease;
 }
 
 .opponent-zone.disconnected {
   opacity: 0.4;
+}
+
+.opponent-zone.drop-active {
+  border-color: rgba(57,211,83,0.4);
+  background: rgba(57,211,83,0.04);
+}
+
+.opponent-zone.drop-hover {
+  border-color: var(--color-accent);
+  background: rgba(57,211,83,0.14);
+  box-shadow: 0 0 16px rgba(57,211,83,0.25);
+}
+
+.opponent-drop-hint-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  background: rgba(0,0,0,0.45);
+  border-radius: var(--radius);
+  opacity: 0;
+  transition: opacity 150ms ease;
+  pointer-events: none;
+}
+
+.opponent-drop-hint-overlay.hovered {
+  opacity: 1;
 }
 
 /* Seat position modifiers — subtle horizontal offsets
@@ -375,8 +427,8 @@
   justify-content: center;
   align-items: flex-end;
   /* enough height for fanned cards + a bit of overlap */
-  height: 72px;
-  min-width: 80px;
+  height: 96px;
+  min-width: 100px;
 }
 
 .opponent-fan-card {
@@ -413,13 +465,13 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 10px;
+  padding: 5px 12px;
   background: rgba(0,0,0,0.55);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 20px;
   backdrop-filter: blur(4px);
   white-space: nowrap;
-  font-size: 0.75rem;
+  font-size: 0.88rem;
 }
 
 .opponent-name {
@@ -454,38 +506,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 16px;
+  padding: 4px 16px;
+  min-height: 0;
 }
 
-/* The round felt table surface */
+/* Table surface — simple dark panel, not a casino table */
 .table-surface {
   position: relative;
-  width: min(340px, 90vw);
-  height: min(200px, 42vw);
-  background:
-    radial-gradient(ellipse 85% 80% at 50% 50%, #1a4a2a 0%, #0f3019 55%, #091e10 100%);
-  border-radius: 50%;
-  border: 3px solid rgba(57,211,83,0.18);
-  box-shadow:
-    0 0 0 6px rgba(0,0,0,0.4),
-    0 0 0 8px rgba(57,211,83,0.06),
-    0 8px 40px rgba(0,0,0,0.7),
-    inset 0 2px 0 rgba(255,255,255,0.04);
+  width: min(480px, 88vw);
+  background: rgba(0,0,0,0);
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-}
-
-/* Subtle felt texture lines */
-.table-surface::before {
-  content: '';
-  position: absolute;
-  inset: 6px;
-  border-radius: 50%;
-  border: 1px solid rgba(57,211,83,0.08);
-  pointer-events: none;
+  gap: 20px;
+  padding: 8px 0;
 }
 
 /* ── Event badge on the table ───────────────────────── */
@@ -522,50 +558,74 @@
 .table-piles {
   display: flex;
   align-items: flex-end;
-  gap: 20px;
+  gap: 24px;
+  width: 100%;
+  padding: 0 16px;
+  justify-content: center;
 }
 
-/* Deck stack */
+/* Deck — small, anchored left, balanced by equal spacer on right */
 .table-deck {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
+  align-self: flex-end;
+  flex: 1;
+  align-items: flex-start;
 }
 
 .deck-stack {
   position: relative;
-  width: 44px;
-  height: 62px;
+  width: 56px;
+  height: 78px;
+}
+
+.table-piles-spacer {
+  flex: 1;
 }
 
 .deck-card {
   position: absolute;
   inset: 0;
-  border-radius: 6px;
+  border-radius: 9px;
   background: linear-gradient(145deg, #173222 0%, #0f2219 100%);
   border: 1px solid #2a5239;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 
 .deck-card--3 { transform: rotate(-4deg) translateY(4px); opacity: 0.4; }
 .deck-card--2 { transform: rotate(-2deg) translateY(2px); opacity: 0.65; }
 .deck-card--1 { transform: rotate(1deg); opacity: 0.9; }
 
-/* Discard pile */
+/* Discard pile — large, centered focal point */
 .discard-pile {
   position: relative;
-  width: 52px;
-  height: 72px;
+  width: 140px;
+  height: 196px;
   flex-shrink: 0;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.discard-pile.drop-active {
+  border-color: rgba(57,211,83,0.5);
+}
+
+.discard-pile.drop-hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 20px rgba(57,211,83,0.45);
 }
 
 .discard-pile-card {
   position: absolute;
   inset: 0;
-  border-radius: 6px;
+  border-radius: 10px;
   background: linear-gradient(145deg, #173222 0%, #0f2219 100%);
   border: 1px solid #2a5239;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
 }
 
 .discard-pile-card--back2 {
@@ -604,10 +664,12 @@
   justify-content: center;
 }
 
-.discard-pile-top .snusking-card.card-sm {
+.discard-pile-top .snusking-card {
   pointer-events: none;
+  width: 100%;
+  height: 100%;
   transform: rotate(-2deg);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.7);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.7);
 }
 
 /* Shared label below deck/discard */
@@ -676,47 +738,131 @@
   gap: 0;
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
+  overflow-y: auto;
+  min-height: 0;
 }
 
-.hand-tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--color-border);
-  padding: 0 16px;
-  background: var(--color-surface);
-}
-
-.hand-tab {
-  padding: 10px 18px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--color-muted);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition: color 150ms ease, border-color 150ms ease;
-  margin-bottom: -1px;
-  letter-spacing: 0.01em;
-}
-
-.hand-tab:hover {
-  color: var(--color-text);
-}
-
-.hand-tab.active {
-  color: var(--color-accent);
-  border-bottom-color: var(--color-accent);
-}
-
-.hand-tab-content {
-  padding: 12px 16px 0;
-}
-
-.hand-tab-panel {
+.hand-cards-area {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  gap: 0;
+  padding: 8px 16px 0;
+}
+
+/* ── Decoy picker ─────────────────────────────────────── */
+
+.decoy-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(255,166,87,0.07);
+  border: 1px solid rgba(255,166,87,0.3);
+  border-radius: var(--radius);
+  margin: 0 8px;
+}
+
+.decoy-picker-title {
+  font-size: 0.82rem;
+  color: var(--color-warning);
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ── Spent snus pile ──────────────────────────────────── */
+
+.spent-snus-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 16px 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.spent-snus-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-muted);
+}
+
+.spent-snus-pile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+
+.spent-snus-card-wrapper {
+  position: relative;
+  opacity: 0.65;
+  transition: opacity 150ms ease, transform 150ms ease;
+  cursor: grab;
+}
+
+.bjudlocket-token {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 72px;
+}
+
+.bjudlocket-img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.55));
+}
+
+.bjudlocket-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #a07040;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: center;
+  line-height: 1;
+}
+
+.spent-snus-count {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.spent-snus-card-wrapper:hover {
+  opacity: 1;
+  transform: translateY(-3px);
+}
+
+.spent-snus-card-wrapper:active {
+  cursor: grabbing;
+}
+
+/* ── Drag cursor on hand cards ────────────────────────── */
+
+.hand-cards [draggable="true"],
+.spent-snus-card-wrapper[draggable="true"] {
+  cursor: grab;
+}
+
+.hand-cards [draggable="true"]:active,
+.spent-snus-card-wrapper[draggable="true"]:active {
+  cursor: grabbing;
 }
 
 .hand-cards {
@@ -725,6 +871,7 @@
   gap: 10px;
   padding: 6px 0 10px;
   min-height: 60px;
+  justify-content: center;
 }
 
 .hand-actions {
@@ -732,6 +879,7 @@
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   padding: 12px 0;
   border-top: 1px solid var(--color-border);
 }
@@ -780,6 +928,18 @@
   color: var(--color-text);
 }
 
+.hand-btn.done {
+  background: var(--color-secondary);
+  color: var(--color-muted);
+  border-color: var(--color-border);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.hand-btn.done:hover:not(:disabled) {
+  background: var(--color-secondary-hover);
+  color: var(--color-text);
+}
+
 .hand-btn.beer {
   background: rgba(255,166,87,0.15);
   color: var(--color-warning);
@@ -801,71 +961,7 @@
   background: rgba(147,112,219,0.25);
 }
 
-.hand-btn.sabo-spent {
-  background: rgba(218,54,51,0.15);
-  color: #ff7b72;
-  border-color: rgba(218,54,51,0.4);
-}
-
-.hand-btn.sabo-spent:hover:not(:disabled) {
-  background: rgba(218,54,51,0.25);
-}
-
-.hand-btn.sabo-highnic {
-  background: rgba(255,166,87,0.15);
-  color: var(--color-warning);
-  border-color: rgba(255,166,87,0.4);
-}
-
-.hand-btn.sabo-highnic:hover:not(:disabled) {
-  background: rgba(255,166,87,0.25);
-}
-
-.hand-btn.sabo-target-btn {
-  background: var(--color-secondary);
-  color: var(--color-text);
-  border-color: var(--color-border);
-}
-
-.hand-btn.sabo-target-btn:hover:not(:disabled) {
-  background: var(--color-secondary-hover);
-  border-color: var(--color-danger);
-  color: #ff7b72;
-}
-
-/* ── Sabo ────────────────────────────────────────────── */
-
-.sabo-target-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 8px 0;
-}
-
-.sabo-label {
-  font-size: 0.78rem;
-  color: var(--color-muted);
-  font-weight: 600;
-}
-
-.sabo-confirm {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  font-size: 0.9rem;
-}
-
 /* ── Trade ───────────────────────────────────────────── */
-
-.trade-section-header {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--color-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-top: 4px;
-}
 
 .incoming-trades {
   display: flex;
@@ -895,57 +991,12 @@
   border-top: 1px solid rgba(57,211,83,0.1);
 }
 
-.trade-label {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.8rem;
-  color: var(--color-muted);
-  font-weight: 600;
-}
-
-.trade-name-input,
-.trade-target-select {
-  padding: 6px 10px;
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  color: var(--color-text);
-  font-size: 0.85rem;
-  outline: none;
-  transition: border-color 150ms ease;
-  width: 100%;
-}
-
-.trade-name-input:focus,
-.trade-target-select:focus {
-  border-color: var(--color-accent);
-}
-
-.trade-modal-body {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.trade-card-info {
-  font-size: 0.85rem;
-  padding: 8px 12px;
-  background: var(--color-surface-2);
-  border-radius: var(--radius);
-  border: 1px solid var(--color-border);
-}
-
-.trade-modal-actions {
-  display: flex;
-  gap: 8px;
-}
-
 /* ── PlayerHUD ──────────────────────────────────────── */
 
 .player-hud {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 16px;
   padding: 8px 16px;
   background: rgba(0,0,0,0.7);
@@ -958,22 +1009,21 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  flex: 1;
   min-width: 0;
 }
 
 .hud-name {
-  font-size: 0.92rem;
+  font-size: 1.1rem;
   font-weight: 800;
   color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 140px;
+  max-width: 180px;
 }
 
 .hud-score {
-  font-size: 0.88rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--color-accent);
   white-space: nowrap;
@@ -1104,6 +1154,15 @@
 .timer-ring.red .timer-text {
   color: #ff7b72;
   animation: timer-pulse 1s ease-in-out infinite;
+}
+
+.timer-ring--center {
+  width: 56px;
+  height: 56px;
+}
+
+.timer-ring--center .timer-text {
+  font-size: 1rem;
 }
 
 /* ── Commit dot ─────────────────────────────────────── */

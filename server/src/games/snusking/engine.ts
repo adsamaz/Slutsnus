@@ -13,13 +13,10 @@ import type {
 import type { TurnBasedGameEngine, TurnPhase } from '../registry';
 import type { PlayerInfo, GameAction } from '@slutsnus/shared';
 import { buildDeck, shuffle, SNUSKING_EVENTS } from './deck';
-import { drawCards, spendCards, checkWinCondition, MAX_HAND_SIZE } from './rules';
+import { drawOneCard, spendCards, checkWinCondition, MAX_HAND_SIZE, STARTING_HAND_SIZE } from './rules';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const TURN_TIMER_MS = 45_000; // locked per CONTEXT.md
-
-// suppress unused import warning — MAX_HAND_SIZE is used by drawCards internally
-void MAX_HAND_SIZE;
 
 // ─── Zod Action Schemas ──────────────────────────────────────────────────────
 // Server-side validation only (REQ-NFR-02). Never imported by client.
@@ -41,6 +38,12 @@ const SnuskingActionSchema = z.discriminatedUnion('type', [
     beerCardId: z.string(),
   }),
   z.object({
+    type: z.literal('snusking:trade-offer-decoy'),
+    targetPlayerId: z.string(),
+    decoyCardInstanceId: z.string(),
+  }),
+  z.object({ type: z.literal('snusking:activate-immunity') }),
+  z.object({
     type: z.literal('snusking:sabotage-spentsnus'),
     targetPlayerId: z.string(),
     cardInstanceId: z.string(),
@@ -50,14 +53,12 @@ const SnuskingActionSchema = z.discriminatedUnion('type', [
     targetPlayerId: z.string(),
     cardInstanceId: z.string(),
   }),
-  z.object({ type: z.literal('snusking:activate-immunity') }),
 ]);
 
 // ─── Engine ──────────────────────────────────────────────────────────────────
 
 export class SnuskingEngine implements TurnBasedGameEngine {
   private masterState!: SnuskingMasterState;
-  private pendingActions = new Map<string, SnuskingAction>();
   private turnTimer?: ReturnType<typeof setTimeout>;
   private onStateUpdate: (state: unknown) => void = () => {};
 
@@ -66,11 +67,13 @@ export class SnuskingEngine implements TurnBasedGameEngine {
   init(roomId: string, players: PlayerInfo[], onStateUpdate: (state: unknown) => void): void {
     this.onStateUpdate = onStateUpdate;
     const playerMap: Record<string, SnuskingPlayerState> = {};
+    const turnOrder = players.map(p => p.userId);
     for (const p of players) {
       playerMap[p.userId] = {
         userId: p.userId,
         username: p.username,
         hand: [],
+        spentSnus: 0,
         empireScore: 0,
         hasCommitted: false,
         isConnected: true,
@@ -83,7 +86,7 @@ export class SnuskingEngine implements TurnBasedGameEngine {
     }
     this.masterState = {
       roomId,
-      phase: 'draw',
+      phase: 'playing',
       players: playerMap,
       deck: shuffle(buildDeck()),
       discardPile: [],
@@ -93,41 +96,46 @@ export class SnuskingEngine implements TurnBasedGameEngine {
       status: 'active',
       endReason: null,
       results: null,
+      activePlayerId: null,
+      turnOrder,
     };
-    this.startDrawPhase();
+    // Deal starting hand (STARTING_HAND_SIZE cards each, round-robin)
+    for (let i = 0; i < STARTING_HAND_SIZE; i++) {
+      for (const playerId of turnOrder) {
+        this.masterState = drawOneCard(this.masterState, playerId);
+      }
+    }
+    this.startNextTurn();
   }
 
   handleEvent(playerId: string, action: GameAction): void {
-    if (this.masterState.phase !== 'planning') return;
-    if (this.pendingActions.has(playerId)) return; // already committed — idempotent
+    if (this.masterState.phase !== 'playing') return;
+    // Only the active player may act
+    if (this.masterState.activePlayerId !== playerId) return;
+    if (this.masterState.players[playerId]?.hasCommitted) return; // already committed — idempotent
 
     // Validate with Zod — silently reject invalid payloads (REQ-NFR-02)
     const parsed = SnuskingActionSchema.safeParse(action);
     if (!parsed.success) return;
 
     const validated = parsed.data;
-    this.pendingActions.set(playerId, validated);
+
+    // Resolve the action immediately
+    this.resolveAction(playerId, validated);
+
     this.masterState.players[playerId].hasCommitted = true;
 
-    // Register trade offers (resolved during reveal)
-    if (validated.type === 'snusking:trade-offer') {
-      this.registerTradeOffer(playerId, validated);
+    // Win condition check after each action
+    const endReason = checkWinCondition(this.masterState);
+    if (endReason) {
+      this.endGame(endReason);
+      return;
     }
 
-    // Sabotage and immunity actions are stored in pendingActions — delivered in startResolve()
-    // No immediate side effects here.
-
-    // Emit only commit status update — NOT the action content (REQ-MULTI-02, anti-pattern guard)
-    this.emitPerPlayer();
-
-    if (this.allPlayersActed()) {
-      this.startReveal();
-    }
+    this.advanceTurn();
   }
 
   getState(): unknown {
-    // Returns master state — used only by registry/platform internals.
-    // Per-player state: use projectState(playerId).
     return this.masterState;
   }
 
@@ -167,12 +175,14 @@ export class SnuskingEngine implements TurnBasedGameEngine {
       opponents,
       deckCount: state.deck.length,
       discardCount: state.discardPile.length,
+      discardTop: state.discardPile[state.discardPile.length - 1] ?? null,
       turnNumber: state.turnNumber,
       pendingTradeOffers,
       status: state.status,
       endReason: state.endReason,
       results: state.results,
       currentEvent: state.currentEvent,
+      activePlayerId: state.activePlayerId,
     };
   }
 
@@ -180,132 +190,108 @@ export class SnuskingEngine implements TurnBasedGameEngine {
     return this.masterState.phase;
   }
 
-  // ── Phase transitions ───────────────────────────────────────────────────
+  // ── Turn management ─────────────────────────────────────────────────────
 
-  private startDrawPhase(): void {
-    this.masterState.phase = 'draw';
-    this.pendingActions.clear();
-    // Reset commit status for all players
-    for (const p of Object.values(this.masterState.players)) {
-      p.hasCommitted = false;
-    }
-
+  /** Begin a new round: pick event, increment beer, handle pending effects, seat first player. */
+  private startNextTurn(): void {
+    console.log(`[snusking] startNextTurn turnNumber=${this.masterState.turnNumber} order=${JSON.stringify(this.masterState.turnOrder)}`);
     // Select event for this turn
     const eventIdx = randomInt(0, SNUSKING_EVENTS.length);
     this.masterState.currentEvent = SNUSKING_EVENTS[eventIdx];
 
-    // Beer increment (+1/turn, cap 3)
-    for (const player of Object.values(this.masterState.players)) {
-      player.beer = Math.min(player.beer + 1, 3);
-    }
-
-    // Handle skipNextTurn (spent snus sabotage from previous turn)
-    for (const [playerId, player] of Object.entries(this.masterState.players)) {
-      if (player.skipNextTurn) {
-        this.pendingActions.set(playerId, { type: 'snusking:pass' });
-        player.hasCommitted = true;
-        player.skipNextTurn = false;
+    // Beer increment (+1/turn, cap 3) — skip on the very first turn
+    if (this.masterState.turnNumber > 1) {
+      for (const player of Object.values(this.masterState.players)) {
+        player.beer = Math.min(player.beer + 1, 3);
       }
     }
 
-    // Handle pendingDiscard (high-nic sabotage from previous turn)
+    // pendingDiscard: discard one card from hand (highNic sabotage effect from previous turn)
     for (const player of Object.values(this.masterState.players)) {
       if (player.pendingDiscard && player.hand.length > 0) {
         const [discarded] = player.hand.splice(0, 1);
         this.masterState.discardPile.push(discarded);
         player.pendingDiscard = false;
-        // highNicEffect stays true — emitted once in startPlanningPhase, then cleared
       }
     }
 
-    // Draw cards for all players up to MAX_HAND_SIZE
-    for (const playerId of Object.keys(this.masterState.players)) {
-      this.masterState = drawCards(this.masterState, playerId);
-    }
-    // Immediately transition to planning
-    this.startPlanningPhase();
-  }
-
-  private startPlanningPhase(): void {
-    this.masterState.phase = 'planning';
-    this.emitPerPlayer();
-    // Clear transient highNicEffect after one emit cycle
+    // Clear highNicEffect and hasCommitted
     for (const player of Object.values(this.masterState.players)) {
       player.highNicEffect = false;
+      player.hasCommitted = false;
     }
-    // Start 45-second timer — auto-pass any uncommitted players on expiry (REQ-CORE-05)
-    this.turnTimer = setTimeout(() => {
-      this.autoPassUncommitted();
-      this.startReveal();
-    }, TURN_TIMER_MS);
+
+    // skipNextTurn: auto-commit skipped players
+    for (const playerId of this.masterState.turnOrder) {
+      const player = this.masterState.players[playerId];
+      if (player?.skipNextTurn) {
+        player.hasCommitted = true;
+        player.skipNextTurn = false;
+      }
+    }
+
+    this.masterState.activePlayerId = null;
+    this.advanceTurn();
   }
 
-  private startReveal(): void {
+  private advanceTurn(): void {
     if (this.turnTimer) {
       clearTimeout(this.turnTimer);
       this.turnTimer = undefined;
     }
-    this.masterState.phase = 'reveal';
-    this.emitPerPlayer();
-    // Brief reveal display, then resolve
-    // In Phase 3, the client will animate this window. For now, transition immediately.
-    setImmediate(() => this.startResolve());
+    // Find the next player in order who hasn't acted yet
+    const committed = Object.entries(this.masterState.players).map(([id, p]) => `${id}:${p.hasCommitted}`);
+    const nextPlayer = this.masterState.turnOrder.find(id => !this.masterState.players[id]?.hasCommitted);
+    console.log(`[snusking] advanceTurn order=${JSON.stringify(this.masterState.turnOrder)} committed=[${committed}] next=${nextPlayer ?? 'END_OF_ROUND'}`);
+    if (nextPlayer) {
+      // Draw one card for the incoming active player (at start of their turn)
+      if (this.masterState.players[nextPlayer] &&
+          this.masterState.players[nextPlayer].hand.length < MAX_HAND_SIZE) {
+        this.masterState = drawOneCard(this.masterState, nextPlayer);
+      }
+      this.masterState.activePlayerId = nextPlayer;
+      this.emitPerPlayer();
+      this.startPlayerTimer();
+    } else {
+      // All players have acted — end of round
+      this.masterState.activePlayerId = null;
+      this.masterState.turnNumber += 1;
+
+      // Rotate turn order for next round (first player moves to end)
+      const order = [...this.masterState.turnOrder];
+      const first = order.shift()!;
+      order.push(first);
+      this.masterState.turnOrder = order;
+
+      this.emitPerPlayer();
+
+      // Advance to next turn
+      setImmediate(() => this.startNextTurn());
+    }
   }
 
-  private startResolve(): void {
-    this.masterState.phase = 'resolve';
+  // ── Action resolution ───────────────────────────────────────────────────
 
-    // Step 1: Activate immunity (must happen before sabotage delivery)
-    for (const [playerId, action] of this.pendingActions) {
-      if (action.type === 'snusking:activate-immunity') {
+  private resolveAction(playerId: string, action: SnuskingAction): void {
+    switch (action.type) {
+      case 'snusking:activate-immunity': {
         const player = this.masterState.players[playerId];
         if (player && player.beer >= 1) {
           player.immunityActive = true;
           player.beer -= 1;
         }
-      }
-    }
-
-    // Step 2: Deliver sabotage (one-per-target, immunity blocks)
-    const sabotagedThisTurn = new Set<string>();
-    for (const [senderId, action] of this.pendingActions) {
-      if (
-        action.type !== 'snusking:sabotage-spentsnus' &&
-        action.type !== 'snusking:sabotage-highnic'
-      ) continue;
-
-      const targetId = action.targetPlayerId;
-      if (sabotagedThisTurn.has(targetId)) continue; // one-per-target limit
-      const target = this.masterState.players[targetId];
-      if (!target || target.immunityActive) continue; // blocked by immunity
-
-      sabotagedThisTurn.add(targetId);
-
-      // Transfer card from sender to target
-      const sender = this.masterState.players[senderId];
-      const cardIdx = sender?.hand.findIndex(c => c.instanceId === action.cardInstanceId) ?? -1;
-      if (cardIdx !== -1 && sender) {
-        const [card] = sender.hand.splice(cardIdx, 1);
-        target.hand.push(card);
+        break;
       }
 
-      if (action.type === 'snusking:sabotage-spentsnus') {
-        target.skipNextTurn = true;
-      } else {
-        target.pendingDiscard = true;
-        target.highNicEffect = true;
-      }
-    }
-
-    // Step 3: Score spend actions (thread currentEvent through)
-    for (const [playerId, action] of this.pendingActions) {
-      if (action.type === 'snusking:spend') {
+      case 'snusking:spend': {
         this.masterState = spendCards(
           this.masterState, playerId, action.cardIds,
           this.masterState.currentEvent,
         );
+        break;
       }
-      if (action.type === 'snusking:spend-with-beer') {
+
+      case 'snusking:spend-with-beer': {
         const player = this.masterState.players[playerId];
         if (player && player.beer >= 1) {
           player.beer -= 1;
@@ -315,37 +301,70 @@ export class SnuskingEngine implements TurnBasedGameEngine {
             action.beerCardId,
           );
         } else {
-          // Not enough beer — treat as plain spend (no bonus)
           this.masterState = spendCards(
             this.masterState, playerId, action.cardIds,
             this.masterState.currentEvent,
           );
         }
+        break;
       }
-      // pass: nothing to do
+
+      case 'snusking:trade-offer': {
+        this.registerTradeOffer(playerId, action);
+        break;
+      }
+
+      case 'snusking:trade-offer-decoy': {
+        this.registerDecoyTradeOffer(playerId, action);
+        break;
+      }
+
+      case 'snusking:trade-accept': {
+        this.resolveTradeAccept(playerId, action.offerId);
+        break;
+      }
+
+      case 'snusking:trade-decline': {
+        this.masterState.pendingTradeOffers = this.masterState.pendingTradeOffers.filter(
+          o => o.offerId !== action.offerId,
+        );
+        break;
+      }
+
+      case 'snusking:sabotage-spentsnus':
+      case 'snusking:sabotage-highnic': {
+        const targetId = action.targetPlayerId;
+        const target = this.masterState.players[targetId];
+        if (!target) break;
+        if (target.immunityActive) break; // blocked by immunity
+
+        const attacker = this.masterState.players[playerId];
+        if (!attacker) break;
+        const cardIdx = attacker.hand.findIndex(c => c.instanceId === action.cardInstanceId);
+        if (cardIdx === -1) break;
+        const [card] = attacker.hand.splice(cardIdx, 1);
+        target.hand.push(card);
+
+        if (action.type === 'snusking:sabotage-spentsnus') {
+          target.skipNextTurn = true;
+        } else {
+          target.pendingDiscard = true;
+          target.highNicEffect = true;
+        }
+        break;
+      }
+
+      case 'snusking:pass':
+        // nothing to do
+        break;
     }
 
-    // Step 4: Resolve accepted trades with displayName masking
-    this.resolveAcceptedTrades();
-
-    // Step 5: Clear transient flags
-    for (const player of Object.values(this.masterState.players)) {
-      player.immunityActive = false;
-    }
-
-    // Step 6: Win condition check AFTER scoring (REQ-CORE-06, REQ-CORE-07)
-    const endReason = checkWinCondition(this.masterState);
-    if (endReason) {
-      this.endGame(endReason);
-      return;
-    }
-
-    this.masterState.turnNumber += 1;
-    this.emitPerPlayer();
-
-    // Advance to next draw phase
-    setImmediate(() => this.startDrawPhase());
+    // Clear immunity after their turn resolves
+    const player = this.masterState.players[playerId];
+    if (player) player.immunityActive = false;
   }
+
+  // ── End game ────────────────────────────────────────────────────────────
 
   private endGame(endReason: GameEndReason): void {
     this.masterState.phase = 'ended';
@@ -362,34 +381,26 @@ export class SnuskingEngine implements TurnBasedGameEngine {
       rank: i + 1,
     })) as GameResult[];
 
-    // Emit end state per player — onStateUpdate handles leaderboard write (via room.ts)
     this.emitPerPlayer();
     this.destroy();
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────
 
-  private allPlayersActed(): boolean {
-    // Only count active/connected players and those who already committed
-    // (disconnected players don't block the round)
-    const activePlayerIds = Object.values(this.masterState.players)
-      .filter(p => p.isConnected || this.pendingActions.has(p.userId))
-      .map(p => p.userId);
-    return activePlayerIds.every(id => this.pendingActions.has(id));
-  }
-
-  private autoPassUncommitted(): void {
-    for (const playerId of Object.keys(this.masterState.players)) {
-      if (!this.pendingActions.has(playerId)) {
-        this.pendingActions.set(playerId, { type: 'snusking:pass' });
-        this.masterState.players[playerId].hasCommitted = true;
+  private startPlayerTimer(): void {
+    if (this.turnTimer) clearTimeout(this.turnTimer);
+    this.turnTimer = setTimeout(() => {
+      // Auto-pass the current player on timeout
+      const activeId = this.masterState.activePlayerId;
+      if (activeId && !this.masterState.players[activeId]?.hasCommitted) {
+        this.masterState.players[activeId].hasCommitted = true;
+        this.emitPerPlayer();
+        this.advanceTurn();
       }
-    }
+    }, TURN_TIMER_MS);
   }
 
   private emitPerPlayer(): void {
-    // Per-player projection — NEVER room-broadcast (REQ-NFR-01, REQ-MULTI-01)
-    // The { forUserId, state } wrapper is read by room.ts onUpdate callback
     for (const playerId of Object.keys(this.masterState.players)) {
       this.onStateUpdate({
         forUserId: playerId,
@@ -410,33 +421,44 @@ export class SnuskingEngine implements TurnBasedGameEngine {
       fromPlayerId,
       toPlayerId: action.targetPlayerId,
       cardInstanceId: action.cardInstanceId,
-      displayName: action.displayName ?? realName, // fake name or real name
+      displayName: action.displayName ?? realName,
       expiresAtTurn: this.masterState.turnNumber,
     });
   }
 
-  private resolveAcceptedTrades(): void {
-    // Phase 2: trades — find accepted offers and transfer cards with displayName masking
-    const acceptedOfferIds = new Set<string>();
-    for (const [, action] of this.pendingActions) {
-      if (action.type === 'snusking:trade-accept') {
-        acceptedOfferIds.add(action.offerId);
-      }
-    }
-    for (const offer of this.masterState.pendingTradeOffers) {
-      if (!acceptedOfferIds.has(offer.offerId)) continue;
-      const fromPlayer = this.masterState.players[offer.fromPlayerId];
-      const toPlayer = this.masterState.players[offer.toPlayerId];
-      if (!fromPlayer || !toPlayer) continue;
-      const cardIdx = fromPlayer.hand.findIndex(c => c.instanceId === offer.cardInstanceId);
-      if (cardIdx === -1) continue;
-      const [card] = fromPlayer.hand.splice(cardIdx, 1);
-      // Mask real name with the displayName from the trade offer
-      card.name = offer.displayName;
-      toPlayer.hand.push(card);
-    }
-    // Clear resolved offers
-    this.masterState.pendingTradeOffers = [];
+  private registerDecoyTradeOffer(
+    fromPlayerId: string,
+    action: { type: 'snusking:trade-offer-decoy'; targetPlayerId: string; decoyCardInstanceId: string },
+  ): void {
+    const player = this.masterState.players[fromPlayerId];
+    if (!player) return;
+    const realCard = player.hand.find(c => c.instanceId === action.decoyCardInstanceId);
+    if (!realCard || player.spentSnus === 0) return;
+    this.masterState.pendingTradeOffers.push({
+      offerId: uuidv4(),
+      fromPlayerId,
+      toPlayerId: action.targetPlayerId,
+      cardInstanceId: action.decoyCardInstanceId,
+      displayName: realCard.name,
+      expiresAtTurn: this.masterState.turnNumber,
+    });
+  }
+
+  private resolveTradeAccept(playerId: string, offerId: string): void {
+    const offerIdx = this.masterState.pendingTradeOffers.findIndex(o => o.offerId === offerId && o.toPlayerId === playerId);
+    if (offerIdx === -1) return;
+    const offer = this.masterState.pendingTradeOffers[offerIdx];
+    this.masterState.pendingTradeOffers.splice(offerIdx, 1);
+
+    const fromPlayer = this.masterState.players[offer.fromPlayerId];
+    const toPlayer = this.masterState.players[offer.toPlayerId];
+    if (!fromPlayer || !toPlayer) return;
+    const cardIdx = fromPlayer.hand.findIndex(c => c.instanceId === offer.cardInstanceId);
+    if (cardIdx === -1) return;
+    const [card] = fromPlayer.hand.splice(cardIdx, 1);
+    card.name = offer.displayName;
+    card.traded = true;
+    toPlayer.hand.push(card);
   }
 
   private createEmptyPlayer(playerId: string): SnuskingPlayerState {
@@ -444,6 +466,7 @@ export class SnuskingEngine implements TurnBasedGameEngine {
       userId: playerId,
       username: 'Unknown',
       hand: [],
+      spentSnus: 0,
       empireScore: 0,
       hasCommitted: false,
       isConnected: false,

@@ -9,6 +9,7 @@ interface SnuskingCardProps {
   card?: SnuskingCardInstance;
   selected?: boolean;
   disabled?: boolean;
+  staged?: boolean;
   comboLevel?: 'gold' | 'silver' | null;
   discarding?: boolean;
   sm?: boolean;
@@ -62,6 +63,8 @@ export const SnuskingCard: Component<SnuskingCardProps> = (props) => {
     if (props.comboLevel === 'gold') parts.push('combo-gold');
     if (props.comboLevel === 'silver') parts.push('combo-silver');
     if (props.discarding) parts.push('discarding');
+    if (props.staged) parts.push('card-staged');
+    if (props.card?.traded) parts.push('card-traded');
     if (props.sm) parts.push('card-sm');
     return parts.join(' ');
   };

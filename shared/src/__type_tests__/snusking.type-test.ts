@@ -52,11 +52,12 @@ const _tradeOffer: SnuskingTradeOffer = {
 };
 void _tradeOffer;
 
-// SnuskingPlayerState shape — includes Phase 2 sabotage flags
+// SnuskingPlayerState shape
 const _playerState: SnuskingPlayerState = {
   userId: 'u1',
   username: 'Alice',
   hand: [],
+  spentSnus: 0,
   empireScore: 0,
   hasCommitted: false,
   isConnected: true,
@@ -82,24 +83,26 @@ void _opponentState;
 
 // SnuskingProjectedState shape — includes Phase 2 currentEvent
 const _projState: SnuskingProjectedState = {
-  phase: 'planning',
+  phase: 'playing',
   self: _playerState,
   opponents: [_opponentState],
   deckCount: 20,
   discardCount: 5,
+  discardTop: null,
   turnNumber: 2,
   pendingTradeOffers: [],
   status: 'active',
   endReason: null,
   results: null,
   currentEvent: null,
+  activePlayerId: 'u1',
 };
 void _projState;
 
 // SnuskingMasterState shape
 const _masterState: SnuskingMasterState = {
   roomId: 'room-1',
-  phase: 'reveal',
+  phase: 'playing',
   players: { u1: _playerState },
   deck: [],
   discardPile: [],
@@ -109,6 +112,8 @@ const _masterState: SnuskingMasterState = {
   status: 'active',
   endReason: null,
   results: null,
+  activePlayerId: 'u1',
+  turnOrder: ['u1'],
 };
 void _masterState;
 
@@ -138,9 +143,8 @@ const _tradeAcceptAction: SnuskingAction = { type: 'snusking:trade-accept', offe
 const _tradeDeclineAction: SnuskingAction = { type: 'snusking:trade-decline', offerId: 'offer-1' };
 void _spendAction; void _passAction; void _tradeOfferAction; void _tradeAcceptAction; void _tradeDeclineAction;
 
-// SnuskingAction — Phase 2 variants
+// SnuskingAction — additional variants
 const _spendWithBeer: SnuskingAction = { type: 'snusking:spend-with-beer', cardIds: ['uuid-1'], beerCardId: 'beer-1' };
-const _sabotageSpentSnus: SnuskingAction = { type: 'snusking:sabotage-spentsnus', targetPlayerId: 'p2', cardInstanceId: 'card-1' };
-const _sabotageHighNic: SnuskingAction = { type: 'snusking:sabotage-highnic', targetPlayerId: 'p2', cardInstanceId: 'card-2' };
+const _tradeOfferDecoy: SnuskingAction = { type: 'snusking:trade-offer-decoy', targetPlayerId: 'p2', decoyCardInstanceId: 'card-2' };
 const _activateImmunity: SnuskingAction = { type: 'snusking:activate-immunity' };
-void _spendWithBeer; void _sabotageSpentSnus; void _sabotageHighNic; void _activateImmunity;
+void _spendWithBeer; void _tradeOfferDecoy; void _activateImmunity;

@@ -3,6 +3,7 @@ import { shuffle } from './deck';
 
 // Locked constant per CONTEXT.md decisions
 export const MAX_HAND_SIZE = 5;
+export const STARTING_HAND_SIZE = 3;
 export const SCORE_THRESHOLD = 200;
 
 // ─── Scoring ─────────────────────────────────────────────────────────────────
@@ -70,6 +71,33 @@ export function checkWinCondition(state: SnuskingMasterState): GameEndReason | n
 // If draw pile empties mid-draw, reshuffles discard into deck and continues.
 // If both deck and discard are empty, stops (slut snus condition — engine detects separately).
 
+/**
+ * Draws exactly one card for a player. If the deck is empty, reshuffles discard first.
+ * If both are empty, returns state unchanged (slut snus condition).
+ */
+export function drawOneCard(state: SnuskingMasterState, playerId: string): SnuskingMasterState {
+  const player = state.players[playerId];
+  if (!player) return state;
+
+  let deck = [...state.deck];
+  let discardPile = [...state.discardPile];
+
+  if (deck.length === 0) {
+    if (discardPile.length === 0) return state; // slut snus
+    deck = shuffle(discardPile);
+    discardPile = [];
+  }
+
+  const hand = [...player.hand, deck.pop()!];
+
+  return {
+    ...state,
+    deck,
+    discardPile,
+    players: { ...state.players, [playerId]: { ...player, hand } },
+  };
+}
+
 export function drawCards(state: SnuskingMasterState, playerId: string): SnuskingMasterState {
   const player = state.players[playerId];
   if (!player) return state;
@@ -124,6 +152,7 @@ export function spendCards(
       [playerId]: {
         ...player,
         hand: remainingHand,
+        spentSnus: (player.spentSnus ?? 0) + spentCards.length,
         empireScore: player.empireScore + points,
       },
     },

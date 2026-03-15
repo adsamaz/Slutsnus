@@ -6,7 +6,26 @@
       "Bash(git config:*)",
       "Bash(ls c:/Users/addes/Git/Slutsnus/*.json c:/Users/addes/Git/Slutsnus/*.js)",
       "Bash(npm show:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(wc -l .planning/codebase/*.md)",
+      "Bash(grep -E '\\(sk-[a-zA-Z0-9]{20,}|sk_live_[a-zA-Z0-9]+|sk_test_[a-zA-Z0-9]+|ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36}|glpat-[a-zA-Z0-9_-]+|AKIA[A-Z0-9]{16}|xox[baprs]-[a-zA-Z0-9-]+|-----BEGIN.*PRIVATE KEY|eyJ[a-zA-Z0-9_-]+\\\\.eyJ[a-zA-Z0-9_-]+\\\\.\\)' .planning/codebase/*.md)",
+      "Bash(node \"C:/Users/addes/.claude/get-shit-done/bin/gsd-tools.cjs\" commit \"docs: map existing codebase\" --files .planning/codebase/STACK.md .planning/codebase/INTEGRATIONS.md .planning/codebase/ARCHITECTURE.md .planning/codebase/STRUCTURE.md .planning/codebase/CONVENTIONS.md .planning/codebase/TESTING.md .planning/codebase/CONCERNS.md)",
+      "Bash(node \"$HOME/.claude/get-shit-done/bin/gsd-tools.cjs\" commit \"docs: complete project research\" --files .planning/research/)",
+      "Bash(node \"$HOME/.claude/get-shit-done/bin/gsd-tools.cjs\" roadmap update-plan-progress \"01\")",
+      "Bash(node \"C:/Users/addes/.claude/get-shit-done/bin/gsd-tools.cjs\" roadmap update-plan-progress \"01\")",
+      "Bash(xargs cat:*)",
+      "Bash(find /c/Users/addes/Git/Slutsnus -name *.ts -path */shared/* -name *types*)",
+      "Bash(npm test:*)",
+      "Bash(node \"C:/Users/addes/.claude/get-shit-done/bin/gsd-tools.cjs\" phase complete \"01\")",
+      "Skill(gsd:progress)",
+      "Skill(gsd:progress:*)",
+      "Bash(node \"$HOME/.claude/get-shit-done/bin/gsd-tools.cjs\" roadmap update-plan-progress \"02\" \"05\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(npx tsc:*)",
+      "Bash(xargs grep:*)",
+      "Skill(gsd:discuss-phase)",
+      "Skill(gsd:discuss-phase:*)",
+      "Bash(ls .planning/phases/03-client-ui-and-reveal-experience/*SUMMARY*)"
     ]
   }
 }
