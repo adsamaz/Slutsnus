@@ -112,6 +112,11 @@ export function roomHandlers(
                 socket.emit('room:error', { message: 'Only the host can start the game' });
                 return;
             }
+            const isSolo = room.players.length === 1 && room.players[0].userId === room.hostId;
+            if (!isSolo && room.players.length < 2) {
+                socket.emit('room:error', { message: 'Need at least 2 players to start' });
+                return;
+            }
             if (!room.players.filter((p: { userId: string; ready: boolean }) => p.userId !== room.hostId).every((p: { userId: string; ready: boolean }) => p.ready)) {
                 socket.emit('room:error', { message: 'Not all players are ready' });
                 return;
@@ -134,7 +139,7 @@ export function roomHandlers(
             const engine = new EngineClass();
 
             const onUpdate = async (state: unknown) => {
-                // Per-player projection: all Snusking state updates use { forUserId, state } wrapper
+                // Per-player projection: turn-based state updates use { forUserId, state } wrapper
                 const s = state as { forUserId?: string; state: unknown };
                 if (s.forUserId) {
                     // Route to the target player's sockets only (REQ-NFR-01, REQ-MULTI-01)
@@ -145,7 +150,7 @@ export function roomHandlers(
                         }
                     }
                 } else {
-                    // Fallback room-broadcast (not used by Snusking — kept for safety)
+                    // Fallback room-broadcast
                     io.to(roomCode).emit('game:state', { state });
                 }
 

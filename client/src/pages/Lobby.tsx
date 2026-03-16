@@ -44,7 +44,7 @@ export default function Lobby() {
 
     const allReady = (): boolean => {
         const r = room();
-        if (!r) return false;
+        if (!r || r.players.length < 2) return false;
         return r.players.filter((p) => p.userId !== r.hostId).every((p) => p.ready);
     };
 
@@ -78,12 +78,12 @@ export default function Lobby() {
     return (
         <main class="page lobby-page">
             <Show when={joining()}>
-                <p>Ansluter till lobby...</p>
+                <p>Connecting to lobby...</p>
             </Show>
             <Show when={!joining() && error()}>
                 <div class="card" style={{ 'max-width': '480px', margin: '2rem auto' }}>
                     <p class="error-text">{error()}</p>
-                    <Button onClick={() => navigate('/')}>Tillbaka</Button>
+                    <Button onClick={() => navigate('/')}>Back</Button>
                 </div>
             </Show>
             <Show when={!joining() && !error() && room()}>
@@ -92,21 +92,21 @@ export default function Lobby() {
                         <div class="lobby-main card">
                             <div class="lobby-header">
                                 <div class="lobby-title-row">
-                                    <h2>{r().gameType === 'snusregn' ? 'Snusregn' : ''} — Lobby</h2>
+                                    <h2>{r().gameType === 'snusregn' ? 'Snusrain' : ''} — Lobby</h2>
                                     <span class="lobby-code">
-                                        Kod: <strong>{r().code}</strong>
-                                        <button class="copy-code-btn" onClick={handleCopyCode} title="Kopiera rumskod">
+                                        Code: <strong>{r().code}</strong>
+                                        <button class="copy-code-btn" onClick={handleCopyCode} title="Copy room code">
                                             {copied() ? '✓' : '⧉'}
                                         </button>
                                     </span>
                                 </div>
                                 <span class={`game-badge ${r().gameType}`}>
-                                    {r().gameType === 'snusregn' ? '🫙 Snusregn' : r().gameType}
+                                    {r().gameType === 'snusregn' ? '🫙 Snusrain' : r().gameType}
                                 </span>
                             </div>
 
                             <div class="player-list">
-                                <h3>Spelare ({r().players.length} / 4)</h3>
+                                <h3>Players ({r().players.length} / 4)</h3>
                                 <For each={r().players}>
                                     {(player: RoomPlayer) => (
                                         <div class="player-item">
@@ -117,7 +117,7 @@ export default function Lobby() {
                                             </Show>
                                             <Show when={player.userId !== r().hostId}>
                                                 <span class={`ready-badge ${player.ready ? 'ready' : 'not-ready'}`}>
-                                                    {player.ready ? '✓ Redo' : '⏳ Inte redo'}
+                                                    {player.ready ? '✓ Ready' : '⏳ Not ready'}
                                                 </span>
                                             </Show>
                                         </div>
@@ -132,7 +132,7 @@ export default function Lobby() {
                                         onClick={handleReady}
                                         disabled={ready()}
                                     >
-                                        {ready() ? '✓ Redo' : 'Redo'}
+                                        {ready() ? '✓ Ready' : 'Ready'}
                                     </Button>
                                 </Show>
                                 <Show when={isHost()}>
@@ -141,19 +141,19 @@ export default function Lobby() {
                                         onClick={handleStart}
                                         disabled={!allReady() || starting()}
                                     >
-                                        {starting() ? 'Startar...' : 'Starta spel'}
+                                        {starting() ? 'Starting...' : 'Start game'}
                                     </Button>
                                 </Show>
                                 <Button class="btn btn-danger" onClick={handleLeave}>
-                                    Lämna
+                                    Leave
                                 </Button>
                             </div>
                         </div>
 
                         <div class="lobby-sidebar card">
-                            <h3>Bjud in vänner</h3>
+                            <h3>Invite friends</h3>
                             <Show when={onlineAcceptedFriends().length === 0}>
-                                <p class="muted">Inga vänner online</p>
+                                <p class="muted">No friends online</p>
                             </Show>
                             <For each={onlineAcceptedFriends()}>
                                 {(f) => (
@@ -165,7 +165,7 @@ export default function Lobby() {
                                             style={{ 'margin-left': 'auto', padding: '4px 10px', 'font-size': '0.8rem' }}
                                             onClick={() => handleInvite(f.userId)}
                                         >
-                                            Bjud in
+                                            Invite
                                         </Button>
                                     </div>
                                 )}

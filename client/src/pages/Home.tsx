@@ -11,8 +11,8 @@ type Game = { id: GameType; name: string; description: string; badges: string[];
 const GAMES: Game[] = [
     {
         id: 'snusregn',
-        name: 'Snusregn',
-        tagline: 'Catch the rain. Dodge the sludge.',
+        name: 'Snusrain',
+        tagline: 'Catch the snus. Watch out for bjudlocket.',
         description: 'Snus pouches rain from the sky in your own lane. Catch fresh ones, avoid spent ones. Powerups and debuffs included. 1v1 arcade.',
         badges: ['2 Players', 'Arcade', 'Real-time'],
     },
@@ -83,7 +83,7 @@ export default function Home() {
             <section class="hero">
                 <p class="hero-eyebrow">Browser games with friends</p>
                 <h1 class="hero-title">Slutsnus</h1>
-                <p class="hero-sub">Real-time co-op. Lobbies. Betrayal included.</p>
+                <p class="hero-sub">For people who love snus and games</p>
             </section>
 
             <section class="home-games-section">

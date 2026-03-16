@@ -9,22 +9,30 @@ router.use(authMiddleware);
 router.get('/:gameType', async (req: AuthenticatedRequest, res: Response) => {
     const { gameType } = req.params;
     try {
-        const entries = await prisma.leaderboardEntry.findMany({
+        const rows = await prisma.leaderboardEntry.groupBy({
+            by: ['userId'],
             where: { gameType },
-            orderBy: { score: 'desc' },
+            _max: { score: true, recordedAt: true },
+            orderBy: { _max: { score: 'desc' } },
             take: 50,
-            include: { user: { select: { username: true } } },
         });
 
-        const result: LeaderboardEntry[] = entries.map((e, i) => ({
+        const userIds = rows.map(r => r.userId);
+        const users = await prisma.user.findMany({
+            where: { id: { in: userIds } },
+            select: { id: true, username: true },
+        });
+        const usernameById = new Map(users.map(u => [u.id, u.username]));
+
+        const result: LeaderboardEntry[] = rows.map((r, i) => ({
             rank: i + 1,
-            userId: e.userId,
-            username: e.user.username,
-            score: e.score,
-            recordedAt: e.recordedAt.toISOString(),
+            userId: r.userId,
+            username: usernameById.get(r.userId) ?? r.userId,
+            score: r._max.score ?? 0,
+            recordedAt: (r._max.recordedAt ?? new Date()).toISOString(),
         }));
 
-        res.json(result);
+        res.json({ entries: result });
     } catch {
         res.status(500).json({ error: 'Internal server error' });
     }

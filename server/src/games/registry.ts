@@ -8,12 +8,9 @@ export interface GameEngine {
     destroy(): void;
 }
 
-// Turn phase type for the Snusking FSM
 export type TurnPhase = 'playing' | 'ended';
 
 // Extension of GameEngine for turn-based games with simultaneous reveal.
-// SnuskingEngine implements this interface.
-// The base GameEngine interface is unchanged — real-time engines continue unaffected.
 export interface TurnBasedGameEngine extends GameEngine {
     /** Returns state shaped for a specific player — strips other players' hands. */
     projectState(playerId: string): unknown;

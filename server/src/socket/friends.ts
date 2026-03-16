@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { ClientToServerEvents, ServerToClientEvents } from '@slutsnus/shared';
+import { ClientToServerEvents, ServerToClientEvents, GameType } from '@slutsnus/shared';
 import { onlineUsers } from './index';
 import { prisma } from '../db/client';
 
@@ -23,7 +23,7 @@ export function friendsHandlers(
                     fromUserId: userId,
                     fromUsername: username,
                     roomCode: room.code,
-                    gameType: room.gameType as 'snusking',
+                    gameType: room.gameType as GameType,
                 });
             }
         } catch { /* intentionally ignored */ }

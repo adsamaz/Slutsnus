@@ -1,5 +1,5 @@
 import { createStore } from 'solid-js/store';
-import { createMemo, For, onMount, onCleanup, Show } from 'solid-js';
+import { createMemo, createResource, For, onMount, onCleanup, Show } from 'solid-js';
 import { useSocket } from '../../stores/socket';
 import { useAuth } from '../../stores/auth';
 import { drawFrame, bakeItemBitmaps, LANE_W, BAR_WIDTH_DEFAULT, EFFECT_COLORS, EFFECT_LABELS, EFFECT_MAX_TICKS } from './render';
@@ -187,6 +187,16 @@ export function SnusregnGame(props: SnusregnGameProps) {
         state()?.players.find(p => p.userId === selfId())?.effects ?? []
     );
 
+    interface HighscoreEntry { rank: number; userId: string; username: string; score: number; }
+    const [highscores] = createResource(ended, async (isEnded) => {
+        if (!isEnded) return [];
+        const res = await fetch('/api/leaderboard/snusregn', { credentials: 'include' });
+        if (!res.ok) return [];
+        const data = await res.json();
+        const entries: HighscoreEntry[] = data.entries ?? [];
+        return entries.slice(0, 10);
+    });
+
     return (
         <div class="snusregn-wrapper">
             <div style={{ display: ended() ? 'none' : 'flex', 'flex-direction': 'column', 'align-items': 'stretch' }}>
@@ -216,51 +226,68 @@ export function SnusregnGame(props: SnusregnGameProps) {
             </div>
             <Show when={ended()}>
                 <div class="snusregn-end-screen">
-                    <h1>{isWinner() ? 'Du vann!' : `${winner()?.username ?? 'Motståndaren'} vann!`}</h1>
-                    <table class="result-table">
-                        <thead>
-                            <tr>
-                                <th>Plats</th>
-                                <th>Spelare</th>
-                                <th>Poäng</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {state()?.results?.map(r => (
-                                <tr class={r.userId === selfId() ? 'winner-row' : ''}>
-                                    <td>#{r.rank}</td>
-                                    <td>{r.username}</td>
-                                    <td>{r.score}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                        <button
-                            class="snusregn-lobby-btn snusregn-play-again-btn"
-                            onClick={() => {
-                                if (isSolo()) {
-                                    prevScore = 0;
-                                    prevLives = 0;
-                                    prevEffectTypes = [];
-                                    effectMaxTicks.clear();
-                                    popups.length = 0;
-                                    flashes.length = 0;
-                                    socket.emit('room:start', { roomCode: props.roomCode });
-                                    setGameStore('data', null);
-                                } else {
-                                    window.location.href = `/lobby/${props.roomCode}`;
-                                }
-                            }}
-                        >
-                            Spela igen
-                        </button>
-                        <button
-                            class="snusregn-lobby-btn"
-                            onClick={() => { window.location.href = '/'; }}
-                        >
-                            Tillbaka till lobbyn
-                        </button>
+                    <h1 class={`snusregn-end-title ${isWinner() ? 'win' : 'lose'}`}>
+                        {isSolo() ? 'Slut snus' : isWinner() ? 'You won!' : `${winner()?.username ?? 'Opponent'} won!`}
+                    </h1>
+                    <div class="snusregn-end-columns">
+                        <div class="snusregn-end-body">
+                            <div class="snusregn-end-scores">
+                                {state()?.results?.map(r => (
+                                    <div class={`snusregn-end-score-row${r.userId === selfId() ? ' self' : ''}`}>
+                                        {!isSolo() && <span class="rank">#{r.rank}</span>}
+                                        <span class="name">{r.username}</span>
+                                        <span class="score">{r.score}<span class="score-unit">p</span></span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div class="snusregn-end-actions">
+                                <button
+                                    class="snusregn-lobby-btn snusregn-play-again-btn"
+                                    onClick={() => {
+                                        if (isSolo()) {
+                                            prevScore = 0;
+                                            prevLives = 0;
+                                            prevEffectTypes = [];
+                                            effectMaxTicks.clear();
+                                            popups.length = 0;
+                                            flashes.length = 0;
+                                            socket.emit('room:start', { roomCode: props.roomCode });
+                                            setGameStore('data', null);
+                                        } else {
+                                            window.location.href = `/lobby/${props.roomCode}`;
+                                        }
+                                    }}
+                                >
+                                    Play again
+                                </button>
+                                <button
+                                    class="snusregn-lobby-btn"
+                                    onClick={() => { window.location.href = '/'; }}
+                                >
+                                    Back to lobby
+                                </button>
+                            </div>
+                        </div>
+                        <div class="snusregn-highscore-panel">
+                            <h2 class="snusregn-highscore-title">All-time highscore</h2>
+                            <Show when={highscores.loading}>
+                                <p class="snusregn-highscore-loading">Loading...</p>
+                            </Show>
+                            <Show when={!highscores.loading}>
+                                <For each={highscores() ?? []}>{(entry, i) => {
+                                    const isSelf = entry.userId === selfId();
+                                    const selfScore = state()?.results?.find(r => r.userId === selfId())?.score ?? -1;
+                                    const isNew = isSelf && i() === 0 && selfScore === entry.score;
+                                    return (
+                                        <div class={`snusregn-hs-row${isSelf ? ' hs-self' : ''}${isNew ? ' hs-new' : ''}`}>
+                                            <span class="hs-rank">{entry.rank}</span>
+                                            <span class="hs-name">{entry.username}{isNew && <span class="hs-new-badge">NEW!</span>}</span>
+                                            <span class="hs-score">{entry.score}<span class="score-unit">p</span></span>
+                                        </div>
+                                    );
+                                }}</For>
+                            </Show>
+                        </div>
                     </div>
                 </div>
             </Show>

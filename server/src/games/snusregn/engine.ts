@@ -27,12 +27,12 @@ const SPAWN_WEIGHTS: Record<SnusregnItemType, number> = {
 };
 
 const EFFECT_DURATIONS: Record<SnusregnEffectType, number> = {
-    wideBar: 250,
-    slowRain: 200,
+    wideBar: 200,
+    slowRain: 150,
     fastRain: 150,
     shrinkBar: 200,
     blind: 100,
-    beer: 250,
+    beer: 200,
 };
 
 // ─── Internal State ───────────────────────────────
@@ -157,10 +157,12 @@ export class SnusregnEngine implements GameEngine {
         const winner = this.determineWinner(p0, p1);
         if (winner !== null) {
             const [rank1, rank2] = winner;
-            const results: GameResult[] = [
-                { userId: rank1.userId, username: rank1.username, score: rank1.score, rank: 1 },
-                { userId: rank2.userId, username: rank2.username, score: rank2.score, rank: 2 },
-            ];
+            const results: GameResult[] = this.isSolo
+                ? [{ userId: rank1.userId, username: rank1.username, score: rank1.score, rank: 1 }]
+                : [
+                    { userId: rank1.userId, username: rank1.username, score: rank1.score, rank: 1 },
+                    { userId: rank2.userId, username: rank2.username, score: rank2.score, rank: 2 },
+                ];
             const state: SnusregnState = {
                 status: 'ended',
                 tickCount: this.tickCount,
@@ -270,6 +272,10 @@ export class SnusregnEngine implements GameEngine {
         p0: PlayerInternal,
         p1: PlayerInternal,
     ): [PlayerInternal, PlayerInternal] | null {
+        if (this.isSolo) {
+            return p0.lives <= 0 ? [p0, p1] : null;
+        }
+
         const p0Done = p0.lives <= 0;
         const p1Done = p1.lives <= 0;
 

@@ -13,7 +13,6 @@ const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const Lobby = lazy(() => import('./pages/Lobby'));
 const GamePage = lazy(() => import('./pages/GamePage'));
-const GameDetail = lazy(() => import('./pages/GameDetail'));
 const Friends = lazy(() => import('./pages/Friends'));
 const Leaderboard = lazy(() => import('./pages/Leaderboard'));
 const Profile = lazy(() => import('./pages/Profile'));
@@ -38,7 +37,6 @@ export default function App() {
                             <Route path="/" component={Home} />
                             <Route path="/login" component={Login} />
                             <Route path="/register" component={Register} />
-                            <Route path="/games/:slug" component={GameDetail} />
                             <Route
                                 path="/lobby/:code"
                                 component={() => (
