@@ -1,9 +1,8 @@
 import { createSignal, onCleanup, Show } from 'solid-js';
 import { useSocket } from '../stores/socket';
 import { useRoom } from '../stores/room';
-import { SnuskingGame } from './snusking/index';
-import { SenusCatcherGame } from './snus-catcher/index';
-import type { SnuskingProjectedState, SenusCatcherState, GameAction } from '@slutsnus/shared';
+import { SnusregnGame } from './snusregn/index';
+import type { SnuskingProjectedState, SenusCatcherState, SnusregnState, GameAction } from '@slutsnus/shared';
 
 interface GameContainerProps {
     roomCode: string;
@@ -34,19 +33,10 @@ export default function GameContainer(props: GameContainerProps) {
                     <p>Waiting for game to start...</p>
                 </div>
             </Show>
-            <Show when={gameType() === 'snusking' ? gameState() : null}>
-                {(state) => (
-                    <SnuskingGame
-                        state={state() as SnuskingProjectedState}
-                        roomCode={props.roomCode}
-                        onAction={(action) => socket.emit('game:action', { roomCode: props.roomCode, action: action as GameAction })}
-                    />
-                )}
-            </Show>
-            <Show when={gameType() === 'snus-catcher' ? gameState() : null}>
+            <Show when={gameType() === 'snusregn' ? gameState() : null}>
                 {(s) => (
-                    <SenusCatcherGame
-                        state={s() as SenusCatcherState}
+                    <SnusregnGame
+                        state={s() as SnusregnState}
                         roomCode={props.roomCode}
                         onAction={(action) => socket.emit('game:action', { roomCode: props.roomCode, action: action as GameAction })}
                     />

@@ -157,6 +157,8 @@ export function roomHandlers(
                 if (raw.status === 'ended' && raw.results) {
                     io.to(roomCode).emit('game:end', { results: raw.results });
                     activeGames.delete(roomCode);
+                    // Reset room to waiting so players can use "Play again"
+                    await prisma.room.update({ where: { code: roomCode }, data: { status: 'waiting' } }).catch(() => { /* intentionally ignored */ });
 
                     // Persist results
                     try {

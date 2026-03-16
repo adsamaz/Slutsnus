@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Snowflake: 6 arms -->
+  <g stroke="#e3b341" stroke-width="6" stroke-linecap="round">
+    <line x1="50" y1="12" x2="50" y2="88"/>
+    <line x1="12" y1="50" x2="88" y2="50"/>
+    <line x1="21" y1="21" x2="79" y2="79"/>
+    <line x1="79" y1="21" x2="21" y2="79"/>
+  </g>
+  <!-- Center dot -->
+  <circle cx="50" cy="50" r="7" fill="#e3b341"/>
+  <!-- Arm tips -->
+  <g fill="#e3b341">
+    <circle cx="50" cy="14" r="4"/>
+    <circle cx="50" cy="86" r="4"/>
+    <circle cx="14" cy="50" r="4"/>
+    <circle cx="86" cy="50" r="4"/>
+    <circle cx="23" cy="23" r="4"/>
+    <circle cx="77" cy="77" r="4"/>
+    <circle cx="77" cy="23" r="4"/>
+    <circle cx="23" cy="77" r="4"/>
+  </g>
+</svg>

@@ -10,17 +10,10 @@ type Game = { id: GameType; name: string; description: string; badges: string[];
 
 const GAMES: Game[] = [
     {
-        id: 'snusking',
-        name: 'Snusking',
-        tagline: 'Collect. Spend. Dominate.',
-        description: 'Build a snus empire by collecting Swedish brands and spending strategically. Simultaneous reveal — everyone commits before anyone sees the result.',
-        badges: ['2–4 Players', 'Strategy', 'Card Game'],
-    },
-    {
-        id: 'snus-catcher',
-        name: 'Snus Catcher',
-        tagline: 'Catch or die.',
-        description: 'Catch fresh snus pouches falling from above. Dodge the spent ones. 1v1 arcade racing.',
+        id: 'snusregn',
+        name: 'Snusregn',
+        tagline: 'Catch the rain. Dodge the sludge.',
+        description: 'Snus pouches rain from the sky in your own lane. Catch fresh ones, avoid spent ones. Powerups and debuffs included. 1v1 arcade.',
         badges: ['2 Players', 'Arcade', 'Real-time'],
     },
 ];
@@ -34,6 +27,7 @@ export default function Home() {
     const [joinCode, setJoinCode] = createSignal('');
     const [joinError, setJoinError] = createSignal('');
     const [creating, setCreating] = createSignal(false);
+    const [startingSolo, setStartingSolo] = createSignal(false);
 
     const handleCreate = async () => {
         const game = selectedGame();
@@ -46,6 +40,20 @@ export default function Home() {
             console.error(e);
         } finally {
             setCreating(false);
+        }
+    };
+
+    const handleStartSolo = async () => {
+        const game = selectedGame();
+        if (!game) return;
+        setStartingSolo(true);
+        try {
+            const code = await roomActions.startSolo(game.id);
+            navigate(`/game/${code}`);
+        } catch (e: unknown) {
+            console.error(e);
+        } finally {
+            setStartingSolo(false);
         }
     };
 
@@ -112,7 +120,10 @@ export default function Home() {
                     <section class="room-actions">
                         <p class="room-actions-label">Ready to play <strong>{game().name}</strong>?</p>
                         <div class="room-actions-inner">
-                            <Button onClick={handleCreate} disabled={creating()}>
+                            <Button onClick={handleStartSolo} disabled={startingSolo()}>
+                                {startingSolo() ? 'Starting...' : 'Play Solo'}
+                            </Button>
+                            <Button onClick={handleCreate} disabled={creating()} variant="secondary">
                                 {creating() ? 'Creating...' : 'Create Room'}
                             </Button>
                             <span class="room-actions-divider">or join one</span>

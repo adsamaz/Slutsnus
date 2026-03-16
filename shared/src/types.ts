@@ -27,7 +27,7 @@ export interface AuthResponse {
 // Rooms
 // ─────────────────────────────────────────────────
 export type RoomStatus = 'waiting' | 'playing' | 'ended';
-export type GameType = 'snusking' | 'snus-catcher';
+export type GameType = 'snusregn';
 
 export interface RoomPlayer {
     userId: string;
@@ -197,113 +197,113 @@ export type SnuskingCardStrength = 'low' | 'medium' | 'high' | 'extreme';
 export type SnuskingCardFlavor = 'tobacco' | 'mint' | 'citrus' | 'licorice' | 'sweet';
 
 export interface SnuskingEventCard {
-  id: string;
-  name: string;
-  strengthAffinity: SnuskingCardStrength[];
-  flavorAffinity: SnuskingCardFlavor[];
+    id: string;
+    name: string;
+    strengthAffinity: SnuskingCardStrength[];
+    flavorAffinity: SnuskingCardFlavor[];
 }
 
 /** Static card definition from the card catalog */
 export interface SnuskingCardDefinition {
-  id: string;
-  name: string;
-  empirePoints: number;
-  strength: SnuskingCardStrength;
-  flavor: SnuskingCardFlavor;
-  isSpentSnus?: boolean;
-  isHighNic?: boolean;
-  canProvideImmunity?: boolean;
+    id: string;
+    name: string;
+    empirePoints: number;
+    strength: SnuskingCardStrength;
+    flavor: SnuskingCardFlavor;
+    isSpentSnus?: boolean;
+    isHighNic?: boolean;
+    canProvideImmunity?: boolean;
 }
 
 export interface SnuskingCardInstance {
-  instanceId: string;
-  definitionId: string;
-  name: string;
-  empirePoints: number;
-  strength?: SnuskingCardStrength;
-  flavor?: SnuskingCardFlavor;
-  traded?: boolean;
+    instanceId: string;
+    definitionId: string;
+    name: string;
+    empirePoints: number;
+    strength?: SnuskingCardStrength;
+    flavor?: SnuskingCardFlavor;
+    traded?: boolean;
 }
 
 export interface SnuskingTradeOffer {
-  offerId: string;
-  fromPlayerId: string;
-  toPlayerId: string;
-  cardInstanceId: string;   // stable card ID — NOT array position
-  displayName: string;      // Phase 1: same as real name. Phase 2: may differ.
-  expiresAtTurn: number;
+    offerId: string;
+    fromPlayerId: string;
+    toPlayerId: string;
+    cardInstanceId: string;   // stable card ID — NOT array position
+    displayName: string;      // Phase 1: same as real name. Phase 2: may differ.
+    expiresAtTurn: number;
 }
 
 export interface SnuskingPlayerState {
-  userId: string;
-  username: string;
-  hand: SnuskingCardInstance[];
-  spentSnus: number;
-  empireScore: number;
-  hasCommitted: boolean;
-  isConnected: boolean;
-  beer: number;
-  skipNextTurn: boolean;
-  pendingDiscard: boolean;
-  highNicEffect: boolean;
-  immunityActive: boolean;
+    userId: string;
+    username: string;
+    hand: SnuskingCardInstance[];
+    spentSnus: number;
+    empireScore: number;
+    hasCommitted: boolean;
+    isConnected: boolean;
+    beer: number;
+    skipNextTurn: boolean;
+    pendingDiscard: boolean;
+    highNicEffect: boolean;
+    immunityActive: boolean;
 }
 
 export interface SnuskingOpponentState {
-  userId: string;
-  username: string;
-  handCount: number;
-  empireScore: number;
-  hasCommitted: boolean;
-  isConnected: boolean;
-  beer: number;
+    userId: string;
+    username: string;
+    handCount: number;
+    empireScore: number;
+    hasCommitted: boolean;
+    isConnected: boolean;
+    beer: number;
 }
 
 export interface SnuskingProjectedState {
-  phase: 'playing' | 'ended';
-  self: SnuskingPlayerState;
-  opponents: SnuskingOpponentState[];
-  deckCount: number;
-  discardCount: number;
-  discardTop: SnuskingCardInstance | null;
-  turnNumber: number;
-  pendingTradeOffers: SnuskingTradeOffer[];
-  status: 'active' | 'ended';
-  endReason: GameEndReason | null;
-  results: GameResult[] | null;
-  currentEvent: SnuskingEventCard | null;
-  activePlayerId: string | null;
+    phase: 'playing' | 'ended';
+    self: SnuskingPlayerState;
+    opponents: SnuskingOpponentState[];
+    deckCount: number;
+    discardCount: number;
+    discardTop: SnuskingCardInstance | null;
+    turnNumber: number;
+    pendingTradeOffers: SnuskingTradeOffer[];
+    status: 'active' | 'ended';
+    endReason: GameEndReason | null;
+    results: GameResult[] | null;
+    currentEvent: SnuskingEventCard | null;
+    activePlayerId: string | null;
 }
 
 /** Server-only master state — NEVER emitted directly (contains all players' hands) */
 export interface SnuskingMasterState {
-  roomId: string;
-  phase: 'playing' | 'ended';
-  players: Record<string, SnuskingPlayerState>;
-  deck: SnuskingCardInstance[];
-  discardPile: SnuskingCardInstance[];
-  currentEvent: SnuskingEventCard | null;
-  turnNumber: number;
-  pendingTradeOffers: SnuskingTradeOffer[];
-  status: 'active' | 'ended';
-  endReason: GameEndReason | null;
-  results: GameResult[] | null;
-  activePlayerId: string | null;
-  turnOrder: string[];
+    roomId: string;
+    phase: 'playing' | 'ended';
+    players: Record<string, SnuskingPlayerState>;
+    deck: SnuskingCardInstance[];
+    discardPile: SnuskingCardInstance[];
+    currentEvent: SnuskingEventCard | null;
+    turnNumber: number;
+    pendingTradeOffers: SnuskingTradeOffer[];
+    status: 'active' | 'ended';
+    endReason: GameEndReason | null;
+    results: GameResult[] | null;
+    activePlayerId: string | null;
+    turnOrder: string[];
 }
 
 // Snusking action discriminated union — validated by Zod at Socket.IO boundary (server-only)
 export type SnuskingAction =
-  | { type: 'snusking:spend'; cardIds: string[] }
-  | { type: 'snusking:spend-with-beer'; cardIds: string[]; beerCardId: string }
-  | { type: 'snusking:pass' }
-  | { type: 'snusking:trade-offer'; targetPlayerId: string; cardInstanceId: string; displayName?: string }
-  | { type: 'snusking:trade-accept'; offerId: string }
-  | { type: 'snusking:trade-decline'; offerId: string }
-  | { type: 'snusking:trade-offer-decoy'; targetPlayerId: string; decoyCardInstanceId: string }
-  | { type: 'snusking:activate-immunity' }
-  | { type: 'snusking:sabotage-spentsnus'; targetPlayerId: string; cardInstanceId: string }
-  | { type: 'snusking:sabotage-highnic'; targetPlayerId: string; cardInstanceId: string };
+    | { type: 'snusking:spend'; cardIds: string[] }
+    | { type: 'snusking:spend-with-beer'; cardIds: string[]; beerCardId: string }
+    | { type: 'snusking:pass' }
+    | { type: 'snusking:trade-offer'; targetPlayerId: string; cardInstanceId: string; displayName?: string }
+    | { type: 'snusking:trade-accept'; offerId: string }
+    | { type: 'snusking:trade-decline'; offerId: string }
+    | { type: 'snusking:trade-offer-decoy'; targetPlayerId: string; decoyCardInstanceId: string }
+    | { type: 'snusking:activate-immunity' }
+    | { type: 'snusking:sabotage-spentsnus'; targetPlayerId: string; cardInstanceId: string }
+    | { type: 'snusking:sabotage-highnic'; targetPlayerId: string; cardInstanceId: string };
 
 // ─────────────────────────────────────────────────
 // Snus Catcher specific
@@ -332,5 +332,59 @@ export interface SenusCatcherState {
     results?: GameResult[];               // only present when status === 'ended'
 }
 
-export type SenusCatcherAction =
-    | { type: 'snus-catcher:bar-move'; payload: { xFraction: number } };
+
+
+// ─────────────────────────────────────────────────
+// Snusregn specific
+// ─────────────────────────────────────────────────
+
+export type SnusregnItemType =
+    | 'fresh'      // +1 score if caught
+    | 'spent'      // -1 life if caught
+    | 'wideBar'    // powerup: catch to double own bar width for 5s
+    | 'slowRain'   // powerup: catch to halve opponent's fall speed for 4s
+    | 'fastRain'   // debuff: catch to double own fall speed for 3s
+    | 'shrinkBar'  // debuff: catch to halve own bar width for 4s
+    | 'blind'      // debuff: catch to black out own screen for 2s
+    | 'beer';      // powerup: catch to triple own score
+
+export type SnusregnEffectType =
+    | 'wideBar'
+    | 'slowRain'
+    | 'fastRain'
+    | 'shrinkBar'
+    | 'blind'
+    | 'beer';
+
+export interface SnusregnEffect {
+    type: SnusregnEffectType;
+    remainingTicks: number;
+}
+
+export interface SnusregnItem {
+    id: string;
+    type: SnusregnItemType;
+    x: number;       // 0.0–1.0 fraction of the lane width (400px)
+    y: number;       // 0.0–1.0 fraction of the full canvas height (600px)
+    speedMult: number; // individual speed multiplier, typically 0.85–1.15
+}
+
+export interface SnusregnPlayerState {
+    userId: string;
+    username: string;
+    score: number;
+    lives: number;
+    barXFraction: number;    // 0.0–1.0 within own lane
+    items: SnusregnItem[];
+    effects: SnusregnEffect[];
+}
+
+export interface SnusregnState {
+    status: 'playing' | 'ended';
+    tickCount: number;
+    players: SnusregnPlayerState[];   // always 2 entries
+    results?: GameResult[];
+}
+
+export type SnusregnAction =
+    | { type: 'snusregn:bar-move'; payload: { xFraction: number } };

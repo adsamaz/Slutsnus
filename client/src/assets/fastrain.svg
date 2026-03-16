@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Lightning bolt -->
+  <polygon points="58,8 30,52 48,52 42,92 70,48 52,48 62,8" fill="#f85149"/>
+  <!-- Shine -->
+  <polygon points="58,8 48,32 54,32 50,52 48,52 58,8" fill="#ff867c" opacity="0.5"/>
+</svg>

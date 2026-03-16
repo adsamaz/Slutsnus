@@ -1,0 +1,96 @@
+.snusregn-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100vh;
+    background: #0d1117;
+    overflow: hidden;
+}
+
+.snusregn-canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 100vh;
+    width: auto;
+    cursor: none;
+    border: 1px solid #30363d;
+}
+
+.snusregn-end-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    height: 100vh;
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: monospace;
+}
+
+.snusregn-end-screen h1 {
+    font-size: 2.5rem;
+    margin: 0;
+}
+
+.snusregn-lobby-btn {
+    margin-top: 1rem;
+    padding: 0.6rem 1.4rem;
+    background: #238636;
+    color: #e6edf3;
+    border: none;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.snusregn-lobby-btn:hover {
+    background: #2ea043;
+}
+
+.snusregn-play-again-btn {
+    background: #1f6feb;
+}
+
+.snusregn-play-again-btn:hover {
+    background: #388bfd;
+}
+
+.snusregn-effect-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 0 2px;
+    width: 100%;
+}
+
+.snusregn-effect-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.snusregn-effect-label {
+    font-family: monospace;
+    font-size: 11px;
+    font-weight: bold;
+    width: 56px;
+    flex-shrink: 0;
+}
+
+.snusregn-effect-track {
+    flex: 1;
+    height: 8px;
+    background: #30363d;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.snusregn-effect-fill {
+    height: 100%;
+    border-radius: 4px;
+    opacity: 0.7;
+    transition: width 0.1s linear;
+}

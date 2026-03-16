@@ -18,6 +18,7 @@ interface RoomActions {
     joinRoom(code: string): Promise<void>;
     leaveRoom(): Promise<void>;
     setRoom(room: RoomInfo): void;
+    startSolo(gameType: GameType): Promise<string>;
 }
 
 type RoomContext = [RoomState, RoomActions];
@@ -69,6 +70,13 @@ export const RoomProvider: ParentComponent = (props) => {
 
     const setRoom = (room: RoomInfo) => setState('room', room);
 
+    const startSolo = async (gameType: GameType): Promise<string> => {
+        const code = await createRoom(gameType);
+        socket.emit('room:join', { roomCode: code });
+        socket.emit('room:start', { roomCode: code });
+        return code;
+    };
+
     onMount(() => {
         socket.on('room:update', ({ room }) => setState('room', room));
     });
@@ -78,7 +86,7 @@ export const RoomProvider: ParentComponent = (props) => {
     });
 
     return (
-        <RoomCtx.Provider value= { [state, { createRoom, joinRoom, leaveRoom, setRoom }]} >
+        <RoomCtx.Provider value={ [state, { createRoom, joinRoom, leaveRoom, setRoom, startSolo }]} >
         { props.children }
         </RoomCtx.Provider>
   );
