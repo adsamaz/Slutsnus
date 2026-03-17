@@ -32,7 +32,7 @@ const EFFECT_COLORS: Record<SnusregnEffectType, string> = {
     fastRain: '#f85149',
     shrinkBar: '#a371f7',
     blind: '#484f58',
-    beer: '#f0a500',
+    beer: '#ffe033',
 };
 
 const ITEM_BORDER_COLOR: Record<SnusregnItemType, string> = {
@@ -43,7 +43,8 @@ const ITEM_BORDER_COLOR: Record<SnusregnItemType, string> = {
     fastRain: '#8b6914',
     shrinkBar: '#a371f7',
     blind: '#484f58',
-    beer: '#f0a500',
+    beer: '#ffe033',
+    beerSnus: '#ffe033',
 };
 
 const EFFECT_LABELS: Record<SnusregnEffectType, string> = {
@@ -101,6 +102,7 @@ export interface ScorePopup {
     expiresAt: number;
     duration: number; // total ms
     large?: boolean;  // true for life-loss popups
+    milestone?: boolean; // true for 100-point milestone flash
 }
 
 export interface ScreenFlash {
@@ -137,11 +139,24 @@ export function drawFrame(
 
     // Lanes
     drawLane(ctx, self, 0, localBarXFraction, true, imgs, bitmaps);
-    if (hasOpponent) drawLane(ctx, opponent!, opponentXOffset, opponent!.barXFraction, false, imgs, bitmaps);
+    if (hasOpponent) {
+        drawLane(ctx, opponent!, opponentXOffset, opponent!.barXFraction, false, imgs, bitmaps);
+        // Divider at the boundary of self's lane
+        ctx.strokeStyle = COLORS.divider;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(LANE_W, 0);
+        ctx.lineTo(LANE_W, CANVAS_H);
+        ctx.stroke();
+    }
 
     // HUDs
     drawHUD(ctx, self, 0);
     if (hasOpponent) drawHUD(ctx, opponent!, opponentXOffset);
+
+    // Eliminated overlay
+    if (self.lives <= 0) drawEliminated(ctx, 0);
+    if (hasOpponent && opponent!.lives <= 0) drawEliminated(ctx, opponentXOffset);
 
     const now = Date.now();
 
@@ -160,10 +175,12 @@ export function drawFrame(
         const t = 1 - (p.expiresAt - now) / p.duration; // 0→1
         // Ease-out upward drift: fast at start, slows down
         const drift = 60 * (1 - (1 - t) * (1 - t));
-        // Fade: stay full for first 40%, then fade out
-        const alpha = Math.max(0, 1 - Math.max(0, t - 0.4) / 0.6);
-        const fontSize = p.large ? 32 : 22;
+        const fontSize = p.milestone ? 52 : p.large ? 32 : 22;
         ctx.font = `bold ${fontSize}px monospace`;
+        // Milestone: start fading immediately, max alpha 0.45
+        const alpha = p.milestone
+            ? Math.max(0, 0.45 * (1 - t))
+            : Math.max(0, 1 - Math.max(0, t - 0.4) / 0.6);
         ctx.globalAlpha = alpha;
         ctx.fillStyle = p.color;
         ctx.textAlign = 'center';
@@ -185,17 +202,28 @@ function drawLane(
     const isBlind = player.effects.some(e => e.type === 'blind');
     const hasBeer = player.effects.some(e => e.type === 'beer');
 
-    // Items
+    // Items — skip those inside the blind zone
     for (const item of player.items) {
         const px = item.x * LANE_W + xOffset;
         const py = item.y * CANVAS_H;
+        if (isBlind && py > CANVAS_H * 0.75) continue;
         drawItem(ctx, item.type, px, py, imgs, bitmaps, hasBeer);
     }
 
-    // Blind: black out bottom quarter — drawn before the bar so the bar remains visible
+    // Blind: blurry fog over bottom quarter — drawn before the bar so the bar remains visible
     if (isBlind) {
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(xOffset, CANVAS_H * 0.75, LANE_W, CANVAS_H * 0.25);
+        const blindY = CANVAS_H * 0.75;
+        const fadeH = CANVAS_H * 0.2;
+        // Wide gradient starting well above the blind zone for a prominent fog look
+        const grad = ctx.createLinearGradient(0, blindY - fadeH, 0, blindY + fadeH * 0.5);
+        grad.addColorStop(0, 'rgba(20,15,30,0)');
+        grad.addColorStop(0.5, 'rgba(20,15,30,0.75)');
+        grad.addColorStop(1, 'rgba(20,15,30,1)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(xOffset, blindY - fadeH, LANE_W, fadeH * 1.5);
+        // Fully opaque fill for the rest
+        ctx.fillStyle = 'rgba(20,15,30,1)';
+        ctx.fillRect(xOffset, blindY + fadeH * 0.5, LANE_W, CANVAS_H - (blindY + fadeH * 0.5));
     }
 
     // Bar (always on top)
@@ -215,12 +243,15 @@ function computeBarWidth(player: SnusregnPlayerState): number {
 const BORDER_WIDTH = 3;
 
 function drawItem(ctx: CanvasRenderingContext2D, type: SnusregnItemType, px: number, py: number, imgs: ItemImages, bitmaps: ItemBitmaps, hasBeer: boolean): void {
-    const borderColor = (type === 'fresh' && hasBeer) ? '#f0a500' : ITEM_BORDER_COLOR[type];
-    const bitmap = bitmaps[type];
+    const yellowBorder = (type === 'fresh' && hasBeer) || type === 'beerSnus';
+    const borderColor = yellowBorder ? '#ffe033' : ITEM_BORDER_COLOR[type];
+    // beerSnus reuses the fresh bitmap so both render identically
+    const bitmapKey = type === 'beerSnus' ? 'fresh' : type;
+    const bitmap = bitmaps[bitmapKey];
     if (bitmap) {
         ctx.drawImage(bitmap, px - ITEM_RADIUS, py - ITEM_RADIUS, ITEM_RADIUS * 2, ITEM_RADIUS * 2);
-        // Overdraw border in gold when beer is active for fresh items
-        if (type === 'fresh' && hasBeer) {
+        // Overdraw border in gold for fresh+beer and beerSnus
+        if (yellowBorder) {
             ctx.beginPath();
             ctx.arc(px, py, ITEM_RADIUS - BORDER_WIDTH / 2, 0, Math.PI * 2);
             ctx.strokeStyle = borderColor;
@@ -259,30 +290,40 @@ function drawItem(ctx: CanvasRenderingContext2D, type: SnusregnItemType, px: num
     ctx.restore();
 }
 
+function drawEliminated(ctx: CanvasRenderingContext2D, xOffset: number): void {
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(xOffset, 0, LANE_W, CANVAS_H);
+    ctx.font = 'bold 36px monospace';
+    ctx.fillStyle = '#f85149';
+    ctx.textAlign = 'center';
+    ctx.fillText('ELIMINATED', xOffset + LANE_W / 2, CANVAS_H / 2);
+    ctx.textAlign = 'left';
+}
+
 function drawHUD(
     ctx: CanvasRenderingContext2D,
     player: SnusregnPlayerState,
     xOffset: number,
 ): void {
     // Score
-    ctx.font = 'bold 18px monospace';
+    ctx.font = 'bold 32px monospace';
     ctx.fillStyle = COLORS.hud;
-    ctx.fillText(`${player.score}p`, xOffset + 10, 26);
+    ctx.fillText(`${player.score}p`, xOffset + 10, 36);
 
     // Username
     ctx.font = '13px monospace';
     ctx.fillStyle = COLORS.hudMuted;
-    ctx.fillText(player.username, xOffset + 10, 44);
+    ctx.fillText(player.username, xOffset + 10, 54);
 
-    // Lives (3 circles, right side)
+    // Lives (hearts, right side)
+    ctx.font = 'bold 22px sans-serif';
     for (let i = 0; i < 3; i++) {
-        const cx = xOffset + LANE_W - 14 - i * 22;
-        ctx.beginPath();
-        ctx.arc(cx, 18, 8, 0, Math.PI * 2);
-        ctx.fillStyle = i < player.lives ? COLORS.livesOn : COLORS.livesOff;
-        ctx.fill();
+        const x = xOffset + LANE_W - 12 - i * 28;
+        ctx.fillStyle = i < player.lives ? '#f85149' : COLORS.livesOff;
+        ctx.textAlign = 'center';
+        ctx.fillText('♥', x, 32);
     }
-
+    ctx.textAlign = 'left';
 }
 
 export { EFFECT_COLORS, EFFECT_LABELS, EFFECT_MAX_TICKS };

@@ -1,5 +1,5 @@
 import { createStore } from 'solid-js/store';
-import { createMemo, createResource, For, onMount, onCleanup, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, For, onMount, onCleanup, Show } from 'solid-js';
 import { useSocket } from '../../stores/socket';
 import { useAuth } from '../../stores/auth';
 import { drawFrame, bakeItemBitmaps, LANE_W, BAR_WIDTH_DEFAULT, EFFECT_COLORS, EFFECT_LABELS, EFFECT_MAX_TICKS } from './render';
@@ -45,10 +45,9 @@ export function SnusregnGame(props: SnusregnGameProps) {
 
             if (scoreDiff !== 0) {
                 const dur = 700;
-                const beerActive = selfNext.effects.some(e => e.type === 'beer');
                 popups.push({
                     text: scoreDiff > 0 ? `+${scoreDiff}` : `${scoreDiff}`,
-                    color: scoreDiff >= 3 && beerActive ? '#f0a500' : scoreDiff > 0 ? '#39d353' : '#f85149',
+                    color: scoreDiff >= 3 ? '#ffe033' : scoreDiff > 0 ? '#39d353' : '#f85149',
                     x: localBarXFraction * LANE_W,
                     y: barYPx,
                     duration: dur,
@@ -56,6 +55,21 @@ export function SnusregnGame(props: SnusregnGameProps) {
                 });
                 if (scoreDiff >= 3) soundFreshCatchBeer();
                 else if (scoreDiff > 0) soundFreshCatch();
+
+                // Flash rounded score on every 100-point milestone
+                const prevMilestone = Math.floor(prevScore / 100);
+                const nextMilestone = Math.floor(selfNext.score / 100);
+                if (nextMilestone > prevMilestone && selfNext.score > 0) {
+                    popups.push({
+                        text: `${nextMilestone * 100}`,
+                        color: '#ffe033',
+                        x: LANE_W / 2,
+                        y: 450,
+                        duration: 1800,
+                        expiresAt: Date.now() + 1800,
+                        milestone: true,
+                    });
+                }
             }
             if (livesDiff < 0) {
                 const dur = 900;
@@ -99,22 +113,24 @@ export function SnusregnGame(props: SnusregnGameProps) {
     let localBarXFraction = 0.5;
     let lastEmit = 0;
     let rafId: number;
-    let prevScore = 0;
-    let prevLives = 0;
-    let prevEffectTypes: SnusregnEffectType[] = [];
+    const _selfId = authState.user?.id ?? '';
+    const _initialSelf = props.state?.players.find(p => p.userId === _selfId);
+    let prevScore = _initialSelf?.score ?? 0;
+    let prevLives = _initialSelf?.lives ?? 0;
+    let prevEffectTypes: SnusregnEffectType[] = _initialSelf?.effects.map(e => e.type) ?? [];
     const effectMaxTicks = new Map<SnusregnEffectType, number>();
     const popups: import('./render').ScorePopup[] = [];
     const flashes: ScreenFlash[] = [];
     const makeImg = (src: string) => { const i = new Image(); i.src = src; return i; };
     const imgs = {
-        fresh:     makeImg(freshSnusSrc),
-        spent:     makeImg(spentSnusSrc),
-        beer:      makeImg(beerSrc),
-        wideBar:   makeImg(wideBarSrc),
-        slowRain:  makeImg(slowRainSrc),
-        fastRain:  makeImg(fastRainSrc),
+        fresh: makeImg(freshSnusSrc),
+        spent: makeImg(spentSnusSrc),
+        beer: makeImg(beerSrc),
+        wideBar: makeImg(wideBarSrc),
+        slowRain: makeImg(slowRainSrc),
+        fastRain: makeImg(fastRainSrc),
         shrinkBar: makeImg(shrinkBarSrc),
-        blind:     makeImg(blindSrc),
+        blind: makeImg(blindSrc),
     };
     let bitmaps: ItemBitmaps = {};
 
@@ -147,14 +163,33 @@ export function SnusregnGame(props: SnusregnGameProps) {
         rafId = requestAnimationFrame(loop);
 
         const onMouseMove = (e: MouseEvent) => {
-            const rect = canvasRef.getBoundingClientRect();
-            // Scale from display size to logical resolution
-            const scaleX = (canvasRef.width / 2) / (rect.width / 2);
-            // Self is always in the left half — clamp to LANE_W
-            const rawX = (e.clientX - rect.left) * scaleX;
-            const halfBar = BAR_WIDTH_DEFAULT / 2;
-            const laneX = Math.max(halfBar, Math.min(LANE_W - halfBar, rawX));
-            localBarXFraction = laneX / LANE_W;
+            // Request pointer lock on first mouse move so no explicit click is needed
+            if (gameStore.data?.status === 'playing' && document.pointerLockElement !== canvasRef) {
+                canvasRef.requestPointerLock();
+            }
+
+            const selfPlayer = gameStore.data?.players.find(p => p.userId === authState.user?.id);
+            const halfBar = selfPlayer
+                ? (BAR_WIDTH_DEFAULT / 2)
+                * (selfPlayer.effects.some(e => e.type === 'wideBar') ? 2 : 1)
+                * (selfPlayer.effects.some(e => e.type === 'shrinkBar') ? 0.5 : 1)
+                : BAR_WIDTH_DEFAULT / 2;
+            if (document.pointerLockElement === canvasRef) {
+                // Pointer is locked: use relative movement
+                const rect = canvasRef.getBoundingClientRect();
+                const scaleX = canvasRef.width / rect.width;
+                const currentX = localBarXFraction * LANE_W;
+                const newX = currentX + e.movementX * scaleX;
+                const laneX = Math.max(halfBar, Math.min(LANE_W - halfBar, newX));
+                localBarXFraction = laneX / LANE_W;
+            } else {
+                // Normal absolute tracking within the window
+                const rect = canvasRef.getBoundingClientRect();
+                const scaleX = canvasRef.width / rect.width;
+                const rawX = (e.clientX - rect.left) * scaleX;
+                const laneX = Math.max(halfBar, Math.min(LANE_W - halfBar, rawX));
+                localBarXFraction = laneX / LANE_W;
+            }
 
             const now = Date.now();
             if (now - lastEmit >= 30) {
@@ -166,10 +201,19 @@ export function SnusregnGame(props: SnusregnGameProps) {
             }
         };
 
-        canvasRef.addEventListener('mousemove', onMouseMove);
+        const onClick = () => {
+            if (gameStore.data?.status === 'playing' && document.pointerLockElement !== canvasRef) {
+                canvasRef.requestPointerLock();
+            }
+        };
+
+        window.addEventListener('mousemove', onMouseMove);
+        canvasRef.addEventListener('click', onClick);
 
         onCleanup(() => {
-            canvasRef.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mousemove', onMouseMove);
+            canvasRef.removeEventListener('click', onClick);
+            if (document.pointerLockElement === canvasRef) document.exitPointerLock();
             cancelAnimationFrame(rafId);
         });
     });
@@ -177,6 +221,14 @@ export function SnusregnGame(props: SnusregnGameProps) {
     const selfId = () => authState.user?.id ?? '';
     const state = () => gameStore.data;
     const ended = () => state()?.status === 'ended';
+
+    // Release pointer lock when game ends
+    createEffect(() => {
+        if (ended() && document.pointerLockElement === canvasRef) {
+            document.exitPointerLock();
+        }
+    });
+
     const winner = () => state()?.results?.find(r => r.rank === 1);
     const isWinner = () => winner()?.userId === selfId();
     const isSolo = () => {
@@ -198,7 +250,7 @@ export function SnusregnGame(props: SnusregnGameProps) {
     });
 
     return (
-        <div class="snusregn-wrapper">
+        <div class="snusregn-wrapper" style={{ cursor: ended() ? 'auto' : 'none' }}>
             <div style={{ display: ended() ? 'none' : 'flex', 'flex-direction': 'column', 'align-items': 'stretch' }}>
                 <canvas
                     ref={canvasRef}

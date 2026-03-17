@@ -13,24 +13,47 @@
     max-width: 100%;
     max-height: 100vh;
     width: auto;
-    cursor: none;
     border: 1px solid #30363d;
 }
 
 @keyframes sr-pop {
-    0%   { transform: scale(0.4); opacity: 0; }
-    70%  { transform: scale(1.08); opacity: 1; }
-    100% { transform: scale(1); }
+    0% {
+        transform: scale(0.4);
+        opacity: 0;
+    }
+
+    70% {
+        transform: scale(1.08);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1);
+    }
 }
 
 @keyframes sr-slide-up {
-    from { transform: translateY(40px); opacity: 0; }
-    to   { transform: translateY(0);    opacity: 1; }
+    from {
+        transform: translateY(40px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 @keyframes sr-glow-pulse {
-    0%, 100% { text-shadow: 0 0 24px currentColor, 0 0 60px currentColor; }
-    50%       { text-shadow: 0 0 60px currentColor, 0 0 120px currentColor, 0 0 200px currentColor; }
+
+    0%,
+    100% {
+        text-shadow: 0 0 24px currentColor, 0 0 60px currentColor;
+    }
+
+    50% {
+        text-shadow: 0 0 60px currentColor, 0 0 120px currentColor, 0 0 200px currentColor;
+    }
 }
 
 .snusregn-end-screen {
@@ -52,7 +75,7 @@
     margin: 0;
     letter-spacing: -0.02em;
     animation: sr-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both,
-               sr-glow-pulse 2.5s ease-in-out 0.5s infinite;
+        sr-glow-pulse 2.5s ease-in-out 0.5s infinite;
 }
 
 .snusregn-end-title.win {
@@ -122,8 +145,15 @@
 /* ─── Highscore panel ─────────────────────────────── */
 
 @keyframes sr-new-badge {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.4; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
 }
 
 .snusregn-end-columns {

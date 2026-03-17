@@ -164,6 +164,7 @@ export function roomHandlers(
                     activeGames.delete(roomCode);
                     // Reset room to waiting so players can use "Play again"
                     await prisma.room.update({ where: { code: roomCode }, data: { status: 'waiting' } }).catch(() => { /* intentionally ignored */ });
+                    await prisma.roomPlayer.updateMany({ where: { roomId: room.id }, data: { ready: false } }).catch(() => { /* intentionally ignored */ });
 
                     // Persist results
                     try {

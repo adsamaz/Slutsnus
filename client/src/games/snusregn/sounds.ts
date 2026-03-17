@@ -50,7 +50,7 @@ export function soundFreshCatchBeer(): void {
             osc.frequency.setValueAtTime(freq, ac.currentTime + offsets[i]);
             osc.frequency.exponentialRampToValueAtTime(freq * 1.1, ac.currentTime + offsets[i] + 0.1);
             const t = ac.currentTime + offsets[i];
-            const peak = i === 2 ? 0.2 : 0.16;
+            const peak = i === 2 ? 0.12 : 0.10;
             gain.gain.setValueAtTime(0, t);
             gain.gain.linearRampToValueAtTime(peak, t + 0.005);
             gain.gain.linearRampToValueAtTime(0, t + 0.18);
@@ -92,7 +92,7 @@ export function soundLifeLost(): void {
         osc.frequency.setValueAtTime(165, ac.currentTime);
         osc.frequency.setValueAtTime(110, ac.currentTime + 0.08);
         osc.frequency.setValueAtTime(55, ac.currentTime + 0.17);
-        envelope(gain, ac, 0.002, 0.06, 0.15, 0.3, 0.18);
+        envelope(gain, ac, 0.002, 0.06, 0.15, 0.3, 0.10);
         osc.start(ac.currentTime);
         osc.stop(ac.currentTime + 0.55);
 

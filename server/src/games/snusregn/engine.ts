@@ -24,6 +24,7 @@ const SPAWN_WEIGHTS: Record<SnusregnItemType, number> = {
     shrinkBar: 1,
     blind: 1,
     beer: 1.5,
+    beerSnus: 3.5,
 };
 
 const EFFECT_DURATIONS: Record<SnusregnEffectType, number> = {
@@ -44,6 +45,7 @@ interface PlayerInternal {
     barXPx: number;
     items: SnusregnItem[];
     effects: SnusregnEffect[];
+    powerupCooldowns: Partial<Record<SnusregnItemType, number>>;
     nextItemId: number;
     ticksSinceLastSpawn: number;
 }
@@ -66,6 +68,19 @@ function hasEffect(player: PlayerInternal, type: SnusregnEffectType): boolean {
 function addEffect(target: PlayerInternal, type: SnusregnEffectType): void {
     target.effects = target.effects.filter(e => e.type !== type);
     target.effects.push({ type, remainingTicks: EFFECT_DURATIONS[type] });
+}
+
+function removeEffect(target: PlayerInternal, type: SnusregnEffectType): void {
+    target.effects = target.effects.filter(e => e.type !== type);
+}
+
+/** Applies `type` to `target`, or cancels `opposite` if it is active instead. */
+function applyOrCancel(target: PlayerInternal, type: SnusregnEffectType, opposite: SnusregnEffectType): void {
+    if (hasEffect(target, opposite)) {
+        removeEffect(target, opposite);
+    } else {
+        addEffect(target, type);
+    }
 }
 
 function computeBarHalfWidthPx(player: PlayerInternal): number {
@@ -109,6 +124,7 @@ export class SnusregnEngine implements GameEngine {
             barXPx: LANE_W / 2,
             items: [],
             effects: [],
+            powerupCooldowns: {},
             nextItemId: 0,
             ticksSinceLastSpawn: 0,
         });
@@ -128,7 +144,8 @@ export class SnusregnEngine implements GameEngine {
             const xFraction = Math.max(0, Math.min(1, payload.xFraction));
             const player = this.players.find(p => p.userId === playerId);
             if (player) {
-                player.barXPx = xFraction * LANE_W;
+                const halfW = computeBarHalfWidthPx(player);
+                player.barXPx = Math.max(halfW, Math.min(LANE_W - halfW, xFraction * LANE_W));
             }
         }
     }
@@ -191,10 +208,20 @@ export class SnusregnEngine implements GameEngine {
         }
         player.effects = player.effects.filter(e => e.remainingTicks > 0);
 
-        // 2. Effective fall speed
-        const ramp = this.tickCount * FALL_SPEED_INCREMENT;
-        let speed = (BASE_FALL_SPEED + ramp)
-            * (hasEffect(player, 'fastRain') ? 1.5 : 1.0)
+        // Decrement and expire powerup spawn cooldowns
+        for (const key of Object.keys(player.powerupCooldowns) as SnusregnItemType[]) {
+            player.powerupCooldowns[key]!--;
+            if (player.powerupCooldowns[key]! <= 0) {
+                delete player.powerupCooldowns[key];
+            }
+        }
+
+        // 2. Effective fall speed — square-root ramp: fast early increase that tapers off
+        const ramp = Math.sqrt(this.tickCount) * 0.3;
+        const baseSpeed = BASE_FALL_SPEED + ramp;
+        // fastRain adds a fixed speed bonus (diminishing relative effect at high speeds)
+        const fastBonus = hasEffect(player, 'fastRain') ? BASE_FALL_SPEED * 0.5 : 0;
+        let speed = (baseSpeed + fastBonus)
             * (hasEffect(player, 'slowRain') ? 0.5 : 1.0);
         if (speed < 0) speed = 0;
 
@@ -209,9 +236,11 @@ export class SnusregnEngine implements GameEngine {
         // 5. Spawn
         if (player.ticksSinceLastSpawn >= spawnInterval && player.items.length < MAX_ITEMS) {
             const id = `${player.userId}-${player.nextItemId++}`;
-            const weights = this.isSolo
-                ? { ...SPAWN_WEIGHTS, slowRain: 0 }
-                : SPAWN_WEIGHTS;
+            const weights: Record<SnusregnItemType, number> = { ...SPAWN_WEIGHTS };
+            if (this.isSolo) weights.slowRain = 0;
+            for (const key of Object.keys(player.powerupCooldowns) as SnusregnItemType[]) {
+                weights[key] = 0;
+            }
             player.items.push({
                 id,
                 type: weightedRandom(weights),
@@ -258,13 +287,19 @@ export class SnusregnEngine implements GameEngine {
     private resolveCatch(player: PlayerInternal, item: SnusregnItem, opponent: PlayerInternal): void {
         switch (item.type) {
             case 'fresh': player.score += hasEffect(player, 'beer') ? 3 : 1; break;
+            case 'beerSnus': player.score += 3; break;
             case 'spent': player.lives -= 1; break;
-            case 'wideBar': addEffect(player, 'wideBar'); break;
-            case 'slowRain': addEffect(opponent, 'slowRain'); break;
-            case 'fastRain': addEffect(player, 'fastRain'); break;
-            case 'shrinkBar': addEffect(player, 'shrinkBar'); break;
+            case 'wideBar': applyOrCancel(player, 'wideBar', 'shrinkBar'); break;
+            case 'slowRain': applyOrCancel(opponent, 'slowRain', 'fastRain'); break;
+            case 'fastRain': applyOrCancel(player, 'fastRain', 'slowRain'); break;
+            case 'shrinkBar': applyOrCancel(player, 'shrinkBar', 'wideBar'); break;
             case 'blind': addEffect(player, 'blind'); break;
             case 'beer': addEffect(player, 'beer'); break;
+        }
+
+        // Prevent the same powerup from spawning again for its effect duration
+        if (item.type in EFFECT_DURATIONS) {
+            player.powerupCooldowns[item.type] = EFFECT_DURATIONS[item.type as SnusregnEffectType];
         }
     }
 

@@ -229,7 +229,8 @@ export type SnusregnItemType =
     | 'fastRain'   // debuff: catch to double own fall speed for 3s
     | 'shrinkBar'  // debuff: catch to halve own bar width for 4s
     | 'blind'      // debuff: catch to black out own screen for 2s
-    | 'beer';      // powerup: catch to triple own score
+    | 'beer'       // powerup: catch to triple own score
+    | 'beerSnus';  // +3 score if caught (no effect)
 
 export type SnusregnEffectType =
     | 'wideBar'
