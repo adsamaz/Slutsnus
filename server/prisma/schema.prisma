@@ -18,6 +18,7 @@ passwordHash String
   sentFriendships     Friendship[]        @relation("SentFriendships")
   receivedFriendships Friendship[]        @relation("ReceivedFriendships")
   sessionPlayers      GameSessionPlayer[]
+  winLossRecords      WinLossRecord[]
 }
 
 model Room {
