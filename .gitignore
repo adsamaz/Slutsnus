@@ -4,3 +4,9 @@ build/
 .env
 .env.local
 *.log
+
+# shared build output
+shared/src/**/*.js
+shared/src/**/*.js.map
+shared/src/**/*.d.ts
+shared/src/**/*.d.ts.map
