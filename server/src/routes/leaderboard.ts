@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { prisma } from '../db/client';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
 import { LeaderboardEntry } from '@slutsnus/shared';
+import { Prisma } from '@prisma/client';
 
 const router = Router();
 router.use(authMiddleware);
@@ -17,14 +18,15 @@ router.get('/:gameType', async (req: AuthenticatedRequest, res: Response) => {
             take: 50,
         });
 
-        const userIds = rows.map(r => r.userId);
+        type GroupByRow = (typeof rows)[number];
+        const userIds = rows.map((r: GroupByRow) => r.userId);
         const users = await prisma.user.findMany({
             where: { id: { in: userIds } },
             select: { id: true, username: true },
         });
-        const usernameById = new Map(users.map(u => [u.id, u.username]));
+        const usernameById = new Map(users.map((u: { id: string; username: string }) => [u.id, u.username]));
 
-        const result: LeaderboardEntry[] = rows.map((r, i) => ({
+        const result: LeaderboardEntry[] = rows.map((r: GroupByRow, i: number) => ({
             rank: i + 1,
             userId: r.userId,
             username: usernameById.get(r.userId) ?? r.userId,

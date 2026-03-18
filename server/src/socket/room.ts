@@ -3,6 +3,9 @@ import { ClientToServerEvents, ServerToClientEvents, RoomInfo, RoomPlayer, GameR
 import { prisma } from '../db/client';
 import { gameRegistry, TurnBasedGameEngine } from '../games/registry';
 import { activeGames, onlineUsers } from './index';
+import { Prisma } from '@prisma/client';
+
+type RoomPlayerWithUser = Prisma.RoomPlayerGetPayload<{ include: { user: true } }>;
 
 // Tracks pending cleanup timers when all players in a room go offline (REQ-MULTI-04)
 export const activeGameCleanupTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -13,7 +16,7 @@ async function buildRoomInfo(roomId: string): Promise<RoomInfo | null> {
         include: { players: { include: { user: true } } },
     });
     if (!room) return null;
-    const players: RoomPlayer[] = room.players.map((rp) => ({
+    const players: RoomPlayer[] = room.players.map((rp: RoomPlayerWithUser) => ({
         userId: rp.userId,
         username: rp.user.username,
         ready: rp.ready,
@@ -130,7 +133,7 @@ export function roomHandlers(
 
             const session = await prisma.gameSession.create({ data: { roomId: room.id } });
 
-            const players: PlayerInfo[] = room.players.map((rp) => ({
+            const players: PlayerInfo[] = room.players.map((rp: RoomPlayerWithUser) => ({
                 userId: rp.userId,
                 username: rp.user.username,
             }));

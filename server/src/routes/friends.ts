@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { prisma } from '../db/client';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
 import { FriendInfo, FriendshipStatus, UserPublic } from '@slutsnus/shared';
+import { Prisma } from '@prisma/client';
 import { onlineUsers, io } from '../socket/index';
 
 const router = Router();
@@ -20,7 +21,7 @@ async function buildFriendList(userId: string): Promise<FriendInfo[]> {
     });
 
     const friends: FriendInfo[] = await Promise.all(
-        friendships.map(async (f) => {
+        friendships.map(async (f: Prisma.FriendshipGetPayload<{ include: { requester: true; addressee: true } }>) => {
             const isRequester = f.requesterId === userId;
             const friend = isRequester ? f.addressee : f.requester;
             const friendId = friend.id;
@@ -73,7 +74,7 @@ router.get('/search', async (req: AuthenticatedRequest, res: Response) => {
             take: 20,
             select: { id: true, username: true },
         });
-        const result: UserPublic[] = users.map((u) => ({ id: u.id, username: u.username }));
+        const result: UserPublic[] = users.map((u: { id: string; username: string }) => ({ id: u.id, username: u.username }));
         res.json(result);
     } catch {
         res.status(500).json({ error: 'Internal server error' });

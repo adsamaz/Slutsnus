@@ -2,6 +2,9 @@ import { Router, Response } from 'express';
 import { prisma } from '../db/client';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
 import { RoomInfo, RoomPlayer } from '@slutsnus/shared';
+import { Prisma } from '@prisma/client';
+
+type RoomPlayerWithUser = Prisma.RoomPlayerGetPayload<{ include: { user: true } }>;
 
 const router = Router();
 router.use(authMiddleware);
@@ -17,7 +20,7 @@ async function buildRoomInfo(roomId: string): Promise<RoomInfo | null> {
     });
     if (!room) return null;
 
-    const players: RoomPlayer[] = room.players.map((rp) => ({
+    const players: RoomPlayer[] = room.players.map((rp: RoomPlayerWithUser) => ({
         userId: rp.userId,
         username: rp.user.username,
         ready: rp.ready,
