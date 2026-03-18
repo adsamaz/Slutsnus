@@ -3,6 +3,7 @@ import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import path from 'path';
 import { initSocket } from './socket/index';
 import authRouter from './routes/auth';
 import roomsRouter from './routes/rooms';
@@ -27,6 +28,12 @@ app.use('/api/friends', friendsRouter);
 app.use('/api/leaderboard', leaderboardRouter);
 
 initSocket(httpServer);
+
+const clientDist = path.join(__dirname, '../../client/dist');
+app.use(express.static(clientDist));
+app.get('*', (_req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+});
 
 const PORT = Number(process.env.PORT) || 4000;
 httpServer.listen(PORT, () => {
