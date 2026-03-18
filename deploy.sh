@@ -14,7 +14,7 @@ echo "==> Building..."
 npm run build
 
 echo "==> Running database migrations..."
-npm run db:migrate --workspace=server
+npm run db:migrate:deploy --workspace=server
 
 echo "==> Starting server..."
 npm run start --workspace=server
