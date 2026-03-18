@@ -3,9 +3,7 @@ import { ClientToServerEvents, ServerToClientEvents, RoomInfo, RoomPlayer, GameR
 import { prisma } from '../db/client';
 import { gameRegistry, TurnBasedGameEngine } from '../games/registry';
 import { activeGames, onlineUsers } from './index';
-import { Prisma } from '@prisma/client';
-
-type RoomPlayerWithUser = Prisma.RoomPlayerGetPayload<{ include: { user: true } }>;
+type RoomPlayerWithUser = Awaited<ReturnType<typeof prisma.roomPlayer.findFirstOrThrow<{ include: { user: true } }>>>;
 
 // Tracks pending cleanup timers when all players in a room go offline (REQ-MULTI-04)
 export const activeGameCleanupTimers = new Map<string, ReturnType<typeof setTimeout>>();

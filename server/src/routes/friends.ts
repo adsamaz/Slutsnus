@@ -2,8 +2,10 @@ import { Router, Response } from 'express';
 import { prisma } from '../db/client';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
 import { FriendInfo, FriendshipStatus, UserPublic } from '@slutsnus/shared';
-import { Prisma } from '@prisma/client';
+
 import { onlineUsers, io } from '../socket/index';
+
+type FriendshipWithUsers = Awaited<ReturnType<typeof prisma.friendship.findFirstOrThrow<{ include: { requester: true; addressee: true } }>>>;
 
 const router = Router();
 router.use(authMiddleware);
@@ -21,7 +23,7 @@ async function buildFriendList(userId: string): Promise<FriendInfo[]> {
     });
 
     const friends: FriendInfo[] = await Promise.all(
-        friendships.map(async (f: Prisma.FriendshipGetPayload<{ include: { requester: true; addressee: true } }>) => {
+        friendships.map(async (f: FriendshipWithUsers) => {
             const isRequester = f.requesterId === userId;
             const friend = isRequester ? f.addressee : f.requester;
             const friendId = friend.id;

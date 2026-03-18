@@ -2,7 +2,6 @@ import { Router, Response } from 'express';
 import { prisma } from '../db/client';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
 import { LeaderboardEntry } from '@slutsnus/shared';
-import { Prisma } from '@prisma/client';
 
 const router = Router();
 router.use(authMiddleware);

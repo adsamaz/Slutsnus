@@ -2,9 +2,8 @@ import { Router, Response } from 'express';
 import { prisma } from '../db/client';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
 import { RoomInfo, RoomPlayer } from '@slutsnus/shared';
-import { Prisma } from '@prisma/client';
 
-type RoomPlayerWithUser = Prisma.RoomPlayerGetPayload<{ include: { user: true } }>;
+type RoomPlayerWithUser = Awaited<ReturnType<typeof prisma.roomPlayer.findFirstOrThrow<{ include: { user: true } }>>>;
 
 const router = Router();
 router.use(authMiddleware);
