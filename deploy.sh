@@ -7,6 +7,9 @@ git pull
 echo "==> Installing dependencies..."
 npm install
 
+echo "==> Generating Prisma client..."
+npm run db:generate --workspace=server
+
 echo "==> Building..."
 npm run build
 
