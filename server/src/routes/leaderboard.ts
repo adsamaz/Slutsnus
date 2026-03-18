@@ -7,7 +7,7 @@ const router = Router();
 router.use(authMiddleware);
 
 router.get('/:gameType', async (req: AuthenticatedRequest, res: Response) => {
-    const { gameType } = req.params;
+    const gameType = req.params.gameType as string;
     try {
         const rows = await prisma.leaderboardEntry.groupBy({
             by: ['userId'],
@@ -28,8 +28,8 @@ router.get('/:gameType', async (req: AuthenticatedRequest, res: Response) => {
             rank: i + 1,
             userId: r.userId,
             username: usernameById.get(r.userId) ?? r.userId,
-            score: r._max.score ?? 0,
-            recordedAt: (r._max.recordedAt ?? new Date()).toISOString(),
+            score: r._max?.score ?? 0,
+            recordedAt: (r._max?.recordedAt ?? new Date()).toISOString(),
         }));
 
         res.json({ entries: result });

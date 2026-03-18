@@ -5,7 +5,7 @@ import { gameRegistry, TurnBasedGameEngine } from '../games/registry';
 import { activeGames, onlineUsers } from './index';
 
 // Tracks pending cleanup timers when all players in a room go offline (REQ-MULTI-04)
-const activeGameCleanupTimers = new Map<string, ReturnType<typeof setTimeout>>();
+export const activeGameCleanupTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 async function buildRoomInfo(roomId: string): Promise<RoomInfo | null> {
     const room = await prisma.room.findUnique({
@@ -194,30 +194,6 @@ export function roomHandlers(
             activeGames.set(roomCode, engine);
 
             io.to(roomCode).emit('room:started', { roomCode });
-
-            // 5-minute session cleanup when all players disconnect (REQ-MULTI-04)
-            // Listen for any socket disconnect and check if the room is now all-offline
-            io.in(roomCode).fetchSockets().then((roomSockets) => {
-                for (const roomSocket of roomSockets) {
-                    roomSocket.on('disconnect', () => {
-                        // Check if any player in this room is still online
-                        const roomPlayerIds = players.map(p => p.userId);
-                        const anyOnline = roomPlayerIds.some(
-                            pid => (onlineUsers.get(pid)?.size ?? 0) > 0,
-                        );
-                        if (!anyOnline && activeGames.has(roomCode)) {
-                            const cleanupTimer = setTimeout(() => {
-                                const activeEngine = activeGames.get(roomCode);
-                                if (activeEngine) {
-                                    activeEngine.destroy();
-                                    activeGames.delete(roomCode);
-                                }
-                            }, 5 * 60 * 1000);
-                            activeGameCleanupTimers.set(roomCode, cleanupTimer);
-                        }
-                    });
-                }
-            }).catch(() => { /* intentionally ignored */ });
         } catch {
             socket.emit('room:error', { message: 'Failed to start game' });
         }

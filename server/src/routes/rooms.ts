@@ -101,7 +101,8 @@ router.post('/join', async (req: AuthenticatedRequest, res: Response) => {
 
 router.get('/:code', async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const room = await prisma.room.findUnique({ where: { code: req.params.code.toUpperCase() } });
+        const code = req.params.code as string;
+        const room = await prisma.room.findUnique({ where: { code: code.toUpperCase() } });
         if (!room) {
             res.status(404).json({ error: 'Room not found' });
             return;
@@ -114,7 +115,8 @@ router.get('/:code', async (req: AuthenticatedRequest, res: Response) => {
 
 router.delete('/:code/leave', async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const room = await prisma.room.findUnique({ where: { code: req.params.code.toUpperCase() } });
+        const code = req.params.code as string;
+        const room = await prisma.room.findUnique({ where: { code: code.toUpperCase() } });
         if (!room) {
             res.status(404).json({ error: 'Room not found' });
             return;

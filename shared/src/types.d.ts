@@ -14,7 +14,7 @@ export interface AuthResponse {
     user: UserPublic;
 }
 export type RoomStatus = 'waiting' | 'playing' | 'ended';
-export type GameType = 'snus-rpg';
+export type GameType = 'snusregn';
 export interface RoomPlayer {
     userId: string;
     username: string;
@@ -176,4 +176,58 @@ export interface SnusRpgState {
     tradeOffers: TradeOffer[];
     timeRemainingTicks: number;
 }
+export interface SenusCatcherObject {
+    id: string;
+    type: 'fresh' | 'spent';
+    x: number;
+    y: number;
+}
+export interface SenusCatcherPlayerState {
+    userId: string;
+    username: string;
+    score: number;
+    lives: number;
+    barXFraction: number;
+    objects: SenusCatcherObject[];
+}
+export interface SenusCatcherState {
+    status: 'playing' | 'ended';
+    tickCount: number;
+    players: SenusCatcherPlayerState[];
+    results?: GameResult[];
+}
+export type SnusregnItemType = 'fresh' | 'spent' | 'wideBar' | 'slowRain' | 'fastRain' | 'shrinkBar' | 'blind' | 'beer' | 'beerSnus';
+export type SnusregnEffectType = 'wideBar' | 'slowRain' | 'fastRain' | 'shrinkBar' | 'blind' | 'beer';
+export interface SnusregnEffect {
+    type: SnusregnEffectType;
+    remainingTicks: number;
+}
+export interface SnusregnItem {
+    id: string;
+    type: SnusregnItemType;
+    x: number;
+    y: number;
+    speedMult: number;
+}
+export interface SnusregnPlayerState {
+    userId: string;
+    username: string;
+    score: number;
+    lives: number;
+    barXFraction: number;
+    items: SnusregnItem[];
+    effects: SnusregnEffect[];
+}
+export interface SnusregnState {
+    status: 'playing' | 'ended';
+    tickCount: number;
+    players: SnusregnPlayerState[];
+    results?: GameResult[];
+}
+export type SnusregnAction = {
+    type: 'snusregn:bar-move';
+    payload: {
+        xFraction: number;
+    };
+};
 //# sourceMappingURL=types.d.ts.map

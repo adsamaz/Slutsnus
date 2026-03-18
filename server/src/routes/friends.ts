@@ -155,7 +155,7 @@ router.post('/decline', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 router.delete('/:userId', async (req: AuthenticatedRequest, res: Response) => {
-    const otherId = req.params.userId;
+    const otherId = req.params.userId as string;
     try {
         await prisma.friendship.deleteMany({
             where: {

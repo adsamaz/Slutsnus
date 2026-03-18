@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { parse as parseCookies } from 'cookie';
 import { ClientToServerEvents, ServerToClientEvents } from '@slutsnus/shared';
 import { GameEngine } from '../games/registry';
-import { roomHandlers } from './room';
+import { roomHandlers, activeGameCleanupTimers } from './room';
 import { gameHandlers } from './game';
 import { friendsHandlers } from './friends';
 
@@ -64,6 +64,25 @@ export function initSocket(httpServer: HttpServer): void {
                 if (sockets.size === 0) {
                     onlineUsers.delete(userId);
                     broadcastFriendStatus(socket, userId, false);
+                }
+            }
+
+            // 5-minute session cleanup when all players in a room go offline (REQ-MULTI-04)
+            for (const roomCode of socket.rooms) {
+                if (!activeGames.has(roomCode)) continue;
+                const roomSockets = io.sockets.adapter.rooms.get(roomCode);
+                const anyOnline = roomSockets
+                    ? [...roomSockets].some(sid => sid !== socket.id)
+                    : false;
+                if (!anyOnline) {
+                    const cleanupTimer = setTimeout(() => {
+                        const engine = activeGames.get(roomCode);
+                        if (engine) {
+                            engine.destroy();
+                            activeGames.delete(roomCode);
+                        }
+                    }, 5 * 60 * 1000);
+                    activeGameCleanupTimers.set(roomCode, cleanupTimer);
                 }
             }
         });

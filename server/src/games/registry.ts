@@ -8,7 +8,7 @@ export interface GameEngine {
     destroy(): void;
 }
 
-export type TurnPhase = 'playing' | 'ended';
+export type TurnPhase = 'draw' | 'planning' | 'reveal' | 'resolve' | 'ended';
 
 // Extension of GameEngine for turn-based games with simultaneous reveal.
 export interface TurnBasedGameEngine extends GameEngine {
