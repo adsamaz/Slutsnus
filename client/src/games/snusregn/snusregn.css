@@ -275,12 +275,19 @@
     background: #388bfd;
 }
 
+.snusregn-lobby-btn:disabled,
+.snusregn-lobby-btn.snusregn-btn-loading {
+    cursor: not-allowed;
+    opacity: 0.65;
+    transform: none;
+}
+
 .snusregn-effect-bars {
     display: flex;
     flex-direction: column;
     gap: 4px;
     padding: 6px 0 2px;
-    width: 100%;
+    width: 450px;
 }
 
 .snusregn-effect-bar-row {
@@ -295,6 +302,11 @@
     font-weight: bold;
     width: 56px;
     flex-shrink: 0;
+}
+
+.snusregn-effect-bar-row.opponent .snusregn-effect-track {
+    outline: 1px solid #30363d;
+    outline-offset: 1px;
 }
 
 .snusregn-effect-track {

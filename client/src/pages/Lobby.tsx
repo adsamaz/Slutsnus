@@ -17,9 +17,11 @@ export default function Lobby() {
 
     const [ready, setReady] = createSignal(false);
     const [starting, setStarting] = createSignal(false);
+    const [leaving, setLeaving] = createSignal(false);
     const [joining, setJoining] = createSignal(true);
     const [error, setError] = createSignal('');
     const [copied, setCopied] = createSignal(false);
+    const [invited, setInvited] = createSignal<Set<string>>(new Set());
 
     const handleCopyCode = () => {
         navigator.clipboard.writeText(params.code);
@@ -59,12 +61,14 @@ export default function Lobby() {
     };
 
     const handleLeave = async () => {
+        setLeaving(true);
         await roomActions.leaveRoom();
         navigate('/');
     };
 
     const handleInvite = (targetUserId: string) => {
         friendsActions.inviteFriend(targetUserId, params.code);
+        setInvited((prev) => new Set([...prev, targetUserId]));
     };
 
     // Listen for game start
@@ -72,8 +76,19 @@ export default function Lobby() {
     socket.on('room:started', onStarted);
     onCleanup(() => socket.off('room:started', onStarted));
 
-    const onlineAcceptedFriends = () =>
-        friendsState.friends.filter((f) => f.friendshipStatus === 'accepted' && f.online);
+    // Listen for host dissolving the room
+    const onDissolved = () => navigate('/');
+    socket.on('room:dissolved', onDissolved);
+    onCleanup(() => socket.off('room:dissolved', onDissolved));
+
+    const lobbyFull = () => (room()?.players.length ?? 0) >= 2;
+
+    const invitableFriends = () => {
+        const playerIds = new Set(room()?.players.map((p) => p.userId) ?? []);
+        return friendsState.friends.filter(
+            (f) => f.friendshipStatus === 'accepted' && f.online && !playerIds.has(f.userId)
+        );
+    };
 
     return (
         <main class="page lobby-page">
@@ -106,7 +121,7 @@ export default function Lobby() {
                             </div>
 
                             <div class="player-list">
-                                <h3>Players ({r().players.length} / 4)</h3>
+                                <h3>Players ({r().players.length} / 2)</h3>
                                 <For each={r().players}>
                                     {(player: RoomPlayer) => (
                                         <div class="player-item">
@@ -144,32 +159,38 @@ export default function Lobby() {
                                         {starting() ? 'Starting...' : 'Start game'}
                                     </Button>
                                 </Show>
-                                <Button class="btn btn-danger" onClick={handleLeave}>
-                                    Leave
+                                <Button class="btn btn-danger" onClick={handleLeave} disabled={leaving()}>
+                                    {leaving() ? 'Leaving...' : 'Leave'}
                                 </Button>
                             </div>
                         </div>
 
                         <div class="lobby-sidebar card">
                             <h3>Invite friends</h3>
-                            <Show when={onlineAcceptedFriends().length === 0}>
+                            <Show when={lobbyFull()}>
+                                <p class="muted">Lobby is full</p>
+                            </Show>
+                            <Show when={!lobbyFull() && invitableFriends().length === 0}>
                                 <p class="muted">No friends online</p>
                             </Show>
-                            <For each={onlineAcceptedFriends()}>
-                                {(f) => (
-                                    <div class="friend-item">
-                                        <span class="status-dot online" />
-                                        <span>{f.username}</span>
-                                        <Button
-                                            class="btn btn-secondary"
-                                            style={{ 'margin-left': 'auto', padding: '4px 10px', 'font-size': '0.8rem' }}
-                                            onClick={() => handleInvite(f.userId)}
-                                        >
-                                            Invite
-                                        </Button>
-                                    </div>
-                                )}
-                            </For>
+                            <Show when={!lobbyFull()}>
+                                <For each={invitableFriends()}>
+                                    {(f) => (
+                                        <div class="friend-item">
+                                            <span class="status-dot online" />
+                                            <span>{f.username}</span>
+                                            <Button
+                                                class="btn btn-secondary"
+                                                style={{ 'margin-left': 'auto', padding: '4px 10px', 'font-size': '0.8rem' }}
+                                                onClick={() => handleInvite(f.userId)}
+                                                disabled={invited().has(f.userId)}
+                                            >
+                                                {invited().has(f.userId) ? '✓' : 'Invite'}
+                                            </Button>
+                                        </div>
+                                    )}
+                                </For>
+                            </Show>
                         </div>
                     </div>
                 )}

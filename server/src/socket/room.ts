@@ -8,6 +8,9 @@ type RoomPlayerWithUser = Awaited<ReturnType<typeof prisma.roomPlayer.findFirstO
 // Tracks pending cleanup timers when all players in a room go offline (REQ-MULTI-04)
 export const activeGameCleanupTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+// Tracks game:ready acknowledgements before the engine starts
+const pendingGameStarts = new Map<string, { readySet: Set<string>; startFn: () => void }>();
+
 async function buildRoomInfo(roomId: string): Promise<RoomInfo | null> {
     const room = await prisma.room.findUnique({
         where: { id: roomId },
@@ -54,12 +57,16 @@ export function roomHandlers(
             const info = await buildRoomInfo(room.id);
             if (info) io.to(roomCode).emit('room:update', { room: info });
 
-            // Reconnect: if a game is in progress, send this player their current projected state (REQ-MULTI-03)
+            // Reconnect: if a game is in progress, send this player their current state (REQ-MULTI-03)
             const existingEngine = activeGames.get(roomCode);
-            if (existingEngine && typeof (existingEngine as TurnBasedGameEngine).projectState === 'function') {
-                const turnEngine = existingEngine as TurnBasedGameEngine;
-                const snapshot = turnEngine.projectState(userId);
-                socket.emit('game:state', { state: snapshot });
+            if (existingEngine) {
+                if (typeof (existingEngine as TurnBasedGameEngine).projectState === 'function') {
+                    const snapshot = (existingEngine as TurnBasedGameEngine).projectState(userId);
+                    socket.emit('game:state', { state: snapshot });
+                } else {
+                    const snapshot = existingEngine.getState();
+                    if (snapshot !== null) socket.emit('game:state', { state: snapshot });
+                }
             }
         } catch {
             socket.emit('room:error', { message: 'Failed to join room' });
@@ -87,12 +94,15 @@ export function roomHandlers(
             socket.leave(roomCode);
 
             const remaining = await prisma.roomPlayer.findMany({ where: { roomId: room.id } });
-            if (remaining.length === 0) {
+            if (room.hostId === userId && remaining.length > 0) {
+                io.to(roomCode).emit('room:dissolved');
+                await prisma.roomPlayer.deleteMany({ where: { roomId: room.id } });
                 await prisma.room.delete({ where: { id: room.id } });
                 return;
             }
-            if (room.hostId === userId) {
-                await prisma.room.update({ where: { id: room.id }, data: { hostId: remaining[0].userId } });
+            if (remaining.length === 0) {
+                await prisma.room.delete({ where: { id: room.id } });
+                return;
             }
             const info = await buildRoomInfo(room.id);
             if (info) io.to(roomCode).emit('room:update', { room: info });
@@ -191,12 +201,37 @@ export function roomHandlers(
                 }
             };
 
-            engine.init(room.id, players, onUpdate);
             activeGames.set(roomCode, engine);
+
+            pendingGameStarts.set(roomCode, {
+                readySet: new Set(),
+                startFn: () => {
+                    engine.init(room.id, players, onUpdate);
+                },
+            });
 
             io.to(roomCode).emit('room:started', { roomCode });
         } catch {
             socket.emit('room:error', { message: 'Failed to start game' });
+        }
+    });
+
+    socket.on('game:ready', async ({ roomCode }) => {
+        const pending = pendingGameStarts.get(roomCode.toUpperCase());
+        if (!pending) return;
+
+        pending.readySet.add(userId);
+
+        const room = await prisma.room.findUnique({
+            where: { code: roomCode.toUpperCase() },
+            include: { players: true },
+        });
+        if (!room) return;
+
+        const allReady = room.players.every(p => pending.readySet.has(p.userId));
+        if (allReady) {
+            pendingGameStarts.delete(roomCode.toUpperCase());
+            pending.startFn();
         }
     });
 }

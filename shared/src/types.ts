@@ -75,7 +75,7 @@ export interface FriendInfo {
     friendshipStatus: FriendshipStatus;
     direction: 'incoming' | 'outgoing' | 'mutual';
     online: boolean;
-    currentRoom?: { code: string; gameType: GameType } | null;
+    currentRoom?: { code: string; gameType: GameType; isHost: boolean } | null;
 }
 
 // ─────────────────────────────────────────────────
@@ -98,6 +98,7 @@ export interface ClientToServerEvents {
     'room:leave': (data: { roomCode: string }) => void;
     'room:start': (data: { roomCode: string }) => void;
     'game:action': (data: { roomCode: string; action: GameAction }) => void;
+    'game:ready': (data: { roomCode: string }) => void;
     'friends:invite': (data: { targetUserId: string; roomCode: string }) => void;
     'friends:inviteAccept': (data: { roomCode: string }) => void;
 }
@@ -106,6 +107,7 @@ export interface ServerToClientEvents {
     'room:update': (data: { room: RoomInfo }) => void;
     'room:error': (data: { message: string }) => void;
     'room:started': (data: { roomCode: string }) => void;
+    'room:dissolved': () => void;
     'game:state': (data: { state: unknown }) => void;
     'game:end': (data: { results: GameResult[] }) => void;
     'friends:status': (data: { userId: string; online: boolean }) => void;

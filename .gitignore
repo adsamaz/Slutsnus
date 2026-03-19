@@ -10,3 +10,5 @@ shared/src/**/*.js
 shared/src/**/*.js.map
 shared/src/**/*.d.ts
 shared/src/**/*.d.ts.map
+
+old/

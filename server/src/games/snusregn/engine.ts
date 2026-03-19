@@ -43,6 +43,7 @@ interface PlayerInternal {
     score: number;
     lives: number;
     barXPx: number;
+    prevBarXPx: number;
     items: SnusregnItem[];
     effects: SnusregnEffect[];
     powerupCooldowns: Partial<Record<SnusregnItemType, number>>;
@@ -123,6 +124,7 @@ export class SnusregnEngine implements GameEngine {
             score: 0,
             lives: LIVES_START,
             barXPx: LANE_W / 2,
+            prevBarXPx: LANE_W / 2,
             items: [],
             effects: [],
             powerupCooldowns: {},
@@ -147,6 +149,7 @@ export class SnusregnEngine implements GameEngine {
             const player = this.players.find(p => p.userId === playerId);
             if (player) {
                 const halfW = computeBarHalfWidthPx(player);
+                player.prevBarXPx = player.barXPx;
                 player.barXPx = Math.max(halfW, Math.min(LANE_W - halfW, xFraction * LANE_W));
             }
         }
@@ -289,13 +292,20 @@ export class SnusregnEngine implements GameEngine {
 
             const horizOverlap = (itemXPx + ITEM_RADIUS >= player.barXPx - barHalfW) &&
                 (itemXPx - ITEM_RADIUS <= player.barXPx + barHalfW);
+            // Horizontal sweep: bar moved sideways over an item that is at bar height
+            const barLeft = Math.min(player.prevBarXPx, player.barXPx) - barHalfW;
+            const barRight = Math.max(player.prevBarXPx, player.barXPx) + barHalfW;
+            const horizSwept = vertOverlap && itemXPx + ITEM_RADIUS >= barLeft && itemXPx - ITEM_RADIUS <= barRight;
 
-            if ((vertOverlap || sweptThrough) && horizOverlap) {
+            if ((vertOverlap || sweptThrough) && (horizOverlap || horizSwept)) {
                 this.resolveCatch(player, item, opponent);
                 player.prevItemY.delete(item.id);
                 player.items.splice(i, 1);
             }
         }
+
+        // Reset bar sweep origin so next tick only sweeps from the current position
+        player.prevBarXPx = player.barXPx;
     }
 
     private resolveCatch(player: PlayerInternal, item: SnusregnItem, opponent: PlayerInternal): void {

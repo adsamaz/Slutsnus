@@ -7,6 +7,7 @@ import { FriendsProvider } from './stores/friends';
 import Navbar from './components/Navbar';
 import { ToastContainer } from './components/Toast';
 import ProtectedRoute from './components/ProtectedRoute';
+import GameInviteModal from './components/GameInviteModal';
 
 const Home = lazy(() => import('./pages/Home'));
 const Login = lazy(() => import('./pages/Login'));
@@ -22,6 +23,7 @@ function Layout(props: ParentProps) {
         <>
             <Navbar />
             <ToastContainer />
+            <GameInviteModal />
             {props.children}
         </>
     );

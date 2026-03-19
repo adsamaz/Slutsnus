@@ -1,4 +1,4 @@
-import snusIconSrc from '../assets/snusicon.png';
+import snusIconSrc from '../assets/snusicon.webp';
 
 type Props = { size?: number; class?: string };
 

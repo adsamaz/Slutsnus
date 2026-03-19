@@ -1,22 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <!-- Snowflake: 6 arms -->
-  <g stroke="#e3b341" stroke-width="6" stroke-linecap="round">
-    <line x1="50" y1="12" x2="50" y2="88"/>
-    <line x1="12" y1="50" x2="88" y2="50"/>
-    <line x1="21" y1="21" x2="79" y2="79"/>
-    <line x1="79" y1="21" x2="21" y2="79"/>
-  </g>
-  <!-- Center dot -->
-  <circle cx="50" cy="50" r="7" fill="#e3b341"/>
-  <!-- Arm tips -->
-  <g fill="#e3b341">
-    <circle cx="50" cy="14" r="4"/>
-    <circle cx="50" cy="86" r="4"/>
-    <circle cx="14" cy="50" r="4"/>
-    <circle cx="86" cy="50" r="4"/>
-    <circle cx="23" cy="23" r="4"/>
-    <circle cx="77" cy="77" r="4"/>
-    <circle cx="77" cy="23" r="4"/>
-    <circle cx="23" cy="77" r="4"/>
-  </g>
+  <!-- Shell body -->
+  <ellipse cx="50" cy="54" rx="30" ry="24" fill="#1a6b8a" stroke="#0e4a63" stroke-width="3"/>
+  <!-- Shell pattern (hexagonal patches) -->
+  <polygon points="50,36 58,41 58,51 50,56 42,51 42,41" fill="#0e4a63" stroke="#1a6b8a" stroke-width="1.5"/>
+  <polygon points="50,36 58,41 50,36" fill="none"/>
+  <ellipse cx="38" cy="48" rx="7" ry="6" fill="#0e4a63" opacity="0.7"/>
+  <ellipse cx="62" cy="48" rx="7" ry="6" fill="#0e4a63" opacity="0.7"/>
+  <ellipse cx="50" cy="60" rx="7" ry="5" fill="#0e4a63" opacity="0.7"/>
+  <!-- Head -->
+  <ellipse cx="50" cy="30" rx="10" ry="9" fill="#2a8fa8" stroke="#0e4a63" stroke-width="2"/>
+  <!-- Eyes -->
+  <circle cx="46" cy="27" r="2" fill="#0a2a35"/>
+  <circle cx="54" cy="27" r="2" fill="#0a2a35"/>
+  <!-- Front legs -->
+  <ellipse cx="24" cy="58" rx="8" ry="5" fill="#2a8fa8" stroke="#0e4a63" stroke-width="2" transform="rotate(-20,24,58)"/>
+  <ellipse cx="76" cy="58" rx="8" ry="5" fill="#2a8fa8" stroke="#0e4a63" stroke-width="2" transform="rotate(20,76,58)"/>
+  <!-- Back legs -->
+  <ellipse cx="28" cy="72" rx="7" ry="4" fill="#2a8fa8" stroke="#0e4a63" stroke-width="2" transform="rotate(20,28,72)"/>
+  <ellipse cx="72" cy="72" rx="7" ry="4" fill="#2a8fa8" stroke="#0e4a63" stroke-width="2" transform="rotate(-20,72,72)"/>
+  <!-- Tail -->
+  <ellipse cx="50" cy="78" rx="5" ry="4" fill="#2a8fa8" stroke="#0e4a63" stroke-width="2"/>
 </svg>

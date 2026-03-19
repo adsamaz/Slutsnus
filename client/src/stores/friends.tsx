@@ -10,7 +10,7 @@ import { FriendInfo, UserPublic, GameType } from '@slutsnus/shared';
 import { useSocket } from './socket';
 import { showToast } from '../components/Toast';
 
-interface PendingInvite {
+export interface PendingInvite {
     fromUserId: string;
     fromUsername: string;
     roomCode: string;
@@ -30,6 +30,7 @@ interface FriendsActions {
     removeFriend(userId: string): Promise<void>;
     searchUsers(q: string): Promise<UserPublic[]>;
     inviteFriend(targetUserId: string, roomCode: string): void;
+    acceptInvite(roomCode: string): void;
     clearInvite(): void;
 }
 
@@ -96,9 +97,16 @@ export const FriendsProvider: ParentComponent = (props) => {
         socket.emit('friends:invite', { targetUserId, roomCode });
     };
 
+    const acceptInvite = (roomCode: string) => {
+        socket.emit('friends:inviteAccept', { roomCode });
+        setState('pendingInvite', null);
+    };
+
     const clearInvite = () => setState('pendingInvite', null);
 
     onMount(() => {
+        fetchFriends();
+
         socket.on('friends:status', ({ userId, online }) => {
             setState('friends', (f) => f.userId === userId, 'online', online);
         });
@@ -125,7 +133,7 @@ export const FriendsProvider: ParentComponent = (props) => {
 
     return (
         <FriendsCtx.Provider
-            value={[state, { fetchFriends, sendRequest, acceptRequest, declineRequest, removeFriend, searchUsers, inviteFriend, clearInvite }]}
+            value={[state, { fetchFriends, sendRequest, acceptRequest, declineRequest, removeFriend, searchUsers, inviteFriend, acceptInvite, clearInvite }]}
         >
             {props.children}
         </FriendsCtx.Provider>

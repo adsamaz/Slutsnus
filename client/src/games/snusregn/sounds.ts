@@ -141,6 +141,32 @@ export function soundPowerup(): void {
     });
 }
 
+/** Game start — ascending fanfare arpeggio */
+export function soundGameStart(): void {
+    play(ac => {
+        const freqs = [196, 247, 294, 392, 523];
+        const offsets = [0, 0.1, 0.2, 0.3, 0.4];
+        const holds = [0.08, 0.08, 0.08, 0.08, 0.2];
+        freqs.forEach((freq, i) => {
+            const osc = ac.createOscillator();
+            const gain = ac.createGain();
+            osc.connect(gain);
+            gain.connect(ac.destination);
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, ac.currentTime + offsets[i]);
+            const t = ac.currentTime + offsets[i];
+            const peak = i === 4 ? 0.28 : 0.2;
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(peak, t + 0.008);
+            gain.gain.linearRampToValueAtTime(peak * 0.5, t + 0.008 + 0.03);
+            gain.gain.setValueAtTime(peak * 0.5, t + 0.008 + 0.03 + holds[i]);
+            gain.gain.linearRampToValueAtTime(0, t + 0.008 + 0.03 + holds[i] + 0.12);
+            osc.start(t);
+            osc.stop(t + 0.008 + 0.03 + holds[i] + 0.15);
+        });
+    });
+}
+
 /** Debuff caught (fastRain, shrinkBar, blind) — low dissonant triangle drop */
 export function soundDebuff(): void {
     play(ac => {

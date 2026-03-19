@@ -58,6 +58,7 @@ export const RoomProvider: ParentComponent = (props) => {
         }
         const room = await res.json() as RoomInfo;
         setState('room', room);
+        socket.emit('room:join', { roomCode: room.code });
     };
 
     const leaveRoom = async (): Promise<void> => {
@@ -79,10 +80,12 @@ export const RoomProvider: ParentComponent = (props) => {
 
     onMount(() => {
         socket.on('room:update', ({ room }) => setState('room', room));
+        socket.on('room:dissolved', () => setState('room', null));
     });
 
     onCleanup(() => {
         socket.off('room:update');
+        socket.off('room:dissolved');
     });
 
     return (

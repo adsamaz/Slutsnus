@@ -221,6 +221,18 @@ h5 {
     transform: translateY(-1px);
 }
 
+.btn-success {
+    background: transparent;
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+}
+
+.btn-success:hover:not(:disabled) {
+    background: var(--color-accent);
+    color: #0d1117;
+    transform: translateY(-1px);
+}
+
 /* --- Cards --- */
 .card {
     background: var(--color-surface);

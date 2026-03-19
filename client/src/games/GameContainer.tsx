@@ -21,8 +21,9 @@ export default function GameContainer(props: GameContainerProps) {
 
     socket.on('game:state', onState);
     socket.on('room:error', onError);
-    // Request current state in case we navigated here after the initial emit
+    // Ensure socket is in the room (handles reconnects), then signal ready to start
     socket.emit('room:join', { roomCode: props.roomCode });
+    socket.emit('game:ready', { roomCode: props.roomCode });
 
     // If no game:state arrives within 3s, the game isn't running — go home
     const fallbackTimer = setTimeout(() => {

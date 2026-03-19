@@ -1,19 +1,14 @@
 import { createSignal, For, Show } from 'solid-js';
 import { useFriends } from '../stores/friends';
-import { useRoom } from '../stores/room';
-import { useNavigate } from '@solidjs/router';
 import Button from '../components/Button';
 import type { UserPublic } from '@slutsnus/shared';
 
 export default function Friends() {
     const [friendsState, friendsActions] = useFriends();
-    const [, roomActions] = useRoom();
-    const navigate = useNavigate();
 
     const [searchQuery, setSearchQuery] = createSignal('');
     const [searching, setSearching] = createSignal(false);
     const [searchResults, setSearchResults] = createSignal<UserPublic[]>([]);
-
     const handleSearch = async () => {
         const q = searchQuery().trim();
         if (!q) return;
@@ -28,11 +23,6 @@ export default function Friends() {
 
     const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Enter') handleSearch();
-    };
-
-    const handleJoinGame = async (roomCode: string) => {
-        await roomActions.joinRoom(roomCode);
-        navigate(`/lobby/${roomCode}`);
     };
 
     const accepted = () => friendsState.friends.filter((f) => f.friendshipStatus === 'accepted');
@@ -147,18 +137,9 @@ export default function Friends() {
                                 <span class="online-label">Online</span>
                             </Show>
                             <div style={{ 'margin-left': 'auto', display: 'flex', gap: '6px' }}>
-                                <Show when={f.currentRoom?.code}>
-                                    <Button
-                                        class="btn btn-secondary"
-                                        style={{ padding: '4px 10px', 'font-size': '0.8rem' }}
-                                        onClick={() => handleJoinGame(f.currentRoom!.code)}
-                                    >
-                                        Join Game
-                                    </Button>
-                                </Show>
-                                <Button
+<Button
                                     class="btn btn-danger"
-                                    style={{ padding: '4px 10px', 'font-size': '0.8rem' }}
+                                    style={{ padding: '4px 4px', 'font-size': '0.8rem' }}
                                     onClick={() => friendsActions.removeFriend(f.userId)}
                                 >
                                     Remove

@@ -36,15 +36,15 @@ const EFFECT_COLORS: Record<SnusregnEffectType, string> = {
 };
 
 const ITEM_BORDER_COLOR: Record<SnusregnItemType, string> = {
-    fresh: '#39d353',
-    spent: '#f85149',
+    fresh: '',
+    spent: '',
     wideBar: '#388bfd',
     slowRain: '#e3b341',
     fastRain: '#8b6914',
     shrinkBar: '#a371f7',
     blind: '#484f58',
     beer: '#ffe033',
-    beerSnus: '#ffe033',
+    beerSnus: '',
 };
 
 const EFFECT_LABELS: Record<SnusregnEffectType, string> = {
@@ -84,11 +84,13 @@ export async function bakeItemBitmaps(imgs: ItemImages): Promise<ItemBitmaps> {
         octx.clip();
         octx.drawImage(img, 0, 0, size, size);
         // Border
-        octx.beginPath();
-        octx.arc(ITEM_RADIUS, ITEM_RADIUS, ITEM_RADIUS - BORDER_WIDTH / 2, 0, Math.PI * 2);
-        octx.strokeStyle = borderColor;
-        octx.lineWidth = BORDER_WIDTH;
-        octx.stroke();
+        if (borderColor) {
+            octx.beginPath();
+            octx.arc(ITEM_RADIUS, ITEM_RADIUS, ITEM_RADIUS - BORDER_WIDTH / 2, 0, Math.PI * 2);
+            octx.strokeStyle = borderColor;
+            octx.lineWidth = BORDER_WIDTH;
+            octx.stroke();
+        }
         bitmaps[type] = await createImageBitmap(oc);
     }));
     return bitmaps;
@@ -121,9 +123,13 @@ export function drawFrame(
     popups: ScorePopup[],
     bitmaps: ItemBitmaps,
     flashes: ScreenFlash[],
+    prevState: SnusregnState | null = null,
+    interpT: number = 1,
 ): void {
     const self = state.players.find(p => p.userId === selfId);
     const opponent = state.players.find(p => p.userId !== selfId);
+    const prevSelf = prevState?.players.find(p => p.userId === selfId) ?? null;
+    const prevOpponent = prevState?.players.find(p => p.userId !== selfId) ?? null;
 
     if (!self) return;
 
@@ -138,9 +144,9 @@ export function drawFrame(
     ctx.fillRect(0, 0, totalW, CANVAS_H);
 
     // Lanes
-    drawLane(ctx, self, 0, localBarXFraction, true, imgs, bitmaps);
+    drawLane(ctx, self, 0, localBarXFraction, true, imgs, bitmaps, prevSelf, interpT);
     if (hasOpponent) {
-        drawLane(ctx, opponent!, opponentXOffset, opponent!.barXFraction, false, imgs, bitmaps);
+        drawLane(ctx, opponent!, opponentXOffset, opponent!.barXFraction, false, imgs, bitmaps, prevOpponent, interpT);
         // Divider at the boundary of self's lane
         ctx.strokeStyle = COLORS.divider;
         ctx.lineWidth = 1;
@@ -163,7 +169,7 @@ export function drawFrame(
     // Screen flashes (self lane only)
     for (const f of flashes) {
         const t = 1 - (f.expiresAt - now) / f.duration; // 0→1
-        const alpha = Math.max(0, 0.35 * (1 - t));       // fade out
+        const alpha = Math.max(0, 0.09 * (1 - t));       // fade out
         ctx.globalAlpha = alpha;
         ctx.fillStyle = f.color;
         ctx.fillRect(0, 0, LANE_W, CANVAS_H);
@@ -188,6 +194,7 @@ export function drawFrame(
     }
     ctx.globalAlpha = 1;
     ctx.textAlign = 'left';
+
 }
 
 function drawLane(
@@ -198,16 +205,25 @@ function drawLane(
     isSelf: boolean,
     imgs: ItemImages,
     bitmaps: ItemBitmaps,
+    prevPlayer: SnusregnPlayerState | null = null,
+    interpT: number = 1,
 ): void {
     const isBlind     = player.effects.some(e => e.type === 'blind');
     const hasBeer     = player.effects.some(e => e.type === 'beer');
     const isWideBar   = player.effects.some(e => e.type === 'wideBar');
     const isShrinkBar = player.effects.some(e => e.type === 'shrinkBar');
 
+    // Build a lookup of previous Y positions by item id for interpolation
+    const prevYById = new Map<string, number>();
+    if (prevPlayer) {
+        for (const item of prevPlayer.items) prevYById.set(item.id, item.y);
+    }
+
     // Items — skip those inside the blind zone
     for (const item of player.items) {
         const px = item.x * LANE_W + xOffset;
-        const py = item.y * CANVAS_H;
+        const prevY = prevYById.get(item.id) ?? item.y;
+        const py = (prevY + (item.y - prevY) * interpT) * CANVAS_H;
         if (isBlind && py > CANVAS_H * 0.75) continue;
         drawItem(ctx, item.type, px, py, imgs, bitmaps, hasBeer, item.targeted);
     }
@@ -246,61 +262,55 @@ const BORDER_WIDTH = 3;
 let _blindGradient: CanvasGradient | null = null;
 
 function drawItem(ctx: CanvasRenderingContext2D, type: SnusregnItemType, px: number, py: number, imgs: ItemImages, bitmaps: ItemBitmaps, hasBeer: boolean, targeted?: boolean): void {
-    const yellowBorder = (type === 'fresh' && hasBeer) || type === 'beerSnus';
-    const borderColor = yellowBorder ? '#ffe033' : ITEM_BORDER_COLOR[type];
-    // beerSnus reuses the fresh bitmap so both render identically
-    const bitmapKey = type === 'beerSnus' ? 'fresh' : type;
+    const borderColor = ITEM_BORDER_COLOR[type];
+    // fresh+beer and beerSnus both use the gold snus bitmap
+    const bitmapKey = (type === 'fresh' && hasBeer) ? 'beerSnus' : type;
     const bitmap = bitmaps[bitmapKey];
     if (bitmap) {
         ctx.drawImage(bitmap, px - ITEM_RADIUS, py - ITEM_RADIUS, ITEM_RADIUS * 2, ITEM_RADIUS * 2);
-        // Overdraw border in gold for fresh+beer and beerSnus
-        if (yellowBorder) {
-            ctx.beginPath();
-            ctx.arc(px, py, ITEM_RADIUS - BORDER_WIDTH / 2, 0, Math.PI * 2);
-            ctx.strokeStyle = borderColor;
-            ctx.lineWidth = BORDER_WIDTH;
-            ctx.stroke();
-        }
-        return;
-    }
-
-    // Fallback: draw directly from source image or plain circle
-    ctx.save();
-    ctx.translate(px, py);
-
-    const img = imgs[type];
-
-    if (img && img.complete && img.naturalWidth > 0) {
-        ctx.beginPath();
-        ctx.arc(0, 0, ITEM_RADIUS, 0, Math.PI * 2);
-        ctx.clip();
-        ctx.drawImage(img, -ITEM_RADIUS, -ITEM_RADIUS, ITEM_RADIUS * 2, ITEM_RADIUS * 2);
-        ctx.restore();
+    } else {
+        // Fallback: draw directly from source image or plain circle
         ctx.save();
         ctx.translate(px, py);
-        ctx.beginPath();
-        ctx.arc(0, 0, ITEM_RADIUS, 0, Math.PI * 2);
-        ctx.strokeStyle = borderColor;
-        ctx.lineWidth = BORDER_WIDTH;
-        ctx.stroke();
-    } else {
-        ctx.beginPath();
-        ctx.arc(0, 0, ITEM_RADIUS, 0, Math.PI * 2);
-        ctx.fillStyle = borderColor;
-        ctx.fill();
+
+        const img = imgs[type];
+
+        if (img && img.complete && img.naturalWidth > 0) {
+            ctx.beginPath();
+            ctx.arc(0, 0, ITEM_RADIUS, 0, Math.PI * 2);
+            ctx.clip();
+            ctx.drawImage(img, -ITEM_RADIUS, -ITEM_RADIUS, ITEM_RADIUS * 2, ITEM_RADIUS * 2);
+            ctx.restore();
+            if (borderColor) {
+                ctx.save();
+                ctx.translate(px, py);
+                ctx.beginPath();
+                ctx.arc(0, 0, ITEM_RADIUS, 0, Math.PI * 2);
+                ctx.strokeStyle = borderColor;
+                ctx.lineWidth = BORDER_WIDTH;
+                ctx.stroke();
+                ctx.restore();
+            }
+        } else {
+            ctx.beginPath();
+            ctx.arc(0, 0, ITEM_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = borderColor;
+            ctx.fill();
+            ctx.restore();
+        }
     }
 
-    ctx.restore();
-
     if (targeted) {
-        // Pulsing red-orange ring to indicate this powerup targets the opponent
-        const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 120);
-        const outerR = ITEM_RADIUS + 4 + pulse * 3;
+        // Bright pulsing ring to indicate this item targets the opponent, not you
+        const pulse = 0.6 + 0.4 * Math.abs(Math.sin(Date.now() / 300));
+        ctx.save();
+        ctx.globalAlpha = pulse;
         ctx.beginPath();
-        ctx.arc(px, py, outerR, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(255,100,30,${0.6 + 0.4 * pulse})`;
-        ctx.lineWidth = 2.5;
+        ctx.arc(px, py, ITEM_RADIUS + 5, 0, Math.PI * 2);
+        ctx.strokeStyle = '#ff6b35';
+        ctx.lineWidth = 3;
         ctx.stroke();
+        ctx.restore();
     }
 }
 
@@ -340,4 +350,7 @@ function drawHUD(
     ctx.textAlign = 'left';
 }
 
-export { EFFECT_COLORS, EFFECT_LABELS, EFFECT_MAX_TICKS };
+// Effects that originate from the opponent (debuffs applied to self)
+const OPPONENT_EFFECTS = new Set<SnusregnEffectType>(['fastRain', 'shrinkBar', 'blind', 'slowRain']);
+
+export { EFFECT_COLORS, EFFECT_LABELS, EFFECT_MAX_TICKS, OPPONENT_EFFECTS };

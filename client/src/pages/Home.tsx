@@ -14,7 +14,7 @@ const GAMES: Game[] = [
         name: 'Snusrain',
         tagline: 'Catch the snus. Watch out for bjudlocket.',
         description: 'Snus pouches rain from the sky in your own lane. Catch fresh ones, avoid spent ones. Powerups and debuffs included. 1v1 arcade.',
-        badges: ['2 Players', 'Arcade', 'Real-time'],
+        badges: ['1-2 Players', 'Arcade', 'Real-time'],
     },
 ];
 
@@ -28,6 +28,7 @@ export default function Home() {
     const [joinError, setJoinError] = createSignal('');
     const [creating, setCreating] = createSignal(false);
     const [startingSolo, setStartingSolo] = createSignal(false);
+    const [joining, setJoining] = createSignal(false);
 
     const handleCreate = async () => {
         const game = selectedGame();
@@ -62,11 +63,14 @@ export default function Home() {
         setJoinError('');
         const code = joinCode().trim();
         if (!code) return;
+        setJoining(true);
         try {
             await roomActions.joinRoom(code);
             navigate(`/lobby/${code.toUpperCase()}`);
         } catch (e: unknown) {
             setJoinError(e instanceof Error ? e.message : 'Failed to join room');
+        } finally {
+            setJoining(false);
         }
     };
 
@@ -136,7 +140,7 @@ export default function Home() {
                                     maxLength={6}
                                     style={{ 'text-transform': 'uppercase', width: '140px' }}
                                 />
-                                <Button type="submit" variant="secondary">Join</Button>
+                                <Button type="submit" variant="secondary" disabled={joining()}>{joining() ? 'Joining...' : 'Join'}</Button>
                             </form>
                         </div>
                         <Show when={joinError()}>

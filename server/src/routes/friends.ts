@@ -14,7 +14,7 @@ async function buildFriendList(userId: string): Promise<FriendInfo[]> {
     const friendships = await prisma.friendship.findMany({
         where: {
             OR: [{ requesterId: userId }, { addresseeId: userId }],
-            NOT: [{ status: 'blocked' }, { requesterId: userId, addresseeId: userId }],
+            NOT: { status: 'blocked' },
         },
         include: {
             requester: true,
@@ -32,11 +32,11 @@ async function buildFriendList(userId: string): Promise<FriendInfo[]> {
             const activeRoom = await prisma.room.findFirst({
                 where: {
                     players: { some: { userId: friendId } },
-                    status: { in: ['waiting', 'playing'] },
+                    status: 'waiting',
                 },
             });
             if (activeRoom) {
-                currentRoom = { code: activeRoom.code, gameType: activeRoom.gameType as FriendInfo['currentRoom'] extends { gameType: infer G } ? G : never };
+                currentRoom = { code: activeRoom.code, gameType: activeRoom.gameType as FriendInfo['currentRoom'] extends { gameType: infer G } ? G : never, isHost: activeRoom.hostId === friendId };
             }
 
             return {
@@ -134,6 +134,13 @@ router.post('/accept', async (req: AuthenticatedRequest, res: Response) => {
             return;
         }
         await prisma.friendship.update({ where: { id: friendship.id }, data: { status: 'accepted' } });
+        // Notify the original requester so their friends list updates
+        const requesterSockets = onlineUsers.get(requesterId);
+        if (requesterSockets) {
+            for (const sid of requesterSockets) {
+                io.to(sid).emit('friends:update');
+            }
+        }
         res.json({ ok: true });
     } catch {
         res.status(500).json({ error: 'Internal server error' });

@@ -1,19 +1,22 @@
 import { createStore } from 'solid-js/store';
-import { createEffect, createMemo, createResource, For, onMount, onCleanup, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, onMount, onCleanup, Show } from 'solid-js';
 import { useSocket } from '../../stores/socket';
 import { useAuth } from '../../stores/auth';
-import { drawFrame, bakeItemBitmaps, LANE_W, BAR_WIDTH_DEFAULT, EFFECT_COLORS, EFFECT_LABELS, EFFECT_MAX_TICKS } from './render';
+import { drawFrame, bakeItemBitmaps, LANE_W, LANE_GAP, BAR_WIDTH_DEFAULT, EFFECT_COLORS, EFFECT_LABELS, EFFECT_MAX_TICKS, OPPONENT_EFFECTS } from './render';
 import type { ItemBitmaps, ScreenFlash } from './render';
-import freshSnusSrc from '../../assets/freshsnus.webp';
-import spentSnusSrc from '../../assets/spentsnus.webp';
+import freshSnusSrc from '../../assets/freshsnus.svg';
+import goldSnusSrc from '../../assets/goldsnus.svg';
+import spentSnusSrc from '../../assets/spentsnus.svg';
 import beerSrc from '../../assets/beer.svg';
 import wideBarSrc from '../../assets/widebar.svg';
 import slowRainSrc from '../../assets/slowrain.svg';
 import fastRainSrc from '../../assets/fastrain.svg';
 import shrinkBarSrc from '../../assets/shrinkbar.svg';
 import blindSrc from '../../assets/blind.svg';
+import bjudlocketSrc from '../../assets/bjudlocket.webp';
+import snusiconSrc from '../../assets/snusicon.webp';
 import type { SnusregnState, GameAction, SnusregnEffectType } from '@slutsnus/shared';
-import { soundFreshCatch, soundFreshCatchBeer, soundLifeLost, soundPowerup, soundDebuff } from './sounds';
+import { soundFreshCatch, soundFreshCatchBeer, soundLifeLost, soundPowerup, soundDebuff, soundGameStart } from './sounds';
 import './snusregn.css';
 
 interface SnusregnGameProps {
@@ -84,8 +87,8 @@ export function SnusregnGame(props: SnusregnGameProps) {
                 });
                 flashes.push({
                     color: '#f85149',
-                    duration: 500,
-                    expiresAt: Date.now() + 500,
+                    duration: 350,
+                    expiresAt: Date.now() + 350,
                 });
                 soundLifeLost();
             }
@@ -109,6 +112,8 @@ export function SnusregnGame(props: SnusregnGameProps) {
                 * (selfNext.effects.some(e => e.type === 'wideBar') ? 2 : 1)
                 * (selfNext.effects.some(e => e.type === 'shrinkBar') ? 0.5 : 1);
         }
+        prevStateForInterp = gameStore.data;
+        lastStateAt = Date.now();
         setGameStore('data', next);
     };
     socket.on('game:state', onGameState);
@@ -127,9 +132,14 @@ export function SnusregnGame(props: SnusregnGameProps) {
     const effectMaxTicks = new Map<SnusregnEffectType, number>();
     const popups: import('./render').ScorePopup[] = [];
     const flashes: ScreenFlash[] = [];
+    // Interpolation: track when the last two states were received
+    let prevStateForInterp: SnusregnState | null = null;
+    let lastStateAt = 0;
+    const SERVER_TICK_MS = 20;
     const makeImg = (src: string) => { const i = new Image(); i.src = src; return i; };
     const imgs = {
         fresh: makeImg(freshSnusSrc),
+        beerSnus: makeImg(goldSnusSrc),
         spent: makeImg(spentSnusSrc),
         beer: makeImg(beerSrc),
         wideBar: makeImg(wideBarSrc),
@@ -141,18 +151,24 @@ export function SnusregnGame(props: SnusregnGameProps) {
     let bitmaps: ItemBitmaps = {};
 
     onMount(() => {
+        soundGameStart();
         const ctx = canvasRef.getContext('2d')!;
 
-        // Bake pre-rendered circular bitmaps once all images have loaded
-        const bakeWhenReady = () => {
-            const allLoaded = Object.values(imgs).every(img => img.complete && img.naturalWidth > 0);
-            if (allLoaded) {
-                bakeItemBitmaps(imgs).then(b => { bitmaps = b; });
-            } else {
-                setTimeout(bakeWhenReady, 50);
-            }
-        };
-        bakeWhenReady();
+        // Pre-size the canvas to avoid an expensive resize on the first rendered frame
+        const initialPlayerCount = props.state?.players.length ?? 1;
+        const hasOpponent = initialPlayerCount > 1 && props.state?.players.some(p => p.userId !== (_selfId));
+        const initialW = hasOpponent ? LANE_W * 2 + LANE_GAP : LANE_W;
+        if (canvasRef.width !== initialW) canvasRef.width = initialW;
+
+        // Bake pre-rendered circular bitmaps — wait for all images via onload, not polling
+        const waitForImages = () => Promise.all(
+            Object.values(imgs).map(img =>
+                img.complete && img.naturalWidth > 0
+                    ? Promise.resolve()
+                    : new Promise<void>(resolve => { img.onload = () => resolve(); img.onerror = () => resolve(); })
+            )
+        );
+        waitForImages().then(() => bakeItemBitmaps(imgs).then(b => { bitmaps = b; }));
 
         const loop = () => {
             const state = gameStore.data;
@@ -162,14 +178,18 @@ export function SnusregnGame(props: SnusregnGameProps) {
             while (popups.length > 0 && popups[0].expiresAt <= now) popups.shift();
             while (flashes.length > 0 && flashes[0].expiresAt <= now) flashes.shift();
             if (state && state.status === 'playing') {
-                drawFrame(ctx, canvasRef, state, selfId, localBarXFraction, imgs, popups, bitmaps, flashes);
+                const t = lastStateAt > 0 ? Math.min(1, (now - lastStateAt) / SERVER_TICK_MS) : 1;
+                drawFrame(ctx, canvasRef, state, selfId, localBarXFraction, imgs, popups, bitmaps, flashes, prevStateForInterp, t);
             }
             rafId = requestAnimationFrame(loop);
         };
         rafId = requestAnimationFrame(loop);
 
+        let skipNextMouseMove = false;
+
         const onMouseMove = (e: MouseEvent) => {
             if (document.pointerLockElement === canvasRef) {
+                if (skipNextMouseMove) { skipNextMouseMove = false; return; }
                 // Pointer is locked: use relative movement
                 const rect = canvasRef.getBoundingClientRect();
                 const scaleX = canvasRef.width / rect.width;
@@ -202,12 +222,26 @@ export function SnusregnGame(props: SnusregnGameProps) {
             }
         };
 
+        canvasRef.requestPointerLock();
+
+        const onPointerLockChange = () => {
+            if (document.pointerLockElement === canvasRef) {
+                // Skip the first mousemove event after acquiring lock — it carries a
+                // large accumulated movementX delta from before the lock was granted.
+                skipNextMouseMove = true;
+            } else {
+                if (gameStore.data?.status === 'playing') canvasRef.requestPointerLock();
+            }
+        };
+
         window.addEventListener('mousemove', onMouseMove);
         canvasRef.addEventListener('click', onClick);
+        document.addEventListener('pointerlockchange', onPointerLockChange);
 
         onCleanup(() => {
             window.removeEventListener('mousemove', onMouseMove);
             canvasRef.removeEventListener('click', onClick);
+            document.removeEventListener('pointerlockchange', onPointerLockChange);
             if (document.pointerLockElement === canvasRef) document.exitPointerLock();
             cancelAnimationFrame(rafId);
         });
@@ -223,6 +257,8 @@ export function SnusregnGame(props: SnusregnGameProps) {
             document.exitPointerLock();
         }
     });
+
+    const [actionPending, setActionPending] = createSignal<'play-again' | 'lobby' | null>(null);
 
     const winner = () => state()?.results?.find(r => r.rank === 1);
     const isWinner = () => winner()?.userId === selfId();
@@ -260,7 +296,7 @@ export function SnusregnGame(props: SnusregnGameProps) {
                             const max = effectMaxTicks.get(effect.type) ?? EFFECT_MAX_TICKS[effect.type];
                             const pct = Math.max(0, Math.min(1, effect.remainingTicks / max)) * 100;
                             return (
-                                <div class="snusregn-effect-bar-row">
+                                <div class={`snusregn-effect-bar-row${OPPONENT_EFFECTS.has(effect.type) && !isSolo() ? ' opponent' : ''}`}>
                                     <span class="snusregn-effect-label" style={{ color }}>{EFFECT_LABELS[effect.type]}</span>
                                     <div class="snusregn-effect-track">
                                         <div class="snusregn-effect-fill" style={{ width: `${pct}%`, background: color }} />
@@ -276,7 +312,8 @@ export function SnusregnGame(props: SnusregnGameProps) {
                     <h1 class={`snusregn-end-title ${isWinner() ? 'win' : 'lose'}`}>
                         {isSolo() ? 'Slut snus' : isWinner() ? 'You won!' : `${winner()?.username ?? 'Opponent'} won!`}
                     </h1>
-                    <div class="snusregn-end-columns">
+                    <img src={!isSolo() && isWinner() ? snusiconSrc : bjudlocketSrc} alt="Bjudlocket" style={{ width: '180px', margin: '0.5rem auto 1.5rem', display: 'block', 'border-radius': '40px' }} />
+                <div class="snusregn-end-columns">
                         <div class="snusregn-end-body">
                             <div class="snusregn-end-scores">
                                 {state()?.results?.map(r => (
@@ -289,8 +326,10 @@ export function SnusregnGame(props: SnusregnGameProps) {
                             </div>
                             <div class="snusregn-end-actions">
                                 <button
-                                    class="snusregn-lobby-btn snusregn-play-again-btn"
+                                    class={`snusregn-lobby-btn snusregn-play-again-btn${actionPending() === 'play-again' ? ' snusregn-btn-loading' : ''}`}
+                                    disabled={actionPending() !== null}
                                     onClick={() => {
+                                        setActionPending('play-again');
                                         if (isSolo()) {
                                             prevScore = 0;
                                             prevLives = 0;
@@ -305,13 +344,17 @@ export function SnusregnGame(props: SnusregnGameProps) {
                                         }
                                     }}
                                 >
-                                    Play again
+                                    {actionPending() === 'play-again' ? 'Loading…' : 'Play again'}
                                 </button>
                                 <button
-                                    class="snusregn-lobby-btn"
-                                    onClick={() => { window.location.href = '/'; }}
+                                    class={`snusregn-lobby-btn${actionPending() === 'lobby' ? ' snusregn-btn-loading' : ''}`}
+                                    disabled={actionPending() !== null}
+                                    onClick={() => {
+                                        setActionPending('lobby');
+                                        window.location.href = '/';
+                                    }}
                                 >
-                                    Back to lobby
+                                    {actionPending() === 'lobby' ? 'Loading…' : 'Back to lobby'}
                                 </button>
                             </div>
                         </div>
