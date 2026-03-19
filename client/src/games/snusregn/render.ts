@@ -199,15 +199,17 @@ function drawLane(
     imgs: ItemImages,
     bitmaps: ItemBitmaps,
 ): void {
-    const isBlind = player.effects.some(e => e.type === 'blind');
-    const hasBeer = player.effects.some(e => e.type === 'beer');
+    const isBlind     = player.effects.some(e => e.type === 'blind');
+    const hasBeer     = player.effects.some(e => e.type === 'beer');
+    const isWideBar   = player.effects.some(e => e.type === 'wideBar');
+    const isShrinkBar = player.effects.some(e => e.type === 'shrinkBar');
 
     // Items — skip those inside the blind zone
     for (const item of player.items) {
         const px = item.x * LANE_W + xOffset;
         const py = item.y * CANVAS_H;
         if (isBlind && py > CANVAS_H * 0.75) continue;
-        drawItem(ctx, item.type, px, py, imgs, bitmaps, hasBeer);
+        drawItem(ctx, item.type, px, py, imgs, bitmaps, hasBeer, item.targeted);
     }
 
     // Blind: blurry fog over bottom quarter — drawn before the bar so the bar remains visible
@@ -215,11 +217,13 @@ function drawLane(
         const blindY = CANVAS_H * 0.75;
         const fadeH = CANVAS_H * 0.2;
         // Wide gradient starting well above the blind zone for a prominent fog look
-        const grad = ctx.createLinearGradient(0, blindY - fadeH, 0, blindY + fadeH * 0.5);
-        grad.addColorStop(0, 'rgba(20,15,30,0)');
-        grad.addColorStop(0.5, 'rgba(20,15,30,0.75)');
-        grad.addColorStop(1, 'rgba(20,15,30,1)');
-        ctx.fillStyle = grad;
+        if (!_blindGradient) {
+            _blindGradient = ctx.createLinearGradient(0, blindY - fadeH, 0, blindY + fadeH * 0.5);
+            _blindGradient.addColorStop(0, 'rgba(20,15,30,0)');
+            _blindGradient.addColorStop(0.5, 'rgba(20,15,30,0.75)');
+            _blindGradient.addColorStop(1, 'rgba(20,15,30,1)');
+        }
+        ctx.fillStyle = _blindGradient;
         ctx.fillRect(xOffset, blindY - fadeH, LANE_W, fadeH * 1.5);
         // Fully opaque fill for the rest
         ctx.fillStyle = 'rgba(20,15,30,1)';
@@ -227,22 +231,21 @@ function drawLane(
     }
 
     // Bar (always on top)
-    const barW = computeBarWidth(player);
+    let barW = BAR_WIDTH_DEFAULT;
+    if (isWideBar) barW *= 2;
+    if (isShrinkBar) barW *= 0.5;
     const barX = barXFraction * LANE_W + xOffset;
     ctx.fillStyle = isSelf ? COLORS.selfBar : COLORS.opponentBar;
     ctx.fillRect(barX - barW / 2, BAR_Y, barW, BAR_HEIGHT);
 }
 
-function computeBarWidth(player: SnusregnPlayerState): number {
-    let w = BAR_WIDTH_DEFAULT;
-    if (player.effects.some(e => e.type === 'wideBar')) w *= 2;
-    if (player.effects.some(e => e.type === 'shrinkBar')) w *= 0.5;
-    return w;
-}
 
 const BORDER_WIDTH = 3;
 
-function drawItem(ctx: CanvasRenderingContext2D, type: SnusregnItemType, px: number, py: number, imgs: ItemImages, bitmaps: ItemBitmaps, hasBeer: boolean): void {
+// Cached blind fog gradient — parameters are all compile-time constants
+let _blindGradient: CanvasGradient | null = null;
+
+function drawItem(ctx: CanvasRenderingContext2D, type: SnusregnItemType, px: number, py: number, imgs: ItemImages, bitmaps: ItemBitmaps, hasBeer: boolean, targeted?: boolean): void {
     const yellowBorder = (type === 'fresh' && hasBeer) || type === 'beerSnus';
     const borderColor = yellowBorder ? '#ffe033' : ITEM_BORDER_COLOR[type];
     // beerSnus reuses the fresh bitmap so both render identically
@@ -288,6 +291,17 @@ function drawItem(ctx: CanvasRenderingContext2D, type: SnusregnItemType, px: num
     }
 
     ctx.restore();
+
+    if (targeted) {
+        // Pulsing red-orange ring to indicate this powerup targets the opponent
+        const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 120);
+        const outerR = ITEM_RADIUS + 4 + pulse * 3;
+        ctx.beginPath();
+        ctx.arc(px, py, outerR, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255,100,30,${0.6 + 0.4 * pulse})`;
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+    }
 }
 
 function drawEliminated(ctx: CanvasRenderingContext2D, xOffset: number): void {

@@ -103,6 +103,11 @@ export function SnusregnGame(props: SnusregnGameProps) {
             prevScore = selfNext.score;
             prevLives = selfNext.lives;
             prevEffectTypes = currentEffectTypes;
+
+            // Keep cached half-bar width in sync with current effects
+            localHalfBar = (BAR_WIDTH_DEFAULT / 2)
+                * (selfNext.effects.some(e => e.type === 'wideBar') ? 2 : 1)
+                * (selfNext.effects.some(e => e.type === 'shrinkBar') ? 0.5 : 1);
         }
         setGameStore('data', next);
     };
@@ -111,6 +116,7 @@ export function SnusregnGame(props: SnusregnGameProps) {
 
     let canvasRef!: HTMLCanvasElement;
     let localBarXFraction = 0.5;
+    let localHalfBar = BAR_WIDTH_DEFAULT / 2;
     let lastEmit = 0;
     let rafId: number;
     const _selfId = authState.user?.id ?? '';
@@ -163,36 +169,25 @@ export function SnusregnGame(props: SnusregnGameProps) {
         rafId = requestAnimationFrame(loop);
 
         const onMouseMove = (e: MouseEvent) => {
-            // Request pointer lock on first mouse move so no explicit click is needed
-            if (gameStore.data?.status === 'playing' && document.pointerLockElement !== canvasRef) {
-                canvasRef.requestPointerLock();
-            }
-
-            const selfPlayer = gameStore.data?.players.find(p => p.userId === authState.user?.id);
-            const halfBar = selfPlayer
-                ? (BAR_WIDTH_DEFAULT / 2)
-                * (selfPlayer.effects.some(e => e.type === 'wideBar') ? 2 : 1)
-                * (selfPlayer.effects.some(e => e.type === 'shrinkBar') ? 0.5 : 1)
-                : BAR_WIDTH_DEFAULT / 2;
             if (document.pointerLockElement === canvasRef) {
                 // Pointer is locked: use relative movement
                 const rect = canvasRef.getBoundingClientRect();
                 const scaleX = canvasRef.width / rect.width;
                 const currentX = localBarXFraction * LANE_W;
                 const newX = currentX + e.movementX * scaleX;
-                const laneX = Math.max(halfBar, Math.min(LANE_W - halfBar, newX));
+                const laneX = Math.max(localHalfBar, Math.min(LANE_W - localHalfBar, newX));
                 localBarXFraction = laneX / LANE_W;
             } else {
                 // Normal absolute tracking within the window
                 const rect = canvasRef.getBoundingClientRect();
                 const scaleX = canvasRef.width / rect.width;
                 const rawX = (e.clientX - rect.left) * scaleX;
-                const laneX = Math.max(halfBar, Math.min(LANE_W - halfBar, rawX));
+                const laneX = Math.max(localHalfBar, Math.min(LANE_W - localHalfBar, rawX));
                 localBarXFraction = laneX / LANE_W;
             }
 
             const now = Date.now();
-            if (now - lastEmit >= 30) {
+            if (now - lastEmit >= 16) {
                 lastEmit = now;
                 props.onAction({
                     type: 'snusregn:bar-move',

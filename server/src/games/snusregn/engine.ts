@@ -9,8 +9,8 @@ const BAR_Y_FROM_BOTTOM = 20;
 const BAR_HEIGHT = 18;
 const BAR_WIDTH_DEFAULT = 100;
 const ITEM_RADIUS = 18;
-const BASE_FALL_SPEED = 13;
-const FALL_SPEED_INCREMENT = 0.01;
+const BASE_FALL_SPEED = 12;
+const FALL_SPEED_INCREMENT = 0.2;
 const BASE_SPAWN_INTERVAL = 20;
 const MAX_ITEMS = 15;
 const LIVES_START = 3;
@@ -48,6 +48,7 @@ interface PlayerInternal {
     powerupCooldowns: Partial<Record<SnusregnItemType, number>>;
     nextItemId: number;
     ticksSinceLastSpawn: number;
+    prevItemY: Map<string, number>;
 }
 
 // ─── Helpers ──────────────────────────────────────
@@ -127,6 +128,7 @@ export class SnusregnEngine implements GameEngine {
             powerupCooldowns: {},
             nextItemId: 0,
             ticksSinceLastSpawn: 0,
+            prevItemY: new Map(),
         });
 
         this.isSolo = playerInfos.length === 1;
@@ -217,19 +219,20 @@ export class SnusregnEngine implements GameEngine {
         }
 
         // 2. Effective fall speed — square-root ramp: fast early increase that tapers off
-        const ramp = Math.sqrt(this.tickCount) * 0.3;
+        const ramp = Math.sqrt(this.tickCount) * FALL_SPEED_INCREMENT;
         const baseSpeed = BASE_FALL_SPEED + ramp;
         // fastRain adds a fixed speed bonus (diminishing relative effect at high speeds)
         const fastBonus = hasEffect(player, 'fastRain') ? BASE_FALL_SPEED * 0.5 : 0;
         let speed = (baseSpeed + fastBonus)
-            * (hasEffect(player, 'slowRain') ? 0.5 : 1.0);
+            * (hasEffect(player, 'slowRain') ? 0.7 : 1.0);
         if (speed < 0) speed = 0;
 
         // 3. Spawn interval — grows with speed so item density stays constant
         const spawnInterval = Math.round(BASE_SPAWN_INTERVAL / (speed / BASE_FALL_SPEED));
 
-        // 4. Move items
+        // 4. Move items (capture prevY before advancing for swept collision)
         for (const item of player.items) {
+            player.prevItemY.set(item.id, item.y);
             item.y += (speed * item.speedMult) / CANVAS_H;
         }
 
@@ -237,16 +240,21 @@ export class SnusregnEngine implements GameEngine {
         if (player.ticksSinceLastSpawn >= spawnInterval && player.items.length < MAX_ITEMS) {
             const id = `${player.userId}-${player.nextItemId++}`;
             const weights: Record<SnusregnItemType, number> = { ...SPAWN_WEIGHTS };
-            if (this.isSolo) weights.slowRain = 0;
             for (const key of Object.keys(player.powerupCooldowns) as SnusregnItemType[]) {
                 weights[key] = 0;
             }
+            const spawnType = weightedRandom(weights);
+            const canBeTargeted = !this.isSolo && (
+                spawnType === 'wideBar' || spawnType === 'beer' ||
+                spawnType === 'fastRain' || spawnType === 'shrinkBar' || spawnType === 'blind'
+            );
             player.items.push({
                 id,
-                type: weightedRandom(weights),
+                type: spawnType,
                 x: 0.05 + Math.random() * 0.90,
                 y: 0,
                 speedMult: 0.85 + Math.random() * 0.15,
+                targeted: canBeTargeted && Math.random() < 0.35,
             });
             player.ticksSinceLastSpawn = 0;
         } else {
@@ -262,39 +270,47 @@ export class SnusregnEngine implements GameEngine {
             const item = player.items[i];
             const itemXPx = item.x * LANE_W;
             const itemYPx = item.y * CANVAS_H;
+            const prevYPx = (player.prevItemY.get(item.id) ?? item.y) * CANVAS_H;
 
-            // Missed — fell off screen
-            if (itemYPx - ITEM_RADIUS > barBotYPx + ITEM_RADIUS) {
-                if (item.type === 'fresh') {
+            // Missed — fell off screen (top of item is below bar bottom)
+            if (itemYPx - ITEM_RADIUS > barBotYPx) {
+                if (item.type === 'fresh' || item.type === 'beerSnus') {
                     player.lives = Math.max(0, player.lives - 1);
                 }
+                player.prevItemY.delete(item.id);
                 player.items.splice(i, 1);
                 continue;
             }
 
-            // Collision check
+            // Standard overlap check
             const vertOverlap = (itemYPx + ITEM_RADIUS >= barTopYPx) && (itemYPx - ITEM_RADIUS <= barBotYPx);
+            // Swept pass-through: item center crossed from above bar top to below bar bottom in one tick
+            const sweptThrough = prevYPx < barTopYPx && itemYPx > barBotYPx;
+
             const horizOverlap = (itemXPx + ITEM_RADIUS >= player.barXPx - barHalfW) &&
                 (itemXPx - ITEM_RADIUS <= player.barXPx + barHalfW);
 
-            if (vertOverlap && horizOverlap) {
+            if ((vertOverlap || sweptThrough) && horizOverlap) {
                 this.resolveCatch(player, item, opponent);
+                player.prevItemY.delete(item.id);
                 player.items.splice(i, 1);
             }
         }
     }
 
     private resolveCatch(player: PlayerInternal, item: SnusregnItem, opponent: PlayerInternal): void {
+        const t = item.targeted ? opponent : player;
+        const o = item.targeted ? player : opponent;
         switch (item.type) {
             case 'fresh': player.score += hasEffect(player, 'beer') ? 3 : 1; break;
             case 'beerSnus': player.score += 3; break;
             case 'spent': player.lives -= 1; break;
-            case 'wideBar': applyOrCancel(player, 'wideBar', 'shrinkBar'); break;
-            case 'slowRain': applyOrCancel(opponent, 'slowRain', 'fastRain'); break;
-            case 'fastRain': applyOrCancel(player, 'fastRain', 'slowRain'); break;
-            case 'shrinkBar': applyOrCancel(player, 'shrinkBar', 'wideBar'); break;
-            case 'blind': addEffect(player, 'blind'); break;
-            case 'beer': addEffect(player, 'beer'); break;
+            case 'wideBar': applyOrCancel(t, 'wideBar', 'shrinkBar'); break;
+            case 'slowRain': applyOrCancel(this.isSolo ? player : o, 'slowRain', 'fastRain'); break;
+            case 'fastRain': applyOrCancel(t, 'fastRain', 'slowRain'); break;
+            case 'shrinkBar': applyOrCancel(t, 'shrinkBar', 'wideBar'); break;
+            case 'blind': addEffect(t, 'blind'); break;
+            case 'beer': addEffect(t, 'beer'); break;
         }
 
         // Prevent the same powerup from spawning again for its effect duration
