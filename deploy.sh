@@ -17,4 +17,5 @@ echo "==> Running database migrations..."
 npm run db:migrate:deploy --workspace=server
 
 echo "==> Starting server..."
-npm run start --workspace=server
+pm2 restart slutsnus || pm2 start npm --name slutsnus -- run start --workspace=server
+pm2 save

@@ -1,10 +1,12 @@
+import snusIconSrc from '../assets/snusicon.png';
+
 type Props = { size?: number; class?: string };
 
 export function SnusIcon(props: Props) {
     const size = props.size ?? 48;
     return (
         <img
-            src="/src/assets/snusicon.png"
+            src={snusIconSrc}
             width={size}
             height={size}
             alt="Snus"
