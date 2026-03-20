@@ -65,6 +65,19 @@ const EFFECT_MAX_TICKS: Record<SnusregnEffectType, number> = {
     beer: 250,
 };
 
+interface EffectFlags { blind: boolean; beer: boolean; wideBar: boolean; shrinkBar: boolean; }
+
+function computeEffectFlags(player: SnusregnPlayerState): EffectFlags {
+    let blind = false, beer = false, wideBar = false, shrinkBar = false;
+    for (const e of player.effects) {
+        if (e.type === 'blind') blind = true;
+        else if (e.type === 'beer') beer = true;
+        else if (e.type === 'wideBar') wideBar = true;
+        else if (e.type === 'shrinkBar') shrinkBar = true;
+    }
+    return { blind, beer, wideBar, shrinkBar };
+}
+
 export type ItemImages = Partial<Record<SnusregnItemType, HTMLImageElement>>;
 export type ItemBitmaps = Partial<Record<SnusregnItemType, ImageBitmap>>;
 
@@ -125,6 +138,7 @@ export function drawFrame(
     flashes: ScreenFlash[],
     prevState: SnusregnState | null = null,
     interpT: number = 1,
+    now: number = performance.now(),
 ): void {
     const self = state.players.find(p => p.userId === selfId);
     const opponent = state.players.find(p => p.userId !== selfId);
@@ -144,9 +158,11 @@ export function drawFrame(
     ctx.fillRect(0, 0, totalW, CANVAS_H);
 
     // Lanes
-    drawLane(ctx, self, 0, localBarXFraction, true, imgs, bitmaps, prevSelf, interpT);
+    const selfFlags = computeEffectFlags(self);
+    drawLane(ctx, self, 0, localBarXFraction, true, imgs, bitmaps, prevSelf, interpT, now, selfFlags);
     if (hasOpponent) {
-        drawLane(ctx, opponent!, opponentXOffset, opponent!.barXFraction, false, imgs, bitmaps, prevOpponent, interpT);
+        const oppFlags = computeEffectFlags(opponent!);
+        drawLane(ctx, opponent!, opponentXOffset, opponent!.barXFraction, false, imgs, bitmaps, prevOpponent, interpT, now, oppFlags);
         // Divider at the boundary of self's lane
         ctx.strokeStyle = COLORS.divider;
         ctx.lineWidth = 1;
@@ -164,8 +180,6 @@ export function drawFrame(
     if (self.lives <= 0) drawEliminated(ctx, 0);
     if (hasOpponent && opponent!.lives <= 0) drawEliminated(ctx, opponentXOffset);
 
-    const now = Date.now();
-
     // Screen flashes (self lane only)
     for (const f of flashes) {
         const t = 1 - (f.expiresAt - now) / f.duration; // 0→1
@@ -181,8 +195,7 @@ export function drawFrame(
         const t = 1 - (p.expiresAt - now) / p.duration; // 0→1
         // Ease-out upward drift: fast at start, slows down
         const drift = 60 * (1 - (1 - t) * (1 - t));
-        const fontSize = p.milestone ? 52 : p.large ? 32 : 22;
-        ctx.font = `bold ${fontSize}px monospace`;
+        ctx.font = p.milestone ? FONT_POPUP_52 : p.large ? FONT_POPUP_32 : FONT_POPUP_22;
         // Milestone: start fading immediately, max alpha 0.45
         const alpha = p.milestone
             ? Math.max(0, 0.45 * (1 - t))
@@ -207,25 +220,25 @@ function drawLane(
     bitmaps: ItemBitmaps,
     prevPlayer: SnusregnPlayerState | null = null,
     interpT: number = 1,
+    now: number = performance.now(),
+    flags?: EffectFlags,
 ): void {
-    const isBlind     = player.effects.some(e => e.type === 'blind');
-    const hasBeer     = player.effects.some(e => e.type === 'beer');
-    const isWideBar   = player.effects.some(e => e.type === 'wideBar');
-    const isShrinkBar = player.effects.some(e => e.type === 'shrinkBar');
+    const { blind: isBlind, beer: hasBeer, wideBar: isWideBar, shrinkBar: isShrinkBar } =
+        flags ?? computeEffectFlags(player);
 
     // Build a lookup of previous Y positions by item id for interpolation
-    const prevYById = new Map<string, number>();
+    _prevYById.clear();
     if (prevPlayer) {
-        for (const item of prevPlayer.items) prevYById.set(item.id, item.y);
+        for (const item of prevPlayer.items) _prevYById.set(item.id, item.y);
     }
 
     // Items — skip those inside the blind zone
     for (const item of player.items) {
         const px = item.x * LANE_W + xOffset;
-        const prevY = prevYById.get(item.id) ?? item.y;
+        const prevY = _prevYById.get(item.id) ?? item.y;
         const py = (prevY + (item.y - prevY) * interpT) * CANVAS_H;
         if (isBlind && py > CANVAS_H * 0.75) continue;
-        drawItem(ctx, item.type, px, py, imgs, bitmaps, hasBeer, item.targeted);
+        drawItem(ctx, item.type, px, py, imgs, bitmaps, hasBeer, item.targeted, now);
     }
 
     // Blind: blurry fog over bottom quarter — drawn before the bar so the bar remains visible
@@ -258,10 +271,22 @@ function drawLane(
 
 const BORDER_WIDTH = 3;
 
+// Pre-defined font strings to avoid repeated CSS font parsing
+const FONT_HUD_SCORE = 'bold 32px monospace';
+const FONT_HUD_NAME = '13px monospace';
+const FONT_HUD_HEARTS = 'bold 22px sans-serif';
+const FONT_ELIMINATED = 'bold 36px monospace';
+const FONT_POPUP_22 = 'bold 22px monospace';
+const FONT_POPUP_32 = 'bold 32px monospace';
+const FONT_POPUP_52 = 'bold 52px monospace';
+
 // Cached blind fog gradient — parameters are all compile-time constants
 let _blindGradient: CanvasGradient | null = null;
 
-function drawItem(ctx: CanvasRenderingContext2D, type: SnusregnItemType, px: number, py: number, imgs: ItemImages, bitmaps: ItemBitmaps, hasBeer: boolean, targeted?: boolean): void {
+// Reusable Map for item Y interpolation — avoids per-frame allocation
+const _prevYById = new Map<string, number>();
+
+function drawItem(ctx: CanvasRenderingContext2D, type: SnusregnItemType, px: number, py: number, imgs: ItemImages, bitmaps: ItemBitmaps, hasBeer: boolean, targeted: boolean | undefined, now: number): void {
     const borderColor = ITEM_BORDER_COLOR[type];
     // fresh+beer and beerSnus both use the gold snus bitmap
     const bitmapKey = (type === 'fresh' && hasBeer) ? 'beerSnus' : type;
@@ -302,7 +327,7 @@ function drawItem(ctx: CanvasRenderingContext2D, type: SnusregnItemType, px: num
 
     if (targeted) {
         // Bright pulsing ring to indicate this item targets the opponent, not you
-        const pulse = 0.6 + 0.4 * Math.abs(Math.sin(Date.now() / 300));
+        const pulse = 0.6 + 0.4 * Math.abs(Math.sin(now / 300));
         ctx.save();
         ctx.globalAlpha = pulse;
         ctx.beginPath();
@@ -317,7 +342,7 @@ function drawItem(ctx: CanvasRenderingContext2D, type: SnusregnItemType, px: num
 function drawEliminated(ctx: CanvasRenderingContext2D, xOffset: number): void {
     ctx.fillStyle = 'rgba(0,0,0,0.65)';
     ctx.fillRect(xOffset, 0, LANE_W, CANVAS_H);
-    ctx.font = 'bold 36px monospace';
+    ctx.font = FONT_ELIMINATED;
     ctx.fillStyle = '#f85149';
     ctx.textAlign = 'center';
     ctx.fillText('ELIMINATED', xOffset + LANE_W / 2, CANVAS_H / 2);
@@ -330,17 +355,17 @@ function drawHUD(
     xOffset: number,
 ): void {
     // Score
-    ctx.font = 'bold 32px monospace';
+    ctx.font = FONT_HUD_SCORE;
     ctx.fillStyle = COLORS.hud;
     ctx.fillText(`${player.score}p`, xOffset + 10, 36);
 
     // Username
-    ctx.font = '13px monospace';
+    ctx.font = FONT_HUD_NAME;
     ctx.fillStyle = COLORS.hudMuted;
     ctx.fillText(player.username, xOffset + 10, 54);
 
     // Lives (hearts, right side)
-    ctx.font = 'bold 22px sans-serif';
+    ctx.font = FONT_HUD_HEARTS;
     for (let i = 0; i < 3; i++) {
         const x = xOffset + LANE_W - 12 - i * 28;
         ctx.fillStyle = i < player.lives ? '#f85149' : COLORS.livesOff;

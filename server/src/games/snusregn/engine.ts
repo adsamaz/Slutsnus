@@ -221,8 +221,8 @@ export class SnusregnEngine implements GameEngine {
             }
         }
 
-        // 2. Effective fall speed — square-root ramp: fast early increase that tapers off
-        const ramp = Math.sqrt(this.tickCount) * FALL_SPEED_INCREMENT;
+        // 2. Effective fall speed — power ramp (exponent 0.6): keeps accelerating longer than sqrt
+        const ramp = Math.pow(this.tickCount, 0.55) * FALL_SPEED_INCREMENT;
         const baseSpeed = BASE_FALL_SPEED + ramp;
         // fastRain adds a fixed speed bonus (diminishing relative effect at high speeds)
         const fastBonus = hasEffect(player, 'fastRain') ? BASE_FALL_SPEED * 0.5 : 0;
