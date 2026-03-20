@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Shadow -->
+  <ellipse cx="52" cy="88" rx="24" ry="4" fill="rgba(0,0,0,0.12)"/>
+
+  <!-- Tail -->
+  <path d="M 72,74 Q 90,68 94,54 Q 97,42 88,36"
+        fill="none" stroke="#c8a0b0" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Body -->
+  <ellipse cx="50" cy="68" rx="28" ry="20" fill="#d4afc0"/>
+
+  <!-- Body sheen -->
+  <ellipse cx="44" cy="60" rx="14" ry="8" fill="rgba(255,255,255,0.18)"/>
+
+  <!-- Fur texture lines -->
+  <g fill="none" stroke="rgba(140,80,105,0.22)" stroke-width="1">
+    <path d="M 30,62 Q 38,58 46,62"/>
+    <path d="M 32,69 Q 42,64 52,68"/>
+    <path d="M 34,76 Q 44,72 54,76"/>
+    <path d="M 50,62 Q 58,58 66,62"/>
+    <path d="M 52,69 Q 60,65 68,69"/>
+  </g>
+
+  <!-- Head -->
+  <ellipse cx="36" cy="52" rx="20" ry="17" fill="#d4afc0"/>
+
+  <!-- Head sheen -->
+  <ellipse cx="30" cy="45" rx="9" ry="6" fill="rgba(255,255,255,0.20)"/>
+
+  <!-- Left ear (back) -->
+  <ellipse cx="22" cy="36" rx="9" ry="11" fill="#c8a0b0"/>
+  <ellipse cx="22" cy="36" rx="5.5" ry="7" fill="#f0c0d0"/>
+
+  <!-- Right ear -->
+  <ellipse cx="50" cy="36" rx="9" ry="11" fill="#c8a0b0"/>
+  <ellipse cx="50" cy="36" rx="5.5" ry="7" fill="#f0c0d0"/>
+
+  <!-- Eyes -->
+  <circle cx="28" cy="48" r="4" fill="#1a0a10"/>
+  <circle cx="44" cy="48" r="4" fill="#1a0a10"/>
+  <!-- Eye shine -->
+  <circle cx="29.5" cy="46.5" r="1.4" fill="rgba(255,255,255,0.70)"/>
+  <circle cx="45.5" cy="46.5" r="1.4" fill="rgba(255,255,255,0.70)"/>
+
+  <!-- Nose -->
+  <ellipse cx="36" cy="60" rx="4" ry="2.5" fill="#e87090"/>
+
+  <!-- Whiskers left -->
+  <line x1="36" y1="60" x2="10" y2="56" stroke="rgba(80,40,55,0.45)" stroke-width="0.9"/>
+  <line x1="36" y1="60" x2="10" y2="60" stroke="rgba(80,40,55,0.45)" stroke-width="0.9"/>
+  <line x1="36" y1="60" x2="10" y2="64" stroke="rgba(80,40,55,0.45)" stroke-width="0.9"/>
+
+  <!-- Whiskers right -->
+  <line x1="36" y1="60" x2="62" y2="56" stroke="rgba(80,40,55,0.45)" stroke-width="0.9"/>
+  <line x1="36" y1="60" x2="62" y2="60" stroke="rgba(80,40,55,0.45)" stroke-width="0.9"/>
+  <line x1="36" y1="60" x2="62" y2="64" stroke="rgba(80,40,55,0.45)" stroke-width="0.9"/>
+
+  <!-- Feet -->
+  <ellipse cx="38" cy="85" rx="10" ry="5" fill="#c8a0b0"/>
+  <ellipse cx="58" cy="85" rx="10" ry="5" fill="#c8a0b0"/>
+  <!-- Toe nubs -->
+  <circle cx="31" cy="87" r="2.2" fill="#b890a4"/>
+  <circle cx="37" cy="89" r="2.2" fill="#b890a4"/>
+  <circle cx="43" cy="88" r="2.2" fill="#b890a4"/>
+  <circle cx="51" cy="87" r="2.2" fill="#b890a4"/>
+  <circle cx="57" cy="89" r="2.2" fill="#b890a4"/>
+  <circle cx="63" cy="88" r="2.2" fill="#b890a4"/>
+</svg>

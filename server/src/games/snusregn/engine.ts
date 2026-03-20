@@ -32,7 +32,7 @@ const EFFECT_DURATIONS: Record<SnusregnEffectType, number> = {
     slowRain: 150,
     fastRain: 150,
     shrinkBar: 200,
-    blind: 100,
+    blind: 200,
     beer: 200,
 };
 

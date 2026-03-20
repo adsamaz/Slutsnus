@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 70" width="100" height="70">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <g transform="translate(0, 15)">
   <!-- Shadow -->
   <ellipse cx="50" cy="66" rx="36" ry="3.5" fill="rgba(0,0,0,0.08)"/>
 
@@ -10,10 +11,10 @@
     L 8,56
     L 8,46 Q 12,41 8,36 Q 12,31 8,26 Q 12,21 8,16
     Z
-  " fill="#c8a020" opacity="0.7"/>
+  " fill="#d9b020" opacity="0.8"/>
 
   <!-- Pouch body (inner area) -->
-  <rect x="12" y="12" width="76" height="40" fill="#e8b830"/>
+  <rect x="12" y="12" width="76" height="40" fill="#f5cc30"/>
 
   <!-- Top sheen -->
   <ellipse cx="50" cy="24" rx="28" ry="8" fill="rgba(255,255,200,0.35)"/>
@@ -45,5 +46,6 @@
 
   <!-- Inner seam line -->
   <rect x="12" y="12" width="76" height="40"
-        fill="none" stroke="rgba(200,150,20,0.55)" stroke-width="1"/>
+        fill="none" stroke="rgba(220,170,20,0.6)" stroke-width="1"/>
+  </g>
 </svg>

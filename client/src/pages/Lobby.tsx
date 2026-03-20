@@ -46,7 +46,9 @@ export default function Lobby() {
 
     const allReady = (): boolean => {
         const r = room();
-        if (!r || r.players.length < 2) return false;
+        if (!r) return false;
+        if (r.players.length === 1 && r.players[0].userId === r.hostId) return true;
+        if (r.players.length < 2) return false;
         return r.players.filter((p) => p.userId !== r.hostId).every((p) => p.ready);
     };
 

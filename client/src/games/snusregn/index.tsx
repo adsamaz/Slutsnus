@@ -2,19 +2,11 @@ import { createStore } from 'solid-js/store';
 import { createEffect, createMemo, createResource, createSignal, For, onMount, onCleanup, Show } from 'solid-js';
 import { useSocket } from '../../stores/socket';
 import { useAuth } from '../../stores/auth';
-import { drawFrame, bakeItemBitmaps, LANE_W, LANE_GAP, BAR_WIDTH_DEFAULT, EFFECT_COLORS, EFFECT_LABELS, EFFECT_MAX_TICKS, OPPONENT_EFFECTS } from './render';
+import { drawFrame, LANE_W, LANE_GAP, BAR_WIDTH_DEFAULT, EFFECT_COLORS, EFFECT_LABELS, EFFECT_MAX_TICKS, OPPONENT_EFFECTS } from './render';
 import type { ItemBitmaps, ScreenFlash } from './render';
-import freshSnusSrc from '../../assets/freshsnus.svg';
-import goldSnusSrc from '../../assets/goldsnus.svg';
-import spentSnusSrc from '../../assets/spentsnus.svg';
-import beerSrc from '../../assets/beer.svg';
-import wideBarSrc from '../../assets/widebar.svg';
-import slowRainSrc from '../../assets/slowrain.svg';
-import fastRainSrc from '../../assets/fastrain.svg';
-import shrinkBarSrc from '../../assets/shrinkbar.svg';
-import blindSrc from '../../assets/blind.svg';
 import bjudlocketSrc from '../../assets/bjudlocket.webp';
 import snusiconSrc from '../../assets/snusicon.webp';
+import mouseCursorSrc from '../../assets/mouse.svg';
 import type { SnusregnState, GameAction, SnusregnEffectType } from '@slutsnus/shared';
 import { soundFreshCatch, soundFreshCatchBeer, soundLifeLost, soundPowerup, soundDebuff, soundGameStart } from './sounds';
 import './snusregn.css';
@@ -23,6 +15,8 @@ interface SnusregnGameProps {
     state: SnusregnState;
     roomCode: string;
     onAction: (action: unknown) => void;
+    imgs: Record<string, HTMLImageElement>;
+    bitmaps: ItemBitmaps;
 }
 
 export function SnusregnGame(props: SnusregnGameProps) {
@@ -136,19 +130,8 @@ export function SnusregnGame(props: SnusregnGameProps) {
     let prevStateForInterp: SnusregnState | null = null;
     let lastStateAt = 0;
     const SERVER_TICK_MS = 20;
-    const makeImg = (src: string) => { const i = new Image(); i.src = src; return i; };
-    const imgs = {
-        fresh: makeImg(freshSnusSrc),
-        beerSnus: makeImg(goldSnusSrc),
-        spent: makeImg(spentSnusSrc),
-        beer: makeImg(beerSrc),
-        wideBar: makeImg(wideBarSrc),
-        slowRain: makeImg(slowRainSrc),
-        fastRain: makeImg(fastRainSrc),
-        shrinkBar: makeImg(shrinkBarSrc),
-        blind: makeImg(blindSrc),
-    };
-    let bitmaps: ItemBitmaps = {};
+    const imgs = props.imgs;
+    let bitmaps: ItemBitmaps = props.bitmaps;
 
     onMount(() => {
         soundGameStart();
@@ -159,16 +142,6 @@ export function SnusregnGame(props: SnusregnGameProps) {
         const hasOpponent = initialPlayerCount > 1 && props.state?.players.some(p => p.userId !== (_selfId));
         const initialW = hasOpponent ? LANE_W * 2 + LANE_GAP : LANE_W;
         if (canvasRef.width !== initialW) canvasRef.width = initialW;
-
-        // Bake pre-rendered circular bitmaps — wait for all images via onload, not polling
-        const waitForImages = () => Promise.all(
-            Object.values(imgs).map(img =>
-                img.complete && img.naturalWidth > 0
-                    ? Promise.resolve()
-                    : new Promise<void>(resolve => { img.onload = () => resolve(); img.onerror = () => resolve(); })
-            )
-        );
-        waitForImages().then(() => bakeItemBitmaps(imgs).then(b => { bitmaps = b; }));
 
         const loop = () => {
             const state = gameStore.data;
@@ -185,26 +158,11 @@ export function SnusregnGame(props: SnusregnGameProps) {
         };
         rafId = requestAnimationFrame(loop);
 
-        let skipNextMouseMove = false;
-
         const onMouseMove = (e: MouseEvent) => {
-            if (document.pointerLockElement === canvasRef) {
-                if (skipNextMouseMove) { skipNextMouseMove = false; return; }
-                // Pointer is locked: use relative movement
-                const rect = canvasRef.getBoundingClientRect();
-                const scaleX = canvasRef.width / rect.width;
-                const currentX = localBarXFraction * LANE_W;
-                const newX = currentX + e.movementX * scaleX;
-                const laneX = Math.max(localHalfBar, Math.min(LANE_W - localHalfBar, newX));
-                localBarXFraction = laneX / LANE_W;
-            } else {
-                // Normal absolute tracking within the window
-                const rect = canvasRef.getBoundingClientRect();
-                const scaleX = canvasRef.width / rect.width;
-                const rawX = (e.clientX - rect.left) * scaleX;
-                const laneX = Math.max(localHalfBar, Math.min(LANE_W - localHalfBar, rawX));
-                localBarXFraction = laneX / LANE_W;
-            }
+            const rect = canvasRef.getBoundingClientRect();
+            const rawX = (e.clientX - rect.left) * (canvasRef.width / rect.width);
+            const laneX = Math.max(localHalfBar, Math.min(LANE_W - localHalfBar, rawX));
+            localBarXFraction = laneX / LANE_W;
 
             const now = Date.now();
             if (now - lastEmit >= 16) {
@@ -216,33 +174,10 @@ export function SnusregnGame(props: SnusregnGameProps) {
             }
         };
 
-        const onClick = () => {
-            if (gameStore.data?.status === 'playing' && document.pointerLockElement !== canvasRef) {
-                canvasRef.requestPointerLock();
-            }
-        };
-
-        canvasRef.requestPointerLock();
-
-        const onPointerLockChange = () => {
-            if (document.pointerLockElement === canvasRef) {
-                // Skip the first mousemove event after acquiring lock — it carries a
-                // large accumulated movementX delta from before the lock was granted.
-                skipNextMouseMove = true;
-            } else {
-                if (gameStore.data?.status === 'playing') canvasRef.requestPointerLock();
-            }
-        };
-
         window.addEventListener('mousemove', onMouseMove);
-        canvasRef.addEventListener('click', onClick);
-        document.addEventListener('pointerlockchange', onPointerLockChange);
 
         onCleanup(() => {
             window.removeEventListener('mousemove', onMouseMove);
-            canvasRef.removeEventListener('click', onClick);
-            document.removeEventListener('pointerlockchange', onPointerLockChange);
-            if (document.pointerLockElement === canvasRef) document.exitPointerLock();
             cancelAnimationFrame(rafId);
         });
     });
@@ -251,14 +186,17 @@ export function SnusregnGame(props: SnusregnGameProps) {
     const state = () => gameStore.data;
     const ended = () => state()?.status === 'ended';
 
-    // Release pointer lock when game ends
-    createEffect(() => {
-        if (ended() && document.pointerLockElement === canvasRef) {
-            document.exitPointerLock();
-        }
-    });
+    const [cursorPos, setCursorPos] = createSignal({ x: -200, y: -200 });
+    const onWrapperMouseMove = (e: MouseEvent) => setCursorPos({ x: e.clientX, y: e.clientY });
+
 
     const [actionPending, setActionPending] = createSignal<'play-again' | 'lobby' | null>(null);
+
+    createEffect(() => {
+        if (gameStore.data !== null && actionPending() === 'play-again') {
+            setActionPending(null);
+        }
+    });
 
     const winner = () => state()?.results?.find(r => r.rank === 1);
     const isWinner = () => winner()?.userId === selfId();
@@ -281,7 +219,21 @@ export function SnusregnGame(props: SnusregnGameProps) {
     });
 
     return (
-        <div class="snusregn-wrapper" style={{ cursor: ended() ? 'auto' : 'none' }}>
+        <div class="snusregn-wrapper" style={{ cursor: ended() ? 'auto' : 'none' }} onMouseMove={onWrapperMouseMove}>
+            <Show when={!ended()}>
+                <img
+                    src={mouseCursorSrc}
+                    style={{
+                        position: 'fixed',
+                        left: `${cursorPos().x - 16}px`,
+                        top: `${cursorPos().y - 16}px`,
+                        width: '32px',
+                        height: '32px',
+                        'pointer-events': 'none',
+                        'z-index': '9999',
+                    }}
+                />
+            </Show>
             <div style={{ display: ended() ? 'none' : 'flex', 'flex-direction': 'column', 'align-items': 'stretch' }}>
                 <canvas
                     ref={canvasRef}
