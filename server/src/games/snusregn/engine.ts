@@ -11,6 +11,7 @@ const BAR_WIDTH_DEFAULT = 100;
 const ITEM_RADIUS = 18;
 const BASE_FALL_SPEED = 12;
 const FALL_SPEED_INCREMENT = 0.2;
+const FALL_SPEED_EXPONENTIAL = 0.55;
 const BASE_SPAWN_INTERVAL = 20;
 const MAX_ITEMS = 15;
 const LIVES_START = 3;
@@ -222,7 +223,7 @@ export class SnusregnEngine implements GameEngine {
         }
 
         // 2. Effective fall speed — power ramp (exponent 0.6): keeps accelerating longer than sqrt
-        const ramp = Math.pow(this.tickCount, 0.55) * FALL_SPEED_INCREMENT;
+        const ramp = Math.pow(this.tickCount, FALL_SPEED_EXPONENTIAL) * FALL_SPEED_INCREMENT;
         const baseSpeed = BASE_FALL_SPEED + ramp;
         // fastRain adds a fixed speed bonus (diminishing relative effect at high speeds)
         const fastBonus = hasEffect(player, 'fastRain') ? BASE_FALL_SPEED * 0.5 : 0;

@@ -160,8 +160,8 @@ export function SnusregnGame(props: SnusregnGameProps) {
             while (expired < flashes.length && flashes[expired].expiresAt <= now) expired++;
             if (expired > 0) flashes.splice(0, expired);
             if (state && state.status === 'playing') {
-                const t = lastStateAt > 0 ? Math.min(1, (now - lastStateAt) / SERVER_TICK_MS) : 1;
-                drawFrame(ctx, canvasRef, state, selfId, localBarXFraction, imgs, popups, bitmaps, flashes, prevStateForInterp, t, now);
+                const elapsedMs = lastStateAt > 0 ? now - lastStateAt : 0;
+                drawFrame(ctx, canvasRef, state, selfId, localBarXFraction, imgs, popups, bitmaps, flashes, prevStateForInterp, elapsedMs, now);
             }
             rafId = requestAnimationFrame(loop);
         };
