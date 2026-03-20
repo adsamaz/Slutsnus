@@ -8,20 +8,7 @@ const BAR_HEIGHT = 18;
 export const BAR_WIDTH_DEFAULT = 100;
 const ITEM_RADIUS = 18;
 
-// Mirrors engine constants for client-side extrapolation
-const BASE_FALL_SPEED = 12;
-const FALL_SPEED_INCREMENT = 0.2;
-const FALL_SPEED_EXPONENTIAL = 0.55;
 const SERVER_TICK_MS = 20;
-
-/** Compute the fall speed (px/tick) for a player at a given tickCount, mirroring engine logic. */
-function computeFallSpeed(tickCount: number, hasFastRain: boolean, hasSlowRain: boolean): number {
-    const ramp = Math.pow(tickCount, FALL_SPEED_EXPONENTIAL) * FALL_SPEED_INCREMENT;
-    const baseSpeed = BASE_FALL_SPEED + ramp;
-    const fastBonus = hasFastRain ? BASE_FALL_SPEED * 0.5 : 0;
-    const speed = (baseSpeed + fastBonus) * (hasSlowRain ? 0.7 : 1.0);
-    return Math.max(0, speed);
-}
 
 const COLORS = {
     bg: '#0d1117',
@@ -174,10 +161,10 @@ export function drawFrame(
 
     // Lanes
     const selfFlags = computeEffectFlags(self);
-    drawLane(ctx, self, 0, localBarXFraction, true, imgs, bitmaps, prevSelf, elapsedMs, state.tickCount, now, selfFlags);
+    drawLane(ctx, self, 0, localBarXFraction, true, imgs, bitmaps, prevSelf, elapsedMs, now, selfFlags);
     if (hasOpponent) {
         const oppFlags = computeEffectFlags(opponent!);
-        drawLane(ctx, opponent!, opponentXOffset, opponent!.barXFraction, false, imgs, bitmaps, prevOpponent, elapsedMs, state.tickCount, now, oppFlags);
+        drawLane(ctx, opponent!, opponentXOffset, opponent!.barXFraction, false, imgs, bitmaps, prevOpponent, elapsedMs, now, oppFlags);
         // Divider at the boundary of self's lane
         ctx.strokeStyle = COLORS.divider;
         ctx.lineWidth = 1;
@@ -235,7 +222,6 @@ function drawLane(
     bitmaps: ItemBitmaps,
     prevPlayer: SnusregnPlayerState | null = null,
     elapsedMs: number = 0,
-    tickCount: number = 0,
     now: number = performance.now(),
     flags?: EffectFlags,
 ): void {
@@ -248,21 +234,26 @@ function drawLane(
         for (const item of prevPlayer.items) _prevYById.set(item.id, item.y);
     }
 
-    // Extrapolate item positions: advance by elapsed time beyond the last server tick
-    const hasFastRain = player.effects.some(e => e.type === 'fastRain');
-    const hasSlowRain = player.effects.some(e => e.type === 'slowRain');
-    const fallSpeed = computeFallSpeed(tickCount, hasFastRain, hasSlowRain);
     // elapsedMs can exceed SERVER_TICK_MS under jitter — extrapolate freely rather than clamp
     const ticksElapsed = elapsedMs / SERVER_TICK_MS;
 
     // Items — skip those inside the blind zone
+    // Extrapolation is blended out near the bar so visual position stays in sync with
+    // server collision checks. Above 70% canvas: full extrapolation. Below 85%: none.
+    const EXTRAP_FADE_START = 0.82; // fraction — full extrapolation above this
+    const EXTRAP_FADE_END   = 0.93; // fraction — no extrapolation below this
     for (const item of player.items) {
         const px = item.x * LANE_W + xOffset;
-        const prevY = _prevYById.get(item.id) ?? item.y;
-        // Interpolate from prevY to item.y for the first tick, then extrapolate beyond
+        // If item is new (no prev state), synthesise prevY one tick behind so it interpolates smoothly
+        const oneTickDelta = item.spawnSpeed * item.speedMult / CANVAS_H;
+        const prevY = _prevYById.get(item.id) ?? (item.y - oneTickDelta);
+        // Interpolate from prevY to item.y for the first tick
         const interpY = prevY + (item.y - prevY) * Math.min(1, ticksElapsed);
+        // Extrapolate beyond one tick using the item's frozen spawn speed
         const extraTicks = Math.max(0, ticksElapsed - 1);
-        const extrapolatedY = interpY + (fallSpeed * item.speedMult / CANVAS_H) * extraTicks;
+        const extraDelta = (item.spawnSpeed * item.speedMult / CANVAS_H) * extraTicks;
+        const blend = 1 - Math.max(0, Math.min(1, (interpY - EXTRAP_FADE_START) / (EXTRAP_FADE_END - EXTRAP_FADE_START)));
+        const extrapolatedY = interpY + extraDelta * blend;
         const py = extrapolatedY * CANVAS_H;
         if (isBlind && py > CANVAS_H * 0.75) continue;
         drawItem(ctx, item.type, px, py, imgs, bitmaps, hasBeer, item.targeted, now);

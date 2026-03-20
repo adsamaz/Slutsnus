@@ -253,6 +253,7 @@ export interface SnusregnItem {
     x: number;       // 0.0–1.0 fraction of the lane width (400px)
     y: number;       // 0.0–1.0 fraction of the full canvas height (600px)
     speedMult: number; // individual speed multiplier, typically 0.85–1.15
+    spawnSpeed: number; // fall speed (px/tick) at the time this item was spawned — frozen for its lifetime
     targeted?: boolean; // 1v1 only: effect applies to opponent instead of self
 }
 

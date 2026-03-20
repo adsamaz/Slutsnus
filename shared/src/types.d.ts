@@ -208,6 +208,8 @@ export interface SnusregnItem {
     x: number;
     y: number;
     speedMult: number;
+    spawnSpeed: number;
+    targeted?: boolean;
 }
 export interface SnusregnPlayerState {
     userId: string;

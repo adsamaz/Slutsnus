@@ -222,8 +222,10 @@ export class SnusregnEngine implements GameEngine {
             }
         }
 
-        // 2. Effective fall speed — power ramp (exponent 0.6): keeps accelerating longer than sqrt
-        const ramp = Math.pow(this.tickCount, FALL_SPEED_EXPONENTIAL) * FALL_SPEED_INCREMENT;
+        // 2. Effective fall speed — power ramp quantized to 150-tick steps so speed only
+        //    increases at intervals rather than every tick
+        const speedStep = Math.floor(this.tickCount / 100);
+        const ramp = Math.pow(speedStep * 100, FALL_SPEED_EXPONENTIAL) * FALL_SPEED_INCREMENT;
         const baseSpeed = BASE_FALL_SPEED + ramp;
         // fastRain adds a fixed speed bonus (diminishing relative effect at high speeds)
         const fastBonus = hasEffect(player, 'fastRain') ? BASE_FALL_SPEED * 0.5 : 0;
@@ -235,9 +237,10 @@ export class SnusregnEngine implements GameEngine {
         const spawnInterval = Math.round(BASE_SPAWN_INTERVAL / (speed / BASE_FALL_SPEED));
 
         // 4. Move items (capture prevY before advancing for swept collision)
+        // Each item uses its own spawnSpeed so already-airborne items don't accelerate mid-flight.
         for (const item of player.items) {
             player.prevItemY.set(item.id, item.y);
-            item.y += (speed * item.speedMult) / CANVAS_H;
+            item.y += (item.spawnSpeed * item.speedMult) / CANVAS_H;
         }
 
         // 5. Spawn
@@ -258,6 +261,7 @@ export class SnusregnEngine implements GameEngine {
                 x: 0.05 + Math.random() * 0.90,
                 y: 0,
                 speedMult: 0.85 + Math.random() * 0.15,
+                spawnSpeed: speed,
                 targeted: canBeTargeted && Math.random() < 0.35,
             });
             player.ticksSinceLastSpawn = 0;
