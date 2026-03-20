@@ -9,6 +9,7 @@ const BAR_Y_FROM_BOTTOM = 20;
 const BAR_HEIGHT = 18;
 const BAR_WIDTH_DEFAULT = 100;
 const ITEM_RADIUS = 18;
+const SPENT_ITEM_RADIUS = 15;
 const BASE_FALL_SPEED = 12;
 const FALL_SPEED_INCREMENT = 0.2;
 const FALL_SPEED_EXPONENTIAL = 0.55;
@@ -278,9 +279,10 @@ export class SnusregnEngine implements GameEngine {
             const itemXPx = item.x * LANE_W;
             const itemYPx = item.y * CANVAS_H;
             const prevYPx = (player.prevItemY.get(item.id) ?? item.y) * CANVAS_H;
+            const radius = item.type === 'spent' ? SPENT_ITEM_RADIUS : ITEM_RADIUS;
 
             // Missed — fell off screen (top of item is below bar bottom)
-            if (itemYPx - ITEM_RADIUS > barBotYPx) {
+            if (itemYPx - radius > barBotYPx) {
                 if (item.type === 'fresh' || item.type === 'beerSnus') {
                     player.lives = Math.max(0, player.lives - 1);
                 }
@@ -290,12 +292,12 @@ export class SnusregnEngine implements GameEngine {
             }
 
             // Standard overlap check
-            const vertOverlap = (itemYPx + ITEM_RADIUS >= barTopYPx) && (itemYPx - ITEM_RADIUS <= barBotYPx);
+            const vertOverlap = (itemYPx + radius >= barTopYPx) && (itemYPx - radius <= barBotYPx);
             // Swept pass-through: item center crossed from above bar top to below bar bottom in one tick
             const sweptThrough = prevYPx < barTopYPx && itemYPx > barBotYPx;
 
-            const horizOverlap = (itemXPx + ITEM_RADIUS >= player.barXPx - barHalfW) &&
-                (itemXPx - ITEM_RADIUS <= player.barXPx + barHalfW);
+            const horizOverlap = (itemXPx + radius >= player.barXPx - barHalfW) &&
+                (itemXPx - radius <= player.barXPx + barHalfW);
             // Horizontal sweep: bar moved sideways over an item that is at bar height
             const barLeft = Math.min(player.prevBarXPx, player.barXPx) - barHalfW;
             const barRight = Math.max(player.prevBarXPx, player.barXPx) + barHalfW;

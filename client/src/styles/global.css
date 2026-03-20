@@ -956,3 +956,110 @@ h5 {
     flex-direction: column;
     gap: 4px;
 }
+
+/* --- Join form desktop cap --- */
+.join-form .input {
+    max-width: 160px;
+}
+
+/* ============================
+   Responsive / Mobile
+   ============================ */
+
+@media (max-width: 768px) {
+    .navbar {
+        padding: 0 1rem;
+    }
+
+    .nav-link {
+        padding: 6px 8px;
+        font-size: 0.8rem;
+    }
+
+    .navbar-username {
+        display: none;
+    }
+
+    .page {
+        padding: 2rem 1rem;
+    }
+
+    .home-page {
+        padding: 0 1rem 3rem;
+    }
+
+    .hero {
+        padding: 3rem 1rem 2.5rem;
+    }
+
+    .hero-title {
+        font-size: 3.5rem;
+    }
+
+    .home-game-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1.5rem;
+    }
+
+    .home-game-card-icon {
+        width: 64px;
+        height: 64px;
+    }
+
+    .home-game-card-cta {
+        align-self: flex-end;
+    }
+
+    .room-actions {
+        padding: 1.5rem;
+    }
+
+    .room-actions-inner {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .join-form {
+        width: 100%;
+    }
+
+    .join-form .input {
+        max-width: unset;
+    }
+
+    .lobby-layout {
+        flex-direction: column;
+    }
+
+    .lobby-sidebar {
+        width: 100%;
+    }
+
+    .btn {
+        min-height: 44px;
+        padding: 10px 18px;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero-title {
+        font-size: 2.75rem;
+    }
+
+    .hero-sub {
+        font-size: 0.9rem;
+    }
+
+    .toast-container {
+        right: 0.75rem;
+        left: 0.75rem;
+        top: 0.75rem;
+    }
+
+    .toast {
+        min-width: unset;
+        max-width: 100%;
+    }
+}

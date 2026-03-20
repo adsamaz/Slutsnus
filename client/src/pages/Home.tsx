@@ -138,7 +138,7 @@ export default function Home() {
                                     value={joinCode()}
                                     onInput={(e) => setJoinCode(e.currentTarget.value.toUpperCase())}
                                     maxLength={6}
-                                    style={{ 'text-transform': 'uppercase', width: '140px' }}
+                                    style={{ 'text-transform': 'uppercase' }}
                                 />
                                 <Button type="submit" variant="secondary" disabled={joining()}>{joining() ? 'Joining...' : 'Join'}</Button>
                             </form>

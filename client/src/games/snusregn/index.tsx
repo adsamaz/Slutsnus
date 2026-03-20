@@ -167,7 +167,7 @@ export function SnusregnGame(props: SnusregnGameProps) {
         };
         rafId = requestAnimationFrame(loop);
 
-        const onMouseMove = (e: MouseEvent) => {
+        const onPointerMove = (e: PointerEvent) => {
             const rect = cachedRect;
             const rawX = (e.clientX - rect.left) * (canvasRef.width / rect.width);
             const laneX = Math.max(localHalfBar, Math.min(LANE_W - localHalfBar, rawX));
@@ -181,10 +181,17 @@ export function SnusregnGame(props: SnusregnGameProps) {
             }
         };
 
-        window.addEventListener('mousemove', onMouseMove);
+        const onPointerDown = (e: PointerEvent) => {
+            canvasRef.setPointerCapture(e.pointerId);
+            onPointerMove(e);
+        };
+
+        canvasRef.addEventListener('pointermove', onPointerMove);
+        canvasRef.addEventListener('pointerdown', onPointerDown);
 
         onCleanup(() => {
-            window.removeEventListener('mousemove', onMouseMove);
+            canvasRef.removeEventListener('pointermove', onPointerMove);
+            canvasRef.removeEventListener('pointerdown', onPointerDown);
             window.removeEventListener('resize', updateRect);
             cancelAnimationFrame(rafId);
         });
