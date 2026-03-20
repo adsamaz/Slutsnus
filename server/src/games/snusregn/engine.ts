@@ -224,23 +224,22 @@ export class SnusregnEngine implements GameEngine {
 
         // 2. Effective fall speed — power ramp quantized to 150-tick steps so speed only
         //    increases at intervals rather than every tick
-        const speedStep = Math.floor(this.tickCount / 100);
-        const ramp = Math.pow(speedStep * 100, FALL_SPEED_EXPONENTIAL) * FALL_SPEED_INCREMENT;
+        const speedStep = Math.floor(this.tickCount / 50);
+        const ramp = Math.pow(speedStep * 50, FALL_SPEED_EXPONENTIAL) * FALL_SPEED_INCREMENT;
         const baseSpeed = BASE_FALL_SPEED + ramp;
-        // fastRain adds a fixed speed bonus (diminishing relative effect at high speeds)
+        // Effect multipliers applied at move time so they affect all airborne items immediately
         const fastBonus = hasEffect(player, 'fastRain') ? BASE_FALL_SPEED * 0.5 : 0;
-        let speed = (baseSpeed + fastBonus)
-            * (hasEffect(player, 'slowRain') ? 0.7 : 1.0);
-        if (speed < 0) speed = 0;
+        const effectMult = hasEffect(player, 'slowRain') ? 0.7 : 1.0;
 
-        // 3. Spawn interval — grows with speed so item density stays constant
-        const spawnInterval = Math.round(BASE_SPAWN_INTERVAL / (speed / BASE_FALL_SPEED));
+        // 3. Spawn interval — grows with base speed so item density stays constant
+        const spawnInterval = Math.round(BASE_SPAWN_INTERVAL / (baseSpeed / BASE_FALL_SPEED));
 
         // 4. Move items (capture prevY before advancing for swept collision)
-        // Each item uses its own spawnSpeed so already-airborne items don't accelerate mid-flight.
+        // spawnSpeed is the difficulty baseline frozen at spawn; effects are applied here so
+        // fastRain/slowRain affect all airborne items, not just newly spawned ones.
         for (const item of player.items) {
             player.prevItemY.set(item.id, item.y);
-            item.y += (item.spawnSpeed * item.speedMult) / CANVAS_H;
+            item.y += ((item.spawnSpeed + fastBonus) * effectMult * item.speedMult) / CANVAS_H;
         }
 
         // 5. Spawn
@@ -261,7 +260,7 @@ export class SnusregnEngine implements GameEngine {
                 x: 0.05 + Math.random() * 0.90,
                 y: 0,
                 speedMult: 0.85 + Math.random() * 0.15,
-                spawnSpeed: speed,
+                spawnSpeed: baseSpeed,
                 targeted: canBeTargeted && Math.random() < 0.35,
             });
             player.ticksSinceLastSpawn = 0;
