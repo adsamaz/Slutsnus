@@ -108,8 +108,10 @@ export function getClassCardAtPoint(
     x: number, y: number,
     canvasRect: DOMRect,
 ): ArenaClass | null {
-    const cx = x - canvasRect.left;
-    const cy = y - canvasRect.top;
+    const scaleX = CANVAS_W / canvasRect.width;
+    const scaleY = CANVAS_H / canvasRect.height;
+    const cx = (x - canvasRect.left) * scaleX;
+    const cy = (y - canvasRect.top) * scaleY;
 
     const classes: ArenaClass[] = ['warrior', 'archer', 'mage'];
     const cardW = 200, cardH = 320, gap = 30;
