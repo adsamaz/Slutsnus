@@ -3,10 +3,9 @@ import { useNavigate } from '@solidjs/router';
 import { useAuth } from '../stores/auth';
 import { useRoom } from '../stores/room';
 import Button from '../components/Button';
-import { SnusIcon } from '../components/SnusIcon';
 import { GameType } from '@slutsnus/shared';
 
-type Game = { id: GameType; name: string; description: string; badges: string[]; tagline: string };
+type Game = { id: GameType; name: string; description: string; badges: string[]; tagline: string; icon: string };
 
 const GAMES: Game[] = [
     {
@@ -15,6 +14,23 @@ const GAMES: Game[] = [
         tagline: 'Catch the snus. Watch out for bjudlocket.',
         description: 'Snus pouches rain from the sky in your own lane. Catch fresh ones, avoid spent ones. Powerups and debuffs included. 1v1 arcade.',
         badges: ['1-2 Players', 'Arcade', 'Real-time'],
+        icon: '🌧️',
+    },
+    {
+        id: 'snus-arena',
+        name: 'Snus Arena',
+        tagline: 'Choose your class. Fight for the arena.',
+        description: 'Pick a class with unique abilities and battle it out in the arena. Use powerups, dodge projectiles, and outlast your opponent.',
+        badges: ['1-2 Players', 'Action', 'Real-time'],
+        icon: '⚔️',
+    },
+    {
+        id: 'snus-farm',
+        name: 'Snus Farm',
+        tagline: 'Herd your chickens. Outsmart your rival farmer.',
+        description: 'Chase chickens across a shared farm and push them into your pen. First farmer to 5 chickens wins.',
+        badges: ['2 Players', 'Casual', 'Real-time'],
+        icon: '🐔',
     },
 ];
 
@@ -101,7 +117,7 @@ export default function Home() {
                         >
                             <div class="home-game-card-glow" aria-hidden="true" />
                             <div class="home-game-card-icon">
-                                <SnusIcon size={72} />
+                                <span style={{ "font-size": "72px", "line-height": "1" }}>{game.icon}</span>
                             </div>
                             <div class="home-game-card-body">
                                 <p class="home-game-card-tagline">{game.tagline}</p>

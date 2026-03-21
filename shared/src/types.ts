@@ -27,7 +27,7 @@ export interface AuthResponse {
 // Rooms
 // ─────────────────────────────────────────────────
 export type RoomStatus = 'waiting' | 'playing' | 'ended';
-export type GameType = 'snusregn';
+export type GameType = 'snusregn' | 'snus-arena' | 'snus-farm';
 
 export interface RoomPlayer {
     userId: string;
@@ -96,7 +96,7 @@ export interface ClientToServerEvents {
     'room:join': (data: { roomCode: string }) => void;
     'room:ready': (data: { roomCode: string }) => void;
     'room:leave': (data: { roomCode: string }) => void;
-    'room:start': (data: { roomCode: string }) => void;
+    'room:start': (data: { roomCode: string; gameMode?: ArenaGameMode }) => void;
     'game:action': (data: { roomCode: string; action: GameAction }) => void;
     'game:ready': (data: { roomCode: string }) => void;
     'friends:invite': (data: { targetUserId: string; roomCode: string }) => void;
@@ -276,3 +276,124 @@ export interface SnusregnState {
 
 export type SnusregnAction =
     | { type: 'snusregn:bar-move'; payload: { xFraction: number } };
+
+// ─────────────────────────────────────────────────
+// Snus Arena specific
+// ─────────────────────────────────────────────────
+
+export type ArenaClass = 'warrior' | 'archer' | 'mage';
+export type ArenaTeam = 'alpha' | 'beta';
+export type ArenaAbilitySlot = 'Q' | 'W' | 'E';
+export type ArenaGameMode = '1v1' | 'solo' | '2v2';
+
+export interface ArenaAbilityState {
+    slot: ArenaAbilitySlot;
+    cooldownRemainingTicks: number;
+    cooldownTotalTicks: number;
+}
+
+export interface ArenaCast {
+    slot: ArenaAbilitySlot;
+    remainingTicks: number;
+    totalTicks: number;
+    angle: number;
+}
+
+export interface ArenaProjectile {
+    id: string;
+    ownerId: string;
+    type: 'arrow' | 'multi-arrow' | 'fireball' | 'wand-bolt';
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    radius: number;
+    damage: number;
+    remainingTicks: number;
+}
+
+export interface ArenaEffect {
+    type: 'stun' | 'frozen' | 'damage-boost' | 'invincible';
+    remainingTicks: number;
+}
+
+export interface ArenaPowerup {
+    id: string;
+    type: 'heal' | 'damage-boost';
+    x: number;
+    y: number;
+    active: boolean;
+    respawnRemainingTicks: number;
+}
+
+export interface ArenaPlayer {
+    userId: string;
+    username: string;
+    isBot: boolean;
+    team: ArenaTeam;
+    class: ArenaClass | null;
+    x: number;
+    y: number;
+    hp: number;
+    maxHp: number;
+    alive: boolean;
+    effects: ArenaEffect[];
+    abilities: ArenaAbilityState[];
+    facingAngle: number;
+    castingAbility: ArenaCast | null;
+}
+
+export interface ArenaObstacle {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+}
+
+export interface ArenaState {
+    status: 'selecting' | 'playing' | 'ended';
+    tickCount: number;
+    players: ArenaPlayer[];
+    projectiles: ArenaProjectile[];
+    powerups: ArenaPowerup[];
+    obstacles: ArenaObstacle[];
+    results?: GameResult[];
+}
+
+export type ArenaAction =
+    | { type: 'arena:select-class'; payload: { class: ArenaClass } }
+    | { type: 'arena:move'; payload: { dx: number; dy: number } }
+    | { type: 'arena:ability'; payload: { slot: ArenaAbilitySlot } }
+    | { type: 'arena:aim'; payload: { angle: number } };
+
+// ─────────────────────────────────────────────────
+// Snus Farm specific
+// ─────────────────────────────────────────────────
+
+export interface FarmChicken {
+    id: string;
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+}
+
+export interface FarmPlayer {
+    userId: string;
+    username: string;
+    x: number;
+    y: number;
+    score: number;
+    side: 'left' | 'right';
+}
+
+export interface FarmState {
+    status: 'playing' | 'ended';
+    tickCount: number;
+    players: FarmPlayer[];
+    chickens: FarmChicken[];
+    results?: GameResult[];
+}
+
+export type FarmAction =
+    | { type: 'farm:move'; payload: { dx: number; dy: number } };

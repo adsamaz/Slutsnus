@@ -5,7 +5,9 @@ import { useRoom } from '../stores/room';
 import { SnusregnGame } from './snusregn/index';
 import { bakeItemBitmaps } from './snusregn/render';
 import type { ItemBitmaps } from './snusregn/render';
-import type { SnusregnState, GameAction } from '@slutsnus/shared';
+import { SnusArenaGame } from './snus-arena/index';
+import { SnusFarmGame } from './snus-farm/index';
+import type { SnusregnState, ArenaState, ArenaGameMode, FarmState, GameAction } from '@slutsnus/shared';
 import freshSnusSrc from '../assets/freshsnus.svg';
 import goldSnusSrc from '../assets/goldsnus.svg';
 import spentSnusSrc from '../assets/spentsnus.svg';
@@ -49,11 +51,14 @@ export default function GameContainer(props: GameContainerProps) {
     const navigate = useNavigate();
 
     const [gameState, setGameState] = createSignal<unknown>(null);
+    const [arenaMode, setArenaMode] = createSignal<ArenaGameMode>('1v1');
 
     const onState = ({ state }: { state: unknown }) => setGameState(state);
     const onError = () => navigate('/');
 
     const onStarted = () => socket.emit('game:ready', { roomCode: props.roomCode });
+    // For snus-arena, host sends mode with room:start (emitted from LobbyPage).
+    // GameContainer itself just needs to pass the mode down to the game component.
 
     socket.on('game:state', onState);
     socket.on('room:error', onError);
@@ -90,6 +95,24 @@ export default function GameContainer(props: GameContainerProps) {
                         roomCode={props.roomCode}
                         imgs={snusregnImgs}
                         bitmaps={snusregnBitmaps}
+                        onAction={(action) => socket.emit('game:action', { roomCode: props.roomCode, action: action as GameAction })}
+                    />
+                )}
+            </Show>
+            <Show when={gameType() === 'snus-arena' ? gameState() : null}>
+                {(s) => (
+                    <SnusArenaGame
+                        state={s() as ArenaState}
+                        roomCode={props.roomCode}
+                        onAction={(action) => socket.emit('game:action', { roomCode: props.roomCode, action: action as GameAction })}
+                    />
+                )}
+            </Show>
+            <Show when={gameType() === 'snus-farm' ? gameState() : null}>
+                {(s) => (
+                    <SnusFarmGame
+                        state={s() as FarmState}
+                        roomCode={props.roomCode}
                         onAction={(action) => socket.emit('game:action', { roomCode: props.roomCode, action: action as GameAction })}
                     />
                 )}

@@ -1,5 +1,7 @@
 import { GameAction, PlayerInfo } from '@slutsnus/shared';
 import { SnusregnEngine } from './snusregn/engine';
+import { SnusArenaEngine } from './snus-arena/engine';
+import { SnusFarmEngine } from './snus-farm/engine';
 
 export interface GameEngine {
     init(roomId: string, players: PlayerInfo[], onStateUpdate: (state: unknown) => void): void;
@@ -20,4 +22,6 @@ export interface TurnBasedGameEngine extends GameEngine {
 
 export const gameRegistry: Record<string, new () => GameEngine> = {
     'snusregn': SnusregnEngine,
+    'snus-arena': SnusArenaEngine,
+    'snus-farm': SnusFarmEngine,
 };
