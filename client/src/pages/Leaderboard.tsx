@@ -1,5 +1,6 @@
 import { createResource, createSignal, For, Show } from 'solid-js';
 import { GameType, LeaderboardEntry } from '@slutsnus/shared';
+import Avatar from '../components/Avatar';
 
 const GAMES: { id: GameType; name: string; timeBased: boolean }[] = [
     { id: 'snusregn', name: 'Snusrain', timeBased: false },
@@ -74,7 +75,12 @@ export default function Leaderboard() {
                                     {(entry) => (
                                         <tr>
                                             <td class={entry.rank <= 3 ? `rank-${entry.rank}` : ''}>{entry.rank}</td>
-                                            <td>{entry.username}</td>
+                                            <td>
+                                                <span class="leaderboard-player">
+                                                    <Avatar username={entry.username} avatarUrl={entry.avatarUrl} />
+                                                    {entry.username}
+                                                </span>
+                                            </td>
                                             <td>
                                                 {currentGame().timeBased
                                                     ? (entry.timeTakenMs != null ? formatTime(entry.timeTakenMs) : '—')

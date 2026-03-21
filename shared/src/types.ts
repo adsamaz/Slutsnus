@@ -4,6 +4,7 @@
 export interface UserPublic {
     id: string;
     username: string;
+    avatarUrl?: string | null;
 }
 
 // ─────────────────────────────────────────────────
@@ -32,6 +33,7 @@ export type GameType = 'snusregn' | 'snus-arena' | 'snus-farm';
 export interface RoomPlayer {
     userId: string;
     username: string;
+    avatarUrl?: string | null;
     ready: boolean;
 }
 
@@ -86,6 +88,7 @@ export interface LeaderboardEntry {
     rank: number;
     userId: string;
     username: string;
+    avatarUrl?: string | null;
     score: number;
     timeTakenMs?: number;
     recordedAt: string;

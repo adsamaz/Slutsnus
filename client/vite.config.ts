@@ -13,6 +13,7 @@ export default defineConfig({
         port: 3003,
         proxy: {
             '/api': { target: 'http://localhost:4000', changeOrigin: true },
+            '/uploads': { target: 'http://localhost:4000', changeOrigin: true },
             '/socket.io': { target: 'http://localhost:4000', ws: true, changeOrigin: true },
         },
     },

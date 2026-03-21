@@ -20,6 +20,7 @@ async function buildRoomInfo(roomId: string): Promise<RoomInfo | null> {
     const players: RoomPlayer[] = room.players.map((rp: RoomPlayerWithUser) => ({
         userId: rp.userId,
         username: rp.user.username,
+        avatarUrl: rp.user.avatarUrl,
         ready: rp.ready,
     }));
     return {

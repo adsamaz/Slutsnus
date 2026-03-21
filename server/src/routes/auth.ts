@@ -41,7 +41,7 @@ router.post('/register', async (req, res: Response) => {
 
         const token = signToken(user.id, user.username);
         res.cookie('token', token, COOKIE_OPTIONS);
-        res.status(201).json({ user: { id: user.id, username: user.username } });
+        res.status(201).json({ user: { id: user.id, username: user.username, avatarUrl: user.avatarUrl } });
     } catch (err) {
         console.error('Register error:', err);
         res.status(500).json({ error: 'Internal server error' });
@@ -71,7 +71,7 @@ router.post('/login', async (req, res: Response) => {
 
         const token = signToken(user.id, user.username);
         res.cookie('token', token, COOKIE_OPTIONS);
-        res.json({ user: { id: user.id, username: user.username } });
+        res.json({ user: { id: user.id, username: user.username, avatarUrl: user.avatarUrl } });
     } catch {
         res.status(500).json({ error: 'Internal server error' });
     }
@@ -89,7 +89,7 @@ router.get('/me', authMiddleware, async (req: AuthenticatedRequest, res: Respons
             res.status(404).json({ error: 'User not found' });
             return;
         }
-        res.json({ user: { id: user.id, username: user.username } });
+        res.json({ user: { id: user.id, username: user.username, avatarUrl: user.avatarUrl } });
     } catch {
         res.status(500).json({ error: 'Internal server error' });
     }

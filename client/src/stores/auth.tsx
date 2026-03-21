@@ -17,6 +17,7 @@ interface AuthActions {
     register(data: RegisterRequest): Promise<void>;
     logout(): Promise<void>;
     fetchMe(): Promise<void>;
+    setAvatarUrl(url: string): void;
 }
 
 type AuthContext = [AuthState, AuthActions];
@@ -77,10 +78,14 @@ export const AuthProvider: ParentComponent = (props) => {
         setState('user', null);
     };
 
+    const setAvatarUrl = (url: string) => {
+        setState('user', (u) => u ? { ...u, avatarUrl: url } : u);
+    };
+
     onMount(fetchMe);
 
     return (
-        <AuthCtx.Provider value={[state, { login, register, logout, fetchMe }]} >
+        <AuthCtx.Provider value={[state, { login, register, logout, fetchMe, setAvatarUrl }]} >
             {props.children}
         </AuthCtx.Provider>
     );

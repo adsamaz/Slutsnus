@@ -1,6 +1,7 @@
 import { Show } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
 import { useAuth } from '../stores/auth';
+import Avatar from './Avatar';
 
 export default function Navbar() {
     const [auth, { logout }] = useAuth();
@@ -33,7 +34,10 @@ export default function Navbar() {
                         </>
                     }
                 >
-                    <A href="/profile" class="navbar-username">{auth.user!.username}</A>
+                    <A href="/profile" class="navbar-username">
+                        <Avatar username={auth.user!.username} avatarUrl={auth.user!.avatarUrl} />
+                        {auth.user!.username}
+                    </A>
                 </Show>
             </div>
         </nav>

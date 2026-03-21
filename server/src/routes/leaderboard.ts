@@ -29,14 +29,15 @@ router.get('/:gameType', async (req: AuthenticatedRequest, res: Response) => {
             const userIds = rows.map((r: TimeGroupByRow) => r.userId);
             const users = await prisma.user.findMany({
                 where: { id: { in: userIds } },
-                select: { id: true, username: true },
+                select: { id: true, username: true, avatarUrl: true },
             });
-            const usernameById = new Map(users.map((u: { id: string; username: string }) => [u.id, u.username]));
+            const userById = new Map(users.map((u: { id: string; username: string; avatarUrl: string | null }) => [u.id, u]));
 
             result = rows.map((r: TimeGroupByRow, i: number) => ({
                 rank: i + 1,
                 userId: r.userId,
-                username: usernameById.get(r.userId) ?? r.userId,
+                username: userById.get(r.userId)?.username ?? r.userId,
+                avatarUrl: userById.get(r.userId)?.avatarUrl,
                 score: 0,
                 timeTakenMs: r._min?.timeTakenMs ?? undefined,
                 recordedAt: (r._min?.recordedAt ?? new Date()).toISOString(),
@@ -55,14 +56,15 @@ router.get('/:gameType', async (req: AuthenticatedRequest, res: Response) => {
             const userIds = rows.map((r: ScoreGroupByRow) => r.userId);
             const users = await prisma.user.findMany({
                 where: { id: { in: userIds } },
-                select: { id: true, username: true },
+                select: { id: true, username: true, avatarUrl: true },
             });
-            const usernameById = new Map(users.map((u: { id: string; username: string }) => [u.id, u.username]));
+            const userById = new Map(users.map((u: { id: string; username: string; avatarUrl: string | null }) => [u.id, u]));
 
             result = rows.map((r: ScoreGroupByRow, i: number) => ({
                 rank: i + 1,
                 userId: r.userId,
-                username: usernameById.get(r.userId) ?? r.userId,
+                username: userById.get(r.userId)?.username ?? r.userId,
+                avatarUrl: userById.get(r.userId)?.avatarUrl,
                 score: r._max?.score ?? 0,
                 recordedAt: (r._max?.recordedAt ?? new Date()).toISOString(),
             }));

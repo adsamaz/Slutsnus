@@ -141,6 +141,9 @@ h5 {
 }
 
 .navbar-username {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: 0.8rem;
     font-weight: 500;
     color: var(--color-muted);
@@ -947,24 +950,136 @@ h5 {
     border-color: var(--color-accent);
 }
 
+/* --- Avatar component --- */
+.avatar {
+    border-radius: 50%;
+    flex-shrink: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--color-accent), #2ea043);
+    color: #0d1117;
+    font-weight: 700;
+}
+
+.avatar--sm {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+}
+
+.avatar--md {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+}
+
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-letter {
+    line-height: 1;
+}
+
 /* --- Profile --- */
 .profile-card {
     max-width: 440px;
 }
 
-.profile-avatar {
-    width: 64px;
-    height: 64px;
+.profile-avatar-wrap {
+    position: relative;
+    display: inline-flex;
+    cursor: pointer;
+    margin-bottom: 0.5rem;
+}
+
+.profile-avatar-overlay {
+    position: absolute;
+    inset: 0;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--color-accent), #2ea043);
+    background: rgba(0, 0, 0, 0);
+    transition: background 0.15s;
+}
+
+.profile-avatar-wrap:hover .profile-avatar-overlay {
+    background: rgba(0, 0, 0, 0.45);
+}
+
+.profile-avatar-badge {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--color-accent);
     color: #0d1117;
-    font-size: 1.5rem;
-    font-weight: bold;
+    border: 2px solid var(--color-surface);
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: transform 0.15s, background 0.15s;
+    pointer-events: none;
+}
+
+.profile-avatar-wrap:hover .profile-avatar-badge {
+    transform: scale(1.15);
+    background: var(--color-accent-hover);
+}
+
+@keyframes badge-spin {
+    to { transform: rotate(360deg); }
+}
+
+.profile-avatar-badge-spinner {
+    display: block;
+    width: 10px;
+    height: 10px;
+    border: 2px solid rgba(13, 17, 23, 0.4);
+    border-top-color: #0d1117;
+    border-radius: 50%;
+    animation: badge-spin 0.7s linear infinite;
+}
+
+.profile-avatar-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     margin-bottom: 1.25rem;
+}
+
+.profile-avatar-hint {
+    font-size: 0.75rem;
+    color: var(--color-muted);
+    margin-top: 0.5rem;
+}
+
+.profile-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     box-shadow: 0 0 0 3px rgba(57, 211, 83, 0.2);
+}
+
+.profile-avatar--letter {
+    background: linear-gradient(135deg, var(--color-accent), #2ea043);
+    color: #0d1117;
+    font-size: 1.75rem;
+    font-weight: bold;
+}
+
+.profile-avatar--img {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    display: block;
 }
 
 .profile-info {
@@ -973,6 +1088,13 @@ h5 {
 
 .profile-value {
     font-size: 0.95rem;
+}
+
+/* --- Leaderboard player cell --- */
+.leaderboard-player {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
 
 /* --- Search results --- */
@@ -1002,6 +1124,16 @@ h5 {
     }
 
     .navbar-username {
+        padding: 4px;
+        border-radius: 50%;
+        gap: 0;
+    }
+
+    .navbar-username .avatar {
+        display: flex;
+    }
+
+    .navbar-username > :not(.avatar) {
         display: none;
     }
 

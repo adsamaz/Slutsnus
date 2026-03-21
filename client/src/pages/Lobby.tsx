@@ -5,6 +5,7 @@ import { useSocket } from '../stores/socket';
 import { useRoom } from '../stores/room';
 import { useFriends } from '../stores/friends';
 import Button from '../components/Button';
+import Avatar from '../components/Avatar';
 import type { RoomInfo, RoomPlayer } from '@slutsnus/shared';
 
 export default function Lobby() {
@@ -127,6 +128,7 @@ export default function Lobby() {
                                 <For each={r().players}>
                                     {(player: RoomPlayer) => (
                                         <div class="player-item">
+                                            <Avatar username={player.username} avatarUrl={player.avatarUrl} />
                                             <span class={`status-dot ${player.ready || player.userId === r().hostId ? 'online' : 'offline'}`} />
                                             <span class="player-name">{player.username}</span>
                                             <Show when={player.userId === r().hostId}>
