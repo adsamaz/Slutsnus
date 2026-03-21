@@ -2,6 +2,7 @@
 set -e
 
 echo "==> Pulling latest from git..."
+git checkout -- package-lock.json
 git pull
 
 echo "==> Installing dependencies..."
