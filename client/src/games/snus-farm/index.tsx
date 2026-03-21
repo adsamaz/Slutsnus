@@ -168,9 +168,15 @@ export function SnusFarmGame(props: SnusFarmProps) {
                                 navigate(`/lobby/${props.roomCode}`);
                             }
                         }}
-                        style={{ padding: '8px 20px', background: '#2563eb', color: '#fff', border: 'none', 'border-radius': '6px', cursor: 'pointer', 'font-size': '14px' }}
+                        style={{ padding: '0.75rem 2rem', background: '#1f6feb', color: '#e6edf3', border: 'none', 'border-radius': '8px', cursor: 'pointer', 'font-size': '1.1rem', 'font-weight': '700', 'font-family': 'monospace' }}
                     >
-                        Play Again
+                        Play again
+                    </button>
+                    <button
+                        onClick={() => { window.location.href = '/'; }}
+                        style={{ padding: '0.75rem 2rem', background: '#238636', color: '#e6edf3', border: 'none', 'border-radius': '8px', cursor: 'pointer', 'font-size': '1.1rem', 'font-weight': '700', 'font-family': 'monospace' }}
+                    >
+                        Back to lobby
                     </button>
                 </div>
             </Show>

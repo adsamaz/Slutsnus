@@ -10,7 +10,7 @@ import {
     BERSERKER_MULT, HEAL_AMOUNT, DAMAGE_BOOST_MULT, DAMAGE_BOOST_TICKS,
     HEAL_RESPAWN_TICKS, DAMAGE_BOOST_RESPAWN_TICKS,
     ARROW_RADIUS, FIREBALL_RADIUS, MULTI_ARROW_SPREAD_RAD,
-    STUN_TICKS, CLASS_SELECT_TIMEOUT_TICKS,
+    STUN_TICKS,
 } from './constants';
 import { ARENA_OBSTACLES, POWERUP_SPAWN_LOCATIONS, SPAWN_POINTS } from './map';
 import { resolveCircleVsObstacles, circlesOverlap, sweptCircleHitsObstacle } from './physics';
@@ -39,7 +39,6 @@ export class SnusArenaEngine implements GameEngine {
     private intervalId: ReturnType<typeof setInterval> | null = null;
     private tickCount = 0;
     private gameStatus: ArenaState['status'] = 'selecting';
-    private classSelectRemaining = CLASS_SELECT_TIMEOUT_TICKS;
     private gameMode: ArenaGameMode = '1v1';
     private battleStartTime = 0;
 
@@ -49,8 +48,6 @@ export class SnusArenaEngine implements GameEngine {
         this.tickCount = 0;
         _projId = 0;
         this.gameStatus = 'selecting';
-        this.classSelectRemaining = CLASS_SELECT_TIMEOUT_TICKS;
-
         // Team assignment: first half alpha, second half beta
         const teamOf = (i: number, total: number): ArenaTeam =>
             i < Math.ceil(total / 2) ? 'alpha' : 'beta';
@@ -287,12 +284,6 @@ export class SnusArenaEngine implements GameEngine {
         this.tickCount++;
 
         if (this.gameStatus === 'selecting') {
-            this.classSelectRemaining--;
-            if (this.classSelectRemaining <= 0) {
-                for (const p of this.players) {
-                    if (!p.hasSelectedClass) this.applyClassSelection(p, 'warrior');
-                }
-            }
             if (this.players.every(p => p.hasSelectedClass)) {
                 this.gameStatus = 'playing';
                 this.battleStartTime = Date.now();
@@ -363,9 +354,24 @@ export class SnusArenaEngine implements GameEngine {
             const mag = Math.sqrt(dx * dx + dy * dy);
             if (mag > speed) { dx = (dx / mag) * speed; dy = (dy / mag) * speed; }
 
-            const resolved = resolveCircleVsObstacles(p.x + dx, p.y + dy, PLAYER_RADIUS, ARENA_OBSTACLES);
-            p.x = resolved.x;
-            p.y = resolved.y;
+            // Try full move, then fall back to axis-separated slides to prevent wall sticking
+            const full = resolveCircleVsObstacles(p.x + dx, p.y + dy, PLAYER_RADIUS, ARENA_OBSTACLES);
+            if (Math.abs(full.x - (p.x + dx)) < 0.5 && Math.abs(full.y - (p.y + dy)) < 0.5) {
+                // Clean move — no significant push-back
+                p.x = full.x;
+                p.y = full.y;
+            } else {
+                // Slide along X axis only
+                const slideX = resolveCircleVsObstacles(p.x + dx, p.y, PLAYER_RADIUS, ARENA_OBSTACLES);
+                // Slide along Y axis only
+                const slideY = resolveCircleVsObstacles(p.x, p.y + dy, PLAYER_RADIUS, ARENA_OBSTACLES);
+                // Pick whichever slide moved us further
+                const distX = (slideX.x - p.x) * (slideX.x - p.x) + (slideX.y - p.y) * (slideX.y - p.y);
+                const distY = (slideY.x - p.x) * (slideY.x - p.x) + (slideY.y - p.y) * (slideY.y - p.y);
+                const best = distX >= distY ? slideX : slideY;
+                p.x = best.x;
+                p.y = best.y;
+            }
         }
 
         // 5. Move projectiles and check hits

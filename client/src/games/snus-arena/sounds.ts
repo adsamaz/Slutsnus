@@ -137,6 +137,51 @@ export function soundDamageBoost(): void {
     });
 }
 
+/** Melee Strike (Q) — short blunt thwack */
+export function soundMeleeStrike(): void {
+    play((ac, dest) => {
+        const osc = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.connect(gain);
+        gain.connect(dest);
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(280, ac.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, ac.currentTime + 0.04);
+        envelope(gain, ac, 0.001, 0.02, 0, 0.05, 0.1);
+        osc.start(ac.currentTime);
+        osc.stop(ac.currentTime + 0.1);
+    });
+}
+
+/** Shield Bash (W) — heavy metallic clang */
+export function soundShieldBash(): void {
+    play((ac, dest) => {
+        // Low thud
+        const osc = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.connect(gain);
+        gain.connect(dest);
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(160, ac.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(60, ac.currentTime + 0.07);
+        envelope(gain, ac, 0.001, 0.035, 0, 0.08, 0.12);
+        osc.start(ac.currentTime);
+        osc.stop(ac.currentTime + 0.18);
+
+        // High metallic ring
+        const osc2 = ac.createOscillator();
+        const gain2 = ac.createGain();
+        osc2.connect(gain2);
+        gain2.connect(dest);
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(900, ac.currentTime);
+        osc2.frequency.exponentialRampToValueAtTime(600, ac.currentTime + 0.15);
+        envelope(gain2, ac, 0.001, 0.01, 0.05, 0.18, 0.1);
+        osc2.start(ac.currentTime);
+        osc2.stop(ac.currentTime + 0.3);
+    });
+}
+
 /** Ability on cooldown / denied — short blip down */
 export function soundCooldown(): void {
     play((ac, dest) => {

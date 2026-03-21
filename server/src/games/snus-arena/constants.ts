@@ -29,17 +29,17 @@ export const ABILITIES: Record<string, Record<string, {
     warrior: {
         Q: { cooldownTicks: 30,  damage: 30, range: 55,  durationTicks: 0,  windupTicks: 4  }, // Melee Strike
         W: { cooldownTicks: 150, damage: 25, range: 60,  durationTicks: 50, windupTicks: 7  }, // Shield Bash (stun)
-        E: { cooldownTicks: 100, damage: 20, range: 220, durationTicks: 8,  windupTicks: 5, speed: 27 }, // Charge dash
+        E: { cooldownTicks: 250, damage: 20, range: 220, durationTicks: 8,  windupTicks: 5, speed: 27 }, // Charge dash
     },
     archer: {
         Q: { cooldownTicks: 25,  damage: 22, range: 600, durationTicks: 35, windupTicks: 3,  speed: 17 }, // Arrow Shot
         W: { cooldownTicks: 120, damage: 18, range: 600, durationTicks: 35, windupTicks: 6,  speed: 17 }, // Multi-shot
-        E: { cooldownTicks: 180, damage: 0,  range: 130, durationTicks: 15, windupTicks: 3  }, // Evasive Roll
+        E: { cooldownTicks: 250, damage: 0,  range: 130, durationTicks: 15, windupTicks: 3  }, // Evasive Roll
     },
     mage: {
         Q: { cooldownTicks: 20,  damage: 14, range: 600, durationTicks: 35, windupTicks: 3,  speed: 17 }, // Wand Bolt
         W: { cooldownTicks: 80,  damage: 55, range: 500, durationTicks: 45, windupTicks: 10, speed: 10 }, // Fireball
-        E: { cooldownTicks: 150, damage: 0,  range: 200, durationTicks: 1,  windupTicks: 5  }, // Blink
+        E: { cooldownTicks: 250, damage: 0,  range: 200, durationTicks: 1,  windupTicks: 5  }, // Blink
     },
 };
 
@@ -64,7 +64,6 @@ export const MULTI_ARROW_SPREAD_RAD = (15 * Math.PI) / 180;
 export const STUN_TICKS = 75;
 export const FREEZE_TICKS = 100;
 
-export const CLASS_SELECT_TIMEOUT_TICKS = 600; // 12 seconds
 
 export const BOT_APPROACH_RANGE = 180;
 export const BOT_RETREAT_HP_THRESHOLD = 0.3;

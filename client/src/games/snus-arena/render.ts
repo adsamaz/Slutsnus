@@ -7,6 +7,8 @@ import {
 
 // ── Class selection screen ───────────────────────────────────────────────────
 
+const CLASS_ICONS: Record<string, string> = { warrior: '⚔️', archer: '🏹', mage: '🔮' };
+
 export function drawClassSelect(
     ctx: CanvasRenderingContext2D,
     myUserId: string,
@@ -17,30 +19,51 @@ export function drawClassSelect(
     void clickHandler;
     ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // Background
-    ctx.fillStyle = '#1a1a2e';
+    const now = Date.now();
+
+    // Animated starfield background
+    ctx.fillStyle = '#0a0a1a';
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    // Scanlines
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    for (let sy = 0; sy < CANVAS_H; sy += 4) {
+        ctx.fillRect(0, sy, CANVAS_W, 2);
+    }
 
     const me = state.players.find(p => p.userId === myUserId);
     const alreadySelected = me?.class !== null;
 
-    // Title
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 28px sans-serif';
+    // Title with glow
+    const titlePulse = 0.75 + 0.25 * Math.sin(now / 600);
+    ctx.save();
     ctx.textAlign = 'center';
-    ctx.fillText('Choose your class', CANVAS_W / 2, 50);
+    ctx.font = 'bold 32px monospace';
+    ctx.shadowColor = '#4a9eff';
+    ctx.shadowBlur = 20 * titlePulse;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('— CHOOSE YOUR CLASS —', CANVAS_W / 2, 48);
+    ctx.shadowBlur = 0;
+    ctx.restore();
 
     if (alreadySelected) {
-        ctx.fillStyle = '#aaffaa';
-        ctx.font = '18px sans-serif';
-        ctx.fillText(`You chose: ${me!.class} — waiting for others...`, CANVAS_W / 2, 82);
+        const pulse = 0.6 + 0.4 * Math.sin(now / 400);
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 15px monospace';
+        ctx.shadowColor = '#00ff88';
+        ctx.shadowBlur = 12 * pulse;
+        ctx.fillStyle = '#00ff88';
+        ctx.fillText(`✓ ${me!.class!.toUpperCase()} SELECTED — WAITING FOR OTHERS...`, CANVAS_W / 2, 76);
+        ctx.shadowBlur = 0;
+        ctx.restore();
     }
 
     const classes: ArenaClass[] = ['warrior', 'archer', 'mage'];
-    const cardW = 200, cardH = 340, gap = 30;
-    const totalW = classes.length * cardW + (classes.length - 1) * gap;
-    const startX = (CANVAS_W - totalW) / 2;
-    const startY = 100;
+    const gap = 16;
+    const cardW = Math.floor((CANVAS_W - gap * 4) / 3);
+    const cardH = CANVAS_H - 90;
+    const startX = gap * 2;
+    const startY = 82;
 
     const regions: { cls: ArenaClass; x: number; y: number; w: number; h: number }[] = [];
 
@@ -49,59 +72,176 @@ export function drawClassSelect(
         const y = startY;
         const info = CLASS_INFO[cls];
         const isSelected = me?.class === cls;
+        const clsColor = CLASS_COLORS[cls];
+        const pad = 14;
 
         regions.push({ cls, x, y, w: cardW, h: cardH });
 
-        // Card background
-        ctx.fillStyle = isSelected ? '#2a3a5a' : '#16213e';
-        ctx.strokeStyle = isSelected ? '#4a9eff' : CLASS_COLORS[cls];
-        ctx.lineWidth = isSelected ? 3 : 2;
-        roundRect(ctx, x, y, cardW, cardH, 12);
+        // Card glow
+        ctx.save();
+        ctx.shadowColor = isSelected ? '#4a9eff' : clsColor;
+        ctx.shadowBlur = isSelected ? 28 + 8 * Math.sin(now / 300) : 12;
+
+        // Card background gradient
+        const grad = ctx.createLinearGradient(x, y, x, y + cardH);
+        if (isSelected) {
+            grad.addColorStop(0, '#1e3558');
+            grad.addColorStop(1, '#0d1a30');
+        } else {
+            grad.addColorStop(0, '#1a1a3a');
+            grad.addColorStop(1, '#0d0d1e');
+        }
+        ctx.fillStyle = grad;
+        ctx.strokeStyle = isSelected ? '#4a9eff' : clsColor;
+        ctx.lineWidth = isSelected ? 3 : 1.5;
+        roundRect(ctx, x, y, cardW, cardH, 14);
         ctx.fill();
         ctx.stroke();
+        ctx.restore();
 
-        // Class icon (emoji)
-        const classIcons: Record<string, string> = { warrior: '⚔️', archer: '🏹', mage: '🔮' };
-        ctx.font = '32px sans-serif';
+        // Top color stripe
+        const stripe = ctx.createLinearGradient(x, y, x + cardW, y);
+        stripe.addColorStop(0, 'transparent');
+        stripe.addColorStop(0.3, clsColor + 'aa');
+        stripe.addColorStop(0.7, clsColor + 'aa');
+        stripe.addColorStop(1, 'transparent');
+        ctx.fillStyle = stripe;
+        roundRect(ctx, x, y, cardW, 5, 14);
+        ctx.fill();
+
+        // Layout cursor
+        let cy = y + pad + 5;
+
+        // Icon circle backdrop
+        const iconR = 34;
+        const iconCX = x + cardW / 2;
+        const iconCY = cy + iconR;
+        ctx.save();
+        ctx.shadowColor = clsColor;
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = clsColor + '33';
+        ctx.beginPath();
+        ctx.arc(iconCX, iconCY, iconR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = clsColor;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.font = '36px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(classIcons[cls] ?? '?', x + cardW / 2, y + 52);
+        ctx.textBaseline = 'middle';
+        ctx.fillText(CLASS_ICONS[cls] ?? '?', iconCX, iconCY);
+        ctx.textBaseline = 'alphabetic';
+        cy += iconR * 2 + 12;
 
         // Class name
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 18px sans-serif';
+        ctx.save();
         ctx.textAlign = 'center';
-        ctx.fillText(info.name, x + cardW / 2, y + 80);
+        ctx.font = 'bold 20px monospace';
+        ctx.shadowColor = clsColor;
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(info.name.toUpperCase(), x + cardW / 2, cy);
+        ctx.restore();
+        cy += 22;
 
-        // HP / Speed
-        ctx.fillStyle = '#aaaaaa';
-        ctx.font = '13px sans-serif';
-        ctx.fillText(`HP: ${info.hp}  Speed: ${info.speed}`, x + cardW / 2, y + 100);
+        // Stat bars
+        const hpPct = info.hp / 200;
+        const speedPct = info.speed === 'Fast' ? 1 : info.speed === 'Medium' ? 0.6 : 0.35;
+        drawStatBar(ctx, x + pad, cy, cardW - pad * 2, 'HP ', hpPct, '#ff4466');
+        cy += 18;
+        drawStatBar(ctx, x + pad, cy, cardW - pad * 2, 'SPD', speedPct, '#44ddff');
+        cy += 22;
 
         // Description
-        ctx.fillStyle = '#cccccc';
-        ctx.font = '12px sans-serif';
+        ctx.fillStyle = '#99aacc';
+        ctx.font = '12px monospace';
         ctx.textAlign = 'left';
-        wrapText(ctx, info.description, x + 12, y + 122, cardW - 24, 15);
+        cy = wrapTextTracked(ctx, info.description, x + pad, cy, cardW - pad * 2, 16) + 10;
+
+        // Divider
+        ctx.strokeStyle = clsColor + '55';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x + pad, cy);
+        ctx.lineTo(x + cardW - pad, cy);
+        ctx.stroke();
+        cy += 10;
 
         // Abilities
+        const abBoxH = Math.floor((y + cardH - 26 - cy) / 3);
         info.abilities.forEach((ab, ai) => {
-            const ay = y + 178 + ai * 44;
-            ctx.fillStyle = '#0f3460';
-            roundRect(ctx, x + 10, ay, cardW - 20, 38, 6);
-            ctx.fill();
+            const ay = cy + ai * (abBoxH + 4);
 
-            ctx.fillStyle = '#ffcc44';
-            ctx.font = 'bold 12px sans-serif';
+            const abGrad = ctx.createLinearGradient(x + pad, ay, x + pad, ay + abBoxH);
+            abGrad.addColorStop(0, '#0d1f3c');
+            abGrad.addColorStop(1, '#081428');
+            ctx.fillStyle = abGrad;
+            ctx.strokeStyle = clsColor + '66';
+            ctx.lineWidth = 1;
+            roundRect(ctx, x + pad, ay, cardW - pad * 2, abBoxH, 6);
+            ctx.fill();
+            ctx.stroke();
+
+            // Slot badge
+            const badgeW = 32, badgeH = 18;
+            ctx.fillStyle = clsColor;
+            roundRect(ctx, x + pad + 4, ay + 6, badgeW, badgeH, 4);
+            ctx.fill();
+            ctx.fillStyle = '#000000';
+            ctx.font = 'bold 11px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(ab.slot, x + pad + 4 + badgeW / 2, ay + 18);
+
+            const textX = x + pad + 4 + badgeW + 6;
+            const textW = cardW - pad * 2 - badgeW - 14;
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 12px monospace';
             ctx.textAlign = 'left';
-            ctx.fillText(`[${ab.slot}] ${ab.name}`, x + 16, ay + 13);
-            ctx.fillStyle = '#aaaaaa';
-            ctx.font = '10px sans-serif';
-            wrapText(ctx, ab.desc, x + 16, ay + 27, cardW - 32, 12);
+            ctx.fillText(ab.name, textX, ay + 16);
+
+            ctx.fillStyle = '#778899';
+            ctx.font = '11px monospace';
+            wrapText(ctx, ab.desc, textX, ay + 30, textW, 13);
         });
+
+        // CLICK TO SELECT hint
+        if (!alreadySelected) {
+            const hint = 0.5 + 0.5 * Math.sin(now / 500 + i);
+            ctx.save();
+            ctx.globalAlpha = hint;
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 12px monospace';
+            ctx.fillStyle = clsColor;
+            ctx.fillText('[ CLICK TO SELECT ]', x + cardW / 2, y + cardH - 8);
+            ctx.restore();
+        }
     });
 
     ctx.textAlign = 'left';
     return (cls: ArenaClass) => onSelectClass(cls);
+}
+
+function drawStatBar(
+    ctx: CanvasRenderingContext2D,
+    x: number, y: number, w: number,
+    label: string, pct: number, color: string,
+): void {
+    const barX = x + 30;
+    const barW = w - 32;
+    ctx.fillStyle = '#555555';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(label, x, y + 8);
+    ctx.fillStyle = '#222233';
+    ctx.fillRect(barX, y, barW, 8);
+    const barGrad = ctx.createLinearGradient(barX, y, barX + barW * pct, y);
+    barGrad.addColorStop(0, color + 'bb');
+    barGrad.addColorStop(1, color);
+    ctx.fillStyle = barGrad;
+    ctx.fillRect(barX, y, barW * pct, 8);
 }
 
 export function getClassCardAtPoint(
@@ -114,10 +254,11 @@ export function getClassCardAtPoint(
     const cy = (y - canvasRect.top) * scaleY;
 
     const classes: ArenaClass[] = ['warrior', 'archer', 'mage'];
-    const cardW = 200, cardH = 340, gap = 30;
-    const totalW = classes.length * cardW + (classes.length - 1) * gap;
-    const startX = (CANVAS_W - totalW) / 2;
-    const startY = 100;
+    const gap = 16;
+    const cardW = Math.floor((CANVAS_W - gap * 4) / 3);
+    const cardH = CANVAS_H - 90;
+    const startX = gap * 2;
+    const startY = 82;
 
     for (let i = 0; i < classes.length; i++) {
         const rx = startX + i * (cardW + gap);
@@ -126,6 +267,30 @@ export function getClassCardAtPoint(
         }
     }
     return null;
+}
+
+// ── Damage number particles ───────────────────────────────────────────────────
+
+interface DamageNumber {
+    x: number;
+    y: number;
+    text: string;
+    color: string;
+    born: number;
+    duration: number; // ms
+}
+
+const dmgParticles: DamageNumber[] = [];
+
+export function spawnDamageNumber(x: number, y: number, amount: number, isEnemy: boolean): void {
+    dmgParticles.push({
+        x,
+        y: y - PLAYER_RADIUS - 18,
+        text: `-${amount}`,
+        color: isEnemy ? '#44ff88' : '#ff4444',
+        born: Date.now(),
+        duration: 900,
+    });
 }
 
 // ── Playing screen ───────────────────────────────────────────────────────────
@@ -310,6 +475,26 @@ export function drawGame(
         ctx.font = '10px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(player.username, px, py - PLAYER_RADIUS - 16);
+    }
+
+    // Damage numbers
+    const nowMs = Date.now();
+    for (let i = dmgParticles.length - 1; i >= 0; i--) {
+        const p = dmgParticles[i];
+        const elapsed = nowMs - p.born;
+        if (elapsed >= p.duration) { dmgParticles.splice(i, 1); continue; }
+        const t = elapsed / p.duration;
+        const alpha = 1 - t;
+        const rise = 30 * t;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.font = `bold ${14 + Math.round(4 * (1 - t))}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 6;
+        ctx.fillText(p.text, p.x, p.y - rise);
+        ctx.restore();
     }
 
     // Ability cooldown strip (bottom HUD for local player)
@@ -507,6 +692,29 @@ function wrapText(
         }
     }
     ctx.fillText(line.trim(), x, cy);
+}
+
+// Like wrapText but returns the Y position after the last line
+function wrapTextTracked(
+    ctx: CanvasRenderingContext2D,
+    text: string, x: number, y: number,
+    maxWidth: number, lineHeight: number,
+): number {
+    const words = text.split(' ');
+    let line = '';
+    let cy = y;
+    for (const word of words) {
+        const test = line + word + ' ';
+        if (ctx.measureText(test).width > maxWidth && line !== '') {
+            ctx.fillText(line.trim(), x, cy);
+            line = word + ' ';
+            cy += lineHeight;
+        } else {
+            line = test;
+        }
+    }
+    ctx.fillText(line.trim(), x, cy);
+    return cy + lineHeight;
 }
 
 // Export a helper to draw the game-mode selector overlay on the lobby (used in index.tsx)

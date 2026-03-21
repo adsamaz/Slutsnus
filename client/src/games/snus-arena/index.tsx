@@ -3,11 +3,12 @@ import { useNavigate } from '@solidjs/router';
 import { useSocket } from '../../stores/socket';
 import { useAuth } from '../../stores/auth';
 import type { ArenaState, GameAction } from '@slutsnus/shared';
-import { drawClassSelect, drawGame, drawEndScreen, getClassCardAtPoint } from './render';
+import { drawClassSelect, drawGame, drawEndScreen, getClassCardAtPoint, spawnDamageNumber } from './render';
 import { CANVAS_W, CANVAS_H } from './constants';
 import {
     soundArenaStart, soundShoot, soundFireball, soundHit, soundDeath,
     soundHeal, soundDamageBoost, soundArenaWin, soundArenaLose,
+    soundMeleeStrike, soundShieldBash,
 } from './sounds';
 
 interface SnusArenaProps {
@@ -39,6 +40,7 @@ export function SnusArenaGame(props: SnusArenaProps) {
     let prevPlayerHp = new Map<string, number>();
     let prevPlayerAlive = new Map<string, boolean>();
     let prevPowerupActive = new Map<string, boolean>();
+    let prevCastingSlot = new Map<string, string | null>();
     let soundedGameEnd = false;
 
     // ── Input state ──────────────────────────────────────────────────────────
@@ -90,11 +92,15 @@ export function SnusArenaGame(props: SnusArenaProps) {
         props.onAction({ type: 'arena:aim', payload: { angle } } as GameAction);
     };
 
-    const onCanvasClick = (e: MouseEvent) => {
+    const onMouseDown = (e: MouseEvent) => {
         if (currentState().status === 'selecting') {
-            const me = currentState().players.find(p => p.userId === myUserId());
-            if (me?.class !== null) return; // already selected
+            // Class selection only works within the canvas
             const rect = canvasRef.getBoundingClientRect();
+            const inside = e.clientX >= rect.left && e.clientX <= rect.right &&
+                           e.clientY >= rect.top  && e.clientY <= rect.bottom;
+            if (!inside) return;
+            const me = currentState().players.find(p => p.userId === myUserId());
+            if (me?.class !== null) return;
             const cls = getClassCardAtPoint(e.clientX, e.clientY, rect);
             if (cls) {
                 props.onAction({ type: 'arena:select-class', payload: { class: cls } } as GameAction);
@@ -157,6 +163,17 @@ export function SnusArenaGame(props: SnusArenaProps) {
             }
             prevProjectileIds = nextIds;
 
+            // Melee ability cast completed — detect by castingAbility slot transitioning null
+            for (const player of next.players) {
+                const wasSlot = prevCastingSlot.get(player.userId) ?? null;
+                const nowSlot = player.castingAbility?.slot ?? null;
+                if (wasSlot !== null && nowSlot === null && player.class === 'warrior') {
+                    if (wasSlot === 'Q') soundMeleeStrike();
+                    else if (wasSlot === 'W') soundShieldBash();
+                }
+                prevCastingSlot.set(player.userId, nowSlot);
+            }
+
             // Player HP decreased (hit) or died
             for (const player of next.players) {
                 const prevHp = prevPlayerHp.get(player.userId) ?? player.hp;
@@ -165,6 +182,9 @@ export function SnusArenaGame(props: SnusArenaProps) {
                     soundDeath();
                 } else if (player.hp < prevHp && player.alive) {
                     if (player.userId === myUserId()) soundHit();
+                    const lost = prevHp - player.hp;
+                    const isEnemy = player.userId !== myUserId();
+                    spawnDamageNumber(player.x, player.y, lost, isEnemy);
                 }
                 prevPlayerHp.set(player.userId, player.hp);
                 prevPlayerAlive.set(player.userId, player.alive);
@@ -220,8 +240,8 @@ export function SnusArenaGame(props: SnusArenaProps) {
         socket.on('game:state', onGameState);
         window.addEventListener('keydown', onKeyDown);
         window.addEventListener('keyup', onKeyUp);
-        canvasRef.addEventListener('mousemove', onMouseMove);
-        canvasRef.addEventListener('mousedown', onCanvasClick);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mousedown', onMouseDown);
         canvasRef.addEventListener('contextmenu', onContextMenu);
         rafId = requestAnimationFrame(renderLoop);
     });
@@ -230,9 +250,9 @@ export function SnusArenaGame(props: SnusArenaProps) {
         socket.off('game:state', onGameState);
         window.removeEventListener('keydown', onKeyDown);
         window.removeEventListener('keyup', onKeyUp);
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mousedown', onMouseDown);
         if (canvasRef) {
-            canvasRef.removeEventListener('mousemove', onMouseMove);
-            canvasRef.removeEventListener('mousedown', onCanvasClick);
             canvasRef.removeEventListener('contextmenu', onContextMenu);
         }
         cancelAnimationFrame(rafId);
@@ -266,9 +286,15 @@ export function SnusArenaGame(props: SnusArenaProps) {
                                 navigate(`/lobby/${props.roomCode}`);
                             }
                         }}
-                        style={{ padding: '8px 20px', background: '#2563eb', color: '#fff', border: 'none', 'border-radius': '6px', cursor: 'pointer', 'font-size': '14px' }}
+                        style={{ padding: '0.75rem 2rem', background: '#1f6feb', color: '#e6edf3', border: 'none', 'border-radius': '8px', cursor: 'pointer', 'font-size': '1.1rem', 'font-weight': '700', 'font-family': 'monospace' }}
                     >
-                        Play Again
+                        Play again
+                    </button>
+                    <button
+                        onClick={() => { window.location.href = '/'; }}
+                        style={{ padding: '0.75rem 2rem', background: '#238636', color: '#e6edf3', border: 'none', 'border-radius': '8px', cursor: 'pointer', 'font-size': '1.1rem', 'font-weight': '700', 'font-family': 'monospace' }}
+                    >
+                        Back to lobby
                     </button>
                 </div>
             </Show>
