@@ -844,11 +844,34 @@ h5 {
     min-height: 0;
     overflow: hidden;
     background: #0a0a0a;
+    position: relative;
 }
 
 .game-loading {
     text-align: center;
     color: var(--color-muted);
+}
+
+.game-volume-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    position: absolute;
+    top: 68px;
+    right: 16px;
+    z-index: 10;
+    background: rgba(22, 27, 34, 0.75);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--color-border);
+    backdrop-filter: blur(8px);
+    font-size: 13px;
+}
+
+.game-volume-control input[type='range'] {
+    width: 80px;
+    accent-color: var(--color-accent);
+    cursor: pointer;
 }
 
 /* --- Leaderboard --- */

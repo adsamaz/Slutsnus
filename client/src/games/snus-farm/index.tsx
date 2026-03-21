@@ -1,19 +1,23 @@
 import { createSignal, onMount, onCleanup, Show } from 'solid-js';
+import { useNavigate } from '@solidjs/router';
 import { useSocket } from '../../stores/socket';
 import { useAuth } from '../../stores/auth';
 import type { FarmState, GameAction } from '@slutsnus/shared';
 import { drawGame, drawEndScreen } from './render';
 import { CANVAS_W, CANVAS_H } from './constants';
+import { soundFarmStart, soundChickenCaptured, soundFarmMilestone, soundFarmWin, soundFarmLose, soundSnusPickup, soundSnusSpawn } from './sounds';
 
 interface SnusFarmProps {
     state: FarmState;
     roomCode: string;
+    isSolo: boolean;
     onAction: (action: GameAction) => void;
 }
 
 export function SnusFarmGame(props: SnusFarmProps) {
     const socket = useSocket();
     const [authState] = useAuth();
+    const navigate = useNavigate();
 
     let canvasRef!: HTMLCanvasElement;
 
@@ -21,6 +25,12 @@ export function SnusFarmGame(props: SnusFarmProps) {
     let rafId = 0;
 
     const myUserId = () => authState.user?.id ?? '';
+
+    // ── Sound state tracking ─────────────────────────────────────────────────
+
+    let prevScores = new Map<string, number>();
+    let soundedGameEnd = false;
+    let prevSnusId: string | null = null;
 
     // ── Input ────────────────────────────────────────────────────────────────
     const keys = new Set<string>();
@@ -67,12 +77,61 @@ export function SnusFarmGame(props: SnusFarmProps) {
         rafId = requestAnimationFrame(renderLoop);
     };
 
+    // ── Sound logic ──────────────────────────────────────────────────────────
+
+    const processSounds = (next: FarmState) => {
+        if (next.status === 'playing') {
+            for (const player of next.players) {
+                const prevScore = prevScores.get(player.userId) ?? player.score;
+                if (player.score > prevScore) {
+                    const gained = player.score - prevScore;
+                    // Play capture sound for each chicken gained
+                    for (let i = 0; i < gained; i++) soundChickenCaptured();
+                    // Milestone every 5 points
+                    const prevMilestone = Math.floor(prevScore / 5);
+                    const nextMilestone = Math.floor(player.score / 5);
+                    if (nextMilestone > prevMilestone && player.score > 0) {
+                        soundFarmMilestone();
+                    }
+                }
+                prevScores.set(player.userId, player.score);
+            }
+        }
+
+        // Snus spawned: was absent, now present
+        if (prevSnusId === null && next.snus !== null) {
+            soundSnusSpawn();
+        }
+        // Snus picked up: was present, now gone
+        if (prevSnusId !== null && next.snus === null) {
+            soundSnusPickup();
+        }
+        prevSnusId = next.snus?.id ?? null;
+
+        if (next.status === 'ended' && !soundedGameEnd) {
+            soundedGameEnd = true;
+            const myResult = next.results?.find(r => r.userId === myUserId());
+            const won = myResult?.rank === 1;
+            if (won) soundFarmWin();
+            else soundFarmLose();
+        }
+    };
+
     // ── Socket listener ──────────────────────────────────────────────────────
     const onGameState = ({ state }: { state: unknown }) => {
-        setCurrentState(state as FarmState);
+        const next = state as FarmState;
+        processSounds(next);
+        setCurrentState(next);
     };
 
     onMount(() => {
+        soundFarmStart();
+
+        // Seed score tracking
+        for (const p of props.state.players) {
+            prevScores.set(p.userId, p.score);
+        }
+
         socket.on('game:state', onGameState);
         window.addEventListener('keydown', onKeyDown);
         window.addEventListener('keyup', onKeyUp);
@@ -102,7 +161,13 @@ export function SnusFarmGame(props: SnusFarmProps) {
             <Show when={currentState().status === 'ended'}>
                 <div style={{ display: 'flex', gap: '12px', 'margin-top': '8px' }}>
                     <button
-                        onClick={() => socket.emit('room:start', { roomCode: props.roomCode })}
+                        onClick={() => {
+                            if (props.isSolo) {
+                                socket.emit('room:start', { roomCode: props.roomCode });
+                            } else {
+                                navigate(`/lobby/${props.roomCode}`);
+                            }
+                        }}
                         style={{ padding: '8px 20px', background: '#2563eb', color: '#fff', border: 'none', 'border-radius': '6px', cursor: 'pointer', 'font-size': '14px' }}
                     >
                         Play Again

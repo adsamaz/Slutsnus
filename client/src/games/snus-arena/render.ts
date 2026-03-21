@@ -37,10 +37,10 @@ export function drawClassSelect(
     }
 
     const classes: ArenaClass[] = ['warrior', 'archer', 'mage'];
-    const cardW = 200, cardH = 320, gap = 30;
+    const cardW = 200, cardH = 340, gap = 30;
     const totalW = classes.length * cardW + (classes.length - 1) * gap;
     const startX = (CANVAS_W - totalW) / 2;
-    const startY = 110;
+    const startY = 100;
 
     const regions: { cls: ArenaClass; x: number; y: number; w: number; h: number }[] = [];
 
@@ -60,11 +60,11 @@ export function drawClassSelect(
         ctx.fill();
         ctx.stroke();
 
-        // Class color dot
-        ctx.fillStyle = CLASS_COLORS[cls];
-        ctx.beginPath();
-        ctx.arc(x + cardW / 2, y + 40, 20, 0, Math.PI * 2);
-        ctx.fill();
+        // Class icon (emoji)
+        const classIcons: Record<string, string> = { warrior: '⚔️', archer: '🏹', mage: '🔮' };
+        ctx.font = '32px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(classIcons[cls] ?? '?', x + cardW / 2, y + 52);
 
         // Class name
         ctx.fillStyle = '#ffffff';
@@ -81,22 +81,22 @@ export function drawClassSelect(
         ctx.fillStyle = '#cccccc';
         ctx.font = '12px sans-serif';
         ctx.textAlign = 'left';
-        wrapText(ctx, info.description, x + 12, y + 125, cardW - 24, 16);
+        wrapText(ctx, info.description, x + 12, y + 122, cardW - 24, 15);
 
         // Abilities
         info.abilities.forEach((ab, ai) => {
-            const ay = y + 185 + ai * 42;
+            const ay = y + 178 + ai * 44;
             ctx.fillStyle = '#0f3460';
-            roundRect(ctx, x + 10, ay, cardW - 20, 36, 6);
+            roundRect(ctx, x + 10, ay, cardW - 20, 38, 6);
             ctx.fill();
 
             ctx.fillStyle = '#ffcc44';
-            ctx.font = 'bold 13px sans-serif';
+            ctx.font = 'bold 12px sans-serif';
             ctx.textAlign = 'left';
-            ctx.fillText(`[${ab.slot}] ${ab.name}`, x + 16, ay + 14);
+            ctx.fillText(`[${ab.slot}] ${ab.name}`, x + 16, ay + 13);
             ctx.fillStyle = '#aaaaaa';
-            ctx.font = '11px sans-serif';
-            ctx.fillText(ab.desc, x + 16, ay + 28);
+            ctx.font = '10px sans-serif';
+            wrapText(ctx, ab.desc, x + 16, ay + 27, cardW - 32, 12);
         });
     });
 
@@ -114,10 +114,10 @@ export function getClassCardAtPoint(
     const cy = (y - canvasRect.top) * scaleY;
 
     const classes: ArenaClass[] = ['warrior', 'archer', 'mage'];
-    const cardW = 200, cardH = 320, gap = 30;
+    const cardW = 200, cardH = 340, gap = 30;
     const totalW = classes.length * cardW + (classes.length - 1) * gap;
     const startX = (CANVAS_W - totalW) / 2;
-    const startY = 110;
+    const startY = 100;
 
     for (let i = 0; i < classes.length; i++) {
         const rx = startX + i * (cardW + gap);
@@ -275,6 +275,19 @@ export function drawGame(
         ctx.strokeStyle = color;
         ctx.lineWidth = isMe ? 3 : 2;
         ctx.stroke();
+
+        // Class icon inside player circle
+        if (player.class) {
+            const classIcons: Record<string, string> = { warrior: '⚔️', archer: '🏹', mage: '🔮' };
+            const icon = classIcons[player.class];
+            if (icon) {
+                ctx.font = '14px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(icon, px, py);
+                ctx.textBaseline = 'alphabetic';
+            }
+        }
 
         // Facing direction indicator
         ctx.strokeStyle = '#ffffff';

@@ -41,6 +41,7 @@ export class SnusArenaEngine implements GameEngine {
     private gameStatus: ArenaState['status'] = 'selecting';
     private classSelectRemaining = CLASS_SELECT_TIMEOUT_TICKS;
     private gameMode: ArenaGameMode = '1v1';
+    private battleStartTime = 0;
 
     init(roomId: string, playerInfos: PlayerInfo[], onStateUpdate: (state: unknown) => void): void {
         void roomId;
@@ -118,8 +119,11 @@ export class SnusArenaEngine implements GameEngine {
             }
             case 'arena:move': {
                 const { dx, dy } = action.payload as { dx: number; dy: number };
-                player.inputDx = Math.max(-1, Math.min(1, dx));
-                player.inputDy = Math.max(-1, Math.min(1, dy));
+                const rawDx = Math.max(-1, Math.min(1, dx));
+                const rawDy = Math.max(-1, Math.min(1, dy));
+                const mag = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
+                player.inputDx = mag > 1 ? rawDx / mag : rawDx;
+                player.inputDy = mag > 1 ? rawDy / mag : rawDy;
                 break;
             }
             case 'arena:aim': {
@@ -199,12 +203,18 @@ export class SnusArenaEngine implements GameEngine {
                     }
                 }
             } else if (slot === 'W') {
-                // Shield Bash: AoE melee stun
+                // Shield Bash: melee stun on enemy in front (within 90° arc of facing)
                 for (const enemy of this.getEnemies(player)) {
                     const dx = enemy.x - player.x, dy = enemy.y - player.y;
-                    if (dx * dx + dy * dy <= def.range * def.range) {
-                        this.dealDamage(player, enemy, def.damage);
-                        this.addEffect(enemy, 'stun', STUN_TICKS);
+                    const distSq = dx * dx + dy * dy;
+                    if (distSq <= def.range * def.range) {
+                        const dist = Math.sqrt(distSq);
+                        const dot = Math.cos(angle) * dx + Math.sin(angle) * dy;
+                        // Half-angle is π/4 (45°), so cos(π/4) ≈ 0.7071
+                        if (dist > 0 && dot / dist >= Math.SQRT1_2) {
+                            this.dealDamage(player, enemy, def.damage);
+                            this.addEffect(enemy, 'stun', STUN_TICKS);
+                        }
                     }
                 }
             } else if (slot === 'E') {
@@ -285,6 +295,7 @@ export class SnusArenaEngine implements GameEngine {
             }
             if (this.players.every(p => p.hasSelectedClass)) {
                 this.gameStatus = 'playing';
+                this.battleStartTime = Date.now();
             }
             this.onStateUpdate(this.buildState());
             return;
@@ -456,12 +467,13 @@ export class SnusArenaEngine implements GameEngine {
         if (alphaAll.length === 0 || betaAll.length === 0) return null;
         if (alphaAlive.length > 0 && betaAlive.length > 0) return null;
 
+        const timeTakenMs = Date.now() - this.battleStartTime;
         const winners = alphaAlive.length > 0 ? this.players.filter(p => p.team === 'alpha') : this.players.filter(p => p.team === 'beta');
         const losers = alphaAlive.length > 0 ? this.players.filter(p => p.team === 'beta') : this.players.filter(p => p.team === 'alpha');
 
         const results: GameResult[] = [
-            ...winners.map(p => ({ userId: p.userId, username: p.username, score: p.hp, rank: 1 })),
-            ...losers.map(p => ({ userId: p.userId, username: p.username, score: 0, rank: 2 })),
+            ...winners.map(p => ({ userId: p.userId, username: p.username, score: p.hp, rank: 1, timeTakenMs })),
+            ...losers.map(p => ({ userId: p.userId, username: p.username, score: 0, rank: 2, timeTakenMs })),
         ];
         return results;
     }

@@ -1,37 +1,46 @@
 import type { ArenaObstacle } from '@slutsnus/shared';
 
-/** Resolves a circle position against all AABB obstacles, pushing it out of overlaps. */
+const WORLD_W = 800;
+const WORLD_H = 600;
+
+/** Resolves a circle position against all AABB obstacles, pushing it out of overlaps.
+ *  Runs multiple passes to handle corners, then hard-clamps to world bounds. */
 export function resolveCircleVsObstacles(
     x: number, y: number, radius: number,
     obstacles: ArenaObstacle[],
 ): { x: number; y: number } {
     let rx = x, ry = y;
-    for (const obs of obstacles) {
-        const cx = Math.max(obs.x, Math.min(rx, obs.x + obs.w));
-        const cy = Math.max(obs.y, Math.min(ry, obs.y + obs.h));
-        const dx = rx - cx;
-        const dy = ry - cy;
-        const distSq = dx * dx + dy * dy;
-        if (distSq < radius * radius && distSq > 0) {
-            const dist = Math.sqrt(distSq);
-            const overlap = radius - dist;
-            rx += (dx / dist) * overlap;
-            ry += (dy / dist) * overlap;
-        } else if (distSq === 0) {
-            // Center exactly on AABB boundary — push out through nearest face
-            const pushLeft = rx - obs.x;
-            const pushRight = obs.x + obs.w - rx;
-            const pushTop = ry - obs.y;
-            const pushBottom = obs.y + obs.h - ry;
-            const minX = Math.min(pushLeft, pushRight);
-            const minY = Math.min(pushTop, pushBottom);
-            if (minX < minY) {
-                rx = pushLeft < pushRight ? obs.x - radius : obs.x + obs.w + radius;
-            } else {
-                ry = pushTop < pushBottom ? obs.y - radius : obs.y + obs.h + radius;
+    for (let pass = 0; pass < 3; pass++) {
+        for (const obs of obstacles) {
+            const cx = Math.max(obs.x, Math.min(rx, obs.x + obs.w));
+            const cy = Math.max(obs.y, Math.min(ry, obs.y + obs.h));
+            const dx = rx - cx;
+            const dy = ry - cy;
+            const distSq = dx * dx + dy * dy;
+            if (distSq < radius * radius && distSq > 0) {
+                const dist = Math.sqrt(distSq);
+                const overlap = radius - dist;
+                rx += (dx / dist) * overlap;
+                ry += (dy / dist) * overlap;
+            } else if (distSq === 0) {
+                // Center exactly on AABB boundary — push out through nearest face
+                const pushLeft = rx - obs.x;
+                const pushRight = obs.x + obs.w - rx;
+                const pushTop = ry - obs.y;
+                const pushBottom = obs.y + obs.h - ry;
+                const minX = Math.min(pushLeft, pushRight);
+                const minY = Math.min(pushTop, pushBottom);
+                if (minX < minY) {
+                    rx = pushLeft < pushRight ? obs.x - radius : obs.x + obs.w + radius;
+                } else {
+                    ry = pushTop < pushBottom ? obs.y - radius : obs.y + obs.h + radius;
+                }
             }
         }
     }
+    // Hard clamp to world bounds as final safety net (prevents clipping outside the map)
+    rx = Math.max(radius, Math.min(WORLD_W - radius, rx));
+    ry = Math.max(radius, Math.min(WORLD_H - radius, ry));
     return { x: rx, y: ry };
 }
 

@@ -1,4 +1,4 @@
-import type { PlayerInfo, GameAction, FarmState, FarmChicken, FarmPlayer, GameResult } from '@slutsnus/shared';
+import type { PlayerInfo, GameAction, FarmState, FarmChicken, FarmPlayer, FarmSnus, GameResult } from '@slutsnus/shared';
 import type { GameEngine } from '../registry';
 import {
     TICK_MS, CANVAS_W, CANVAS_H,
@@ -9,7 +9,7 @@ import {
     PEN_CAPTURE_RADIUS, PEN_LEFT, PEN_RIGHT,
     CHICKEN_MIN_X, CHICKEN_MAX_X, CHICKEN_MIN_Y, CHICKEN_MAX_Y,
     FARMER_MIN_X, FARMER_MAX_X, FARMER_MIN_Y, FARMER_MAX_Y,
-    SPAWN_MIN_X, SPAWN_MAX_X, SPAWN_MIN_Y, SPAWN_MAX_Y,
+    SNUS_RADIUS, SNUS_SPAWN_INTERVAL_TICKS, SNUS_SPEED_BOOST, SNUS_BOOST_TICKS, SNUS_SPAWN_MARGIN,
 } from './constants';
 
 interface PlayerInternal {
@@ -20,6 +20,7 @@ interface PlayerInternal {
     side: 'left' | 'right';
     inputDx: number;
     inputDy: number;
+    speedBoostTicks: number;
 }
 
 interface ChickenInternal extends FarmChicken {
@@ -38,11 +39,14 @@ function randInt(min: number, max: number): number {
 export class SnusFarmEngine implements GameEngine {
     private players: Map<string, PlayerInternal> = new Map();
     private chickens: ChickenInternal[] = [];
+    private snus: FarmSnus | null = null;
+    private snusIdCounter = 0;
     private tickCount = 0;
     private status: 'playing' | 'ended' = 'playing';
     private results: GameResult[] | undefined;
     private interval: ReturnType<typeof setInterval> | null = null;
     private onStateUpdate: ((state: unknown) => void) | null = null;
+    private startTime = 0;
 
     init(roomId: string, players: PlayerInfo[], onStateUpdate: (state: unknown) => void): void {
         this.onStateUpdate = onStateUpdate;
@@ -57,16 +61,26 @@ export class SnusFarmEngine implements GameEngine {
                 side: sides[i] ?? 'left',
                 inputDx: 0,
                 inputDy: 0,
+                speedBoostTicks: 0,
             });
         });
 
-        // Spawn chickens in the center zone
+        // Spawn chickens scattered across the full field, avoiding pen zones
+        const penClearRadius = PEN_CAPTURE_RADIUS + 20;
         for (let i = 0; i < TOTAL_CHICKENS; i++) {
+            let x: number, y: number;
+            do {
+                x = rand(FARMER_RADIUS + 10, CANVAS_W - FARMER_RADIUS - 10);
+                y = rand(FARMER_RADIUS + 10, CANVAS_H - FARMER_RADIUS - 10);
+            } while (
+                Math.hypot(x - PEN_LEFT.x, y - PEN_LEFT.y) < penClearRadius ||
+                Math.hypot(x - PEN_RIGHT.x, y - PEN_RIGHT.y) < penClearRadius
+            );
             const angle = Math.random() * Math.PI * 2;
             this.chickens.push({
                 id: `chicken-${i}`,
-                x: rand(SPAWN_MIN_X, SPAWN_MAX_X),
-                y: rand(SPAWN_MIN_Y, SPAWN_MAX_Y),
+                x,
+                y,
                 vx: Math.cos(angle) * CHICKEN_SPEED,
                 vy: Math.sin(angle) * CHICKEN_SPEED,
                 wanderTimer: randInt(CHICKEN_WANDER_MIN_TICKS, CHICKEN_WANDER_MAX_TICKS),
@@ -74,6 +88,7 @@ export class SnusFarmEngine implements GameEngine {
             });
         }
 
+        this.startTime = Date.now();
         this.interval = setInterval(() => this.tick(), TICK_MS);
     }
 
@@ -107,6 +122,8 @@ export class SnusFarmEngine implements GameEngine {
         // 1. Move players
         for (const player of this.players.values()) {
             const { inputDx, inputDy } = player;
+            if (player.speedBoostTicks > 0) player.speedBoostTicks--;
+
             if (inputDx === 0 && inputDy === 0) continue;
 
             // Normalize diagonal movement
@@ -114,8 +131,29 @@ export class SnusFarmEngine implements GameEngine {
             const nx = inputDx / len;
             const ny = inputDy / len;
 
-            player.x = Math.max(FARMER_MIN_X, Math.min(FARMER_MAX_X, player.x + nx * FARMER_SPEED));
-            player.y = Math.max(FARMER_MIN_Y, Math.min(FARMER_MAX_Y, player.y + ny * FARMER_SPEED));
+            const speed = FARMER_SPEED * (player.speedBoostTicks > 0 ? SNUS_SPEED_BOOST : 1);
+            player.x = Math.max(FARMER_MIN_X, Math.min(FARMER_MAX_X, player.x + nx * speed));
+            player.y = Math.max(FARMER_MIN_Y, Math.min(FARMER_MAX_Y, player.y + ny * speed));
+        }
+
+        // 1b. Snus spawn & pickup
+        if (!this.snus && this.tickCount % SNUS_SPAWN_INTERVAL_TICKS === 0 && this.tickCount > 0) {
+            this.snus = {
+                id: `snus-${this.snusIdCounter++}`,
+                x: rand(SNUS_SPAWN_MARGIN, CANVAS_W - SNUS_SPAWN_MARGIN),
+                y: rand(SNUS_SPAWN_MARGIN, CANVAS_H - SNUS_SPAWN_MARGIN),
+            };
+        }
+        if (this.snus) {
+            for (const player of this.players.values()) {
+                const dx = player.x - this.snus.x;
+                const dy = player.y - this.snus.y;
+                if (Math.sqrt(dx * dx + dy * dy) < FARMER_RADIUS + SNUS_RADIUS) {
+                    player.speedBoostTicks = SNUS_BOOST_TICKS;
+                    this.snus = null;
+                    break;
+                }
+            }
         }
 
         // 2. Move chickens + apply push
@@ -146,25 +184,30 @@ export class SnusFarmEngine implements GameEngine {
                 }
             }
 
-            // Apply wander velocity + push
-            let newX = chicken.x + chicken.vx + pushX;
-            let newY = chicken.y + chicken.vy + pushY;
+            // Cap total speed before applying movement to prevent teleport-like jumps
+            const totalVx = chicken.vx + pushX;
+            const totalVy = chicken.vy + pushY;
+            const totalSpeed = Math.sqrt(totalVx * totalVx + totalVy * totalVy);
+            let frameVx = totalVx;
+            let frameVy = totalVy;
+            if (totalSpeed > CHICKEN_MAX_SPEED) {
+                const scale = CHICKEN_MAX_SPEED / totalSpeed;
+                frameVx = totalVx * scale;
+                frameVy = totalVy * scale;
+                // Scale down wander component proportionally so it stays consistent
+                chicken.vx *= scale;
+                chicken.vy *= scale;
+            }
+
+            // Apply capped velocity
+            let newX = chicken.x + frameVx;
+            let newY = chicken.y + frameVy;
 
             // Bounce wander velocity off field walls; allow push to carry chickens into pen zones
             if (newX < CHICKEN_MIN_X) { if (pushX >= 0) { chicken.vx = Math.abs(chicken.vx); newX = CHICKEN_MIN_X; } }
             if (newX > CHICKEN_MAX_X) { if (pushX <= 0) { chicken.vx = -Math.abs(chicken.vx); newX = CHICKEN_MAX_X; } }
             if (newY < CHICKEN_MIN_Y) { newY = CHICKEN_MIN_Y; chicken.vy = Math.abs(chicken.vy); }
             if (newY > CHICKEN_MAX_Y) { newY = CHICKEN_MAX_Y; chicken.vy = -Math.abs(chicken.vy); }
-
-            // Cap total speed to prevent runaway acceleration from repeated pushes
-            const totalVx = chicken.vx + pushX;
-            const totalVy = chicken.vy + pushY;
-            const totalSpeed = Math.sqrt(totalVx * totalVx + totalVy * totalVy);
-            if (totalSpeed > CHICKEN_MAX_SPEED) {
-                const scale = CHICKEN_MAX_SPEED / totalSpeed;
-                chicken.vx *= scale;
-                chicken.vy *= scale;
-            }
 
             chicken.x = newX;
             chicken.y = newY;
@@ -209,6 +252,7 @@ export class SnusFarmEngine implements GameEngine {
 
     private endGame(): void {
         this.status = 'ended';
+        const timeTakenMs = Date.now() - this.startTime;
 
         const sorted = Array.from(this.players.values()).sort((a, b) => b.score - a.score);
         this.results = sorted.map((p, i) => ({
@@ -216,6 +260,7 @@ export class SnusFarmEngine implements GameEngine {
             username: p.info.username,
             score: p.score,
             rank: i + 1,
+            timeTakenMs,
         }));
 
         // Handle ties: give same rank
@@ -237,6 +282,7 @@ export class SnusFarmEngine implements GameEngine {
             y: p.y,
             score: p.score,
             side: p.side,
+            speedBoostTicks: p.speedBoostTicks,
         }));
 
         const chickens: FarmChicken[] = this.chickens
@@ -248,6 +294,7 @@ export class SnusFarmEngine implements GameEngine {
             tickCount: this.tickCount,
             players,
             chickens,
+            snus: this.snus,
             results: this.results,
         };
     }

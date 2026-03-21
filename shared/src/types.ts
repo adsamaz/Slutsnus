@@ -62,6 +62,7 @@ export interface GameResult {
     username: string;
     score: number;
     rank: number;
+    timeTakenMs?: number;
 }
 
 // ─────────────────────────────────────────────────
@@ -86,6 +87,7 @@ export interface LeaderboardEntry {
     userId: string;
     username: string;
     score: number;
+    timeTakenMs?: number;
     recordedAt: string;
 }
 
@@ -378,6 +380,12 @@ export interface FarmChicken {
     vy: number;
 }
 
+export interface FarmSnus {
+    id: string;
+    x: number;
+    y: number;
+}
+
 export interface FarmPlayer {
     userId: string;
     username: string;
@@ -385,6 +393,7 @@ export interface FarmPlayer {
     y: number;
     score: number;
     side: 'left' | 'right';
+    speedBoostTicks: number;
 }
 
 export interface FarmState {
@@ -392,6 +401,7 @@ export interface FarmState {
     tickCount: number;
     players: FarmPlayer[];
     chickens: FarmChicken[];
+    snus: FarmSnus | null;
     results?: GameResult[];
 }
 

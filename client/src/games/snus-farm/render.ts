@@ -2,9 +2,13 @@ import type { FarmState } from '@slutsnus/shared';
 import {
     CANVAS_W, CANVAS_H,
     PEN_LEFT, PEN_RIGHT, PEN_RADIUS,
-    FARMER_RADIUS, CHICKEN_RADIUS,
+    FARMER_RADIUS,
     COLOR_LEFT, COLOR_RIGHT, COLOR_GRASS, COLOR_FIELD, COLOR_PEN, COLOR_PEN_STROKE,
 } from './constants';
+import freshSnusSrc from '../../assets/freshsnus.svg';
+
+const snusImg = new Image();
+snusImg.src = freshSnusSrc;
 
 function farmerColor(side: 'left' | 'right'): string {
     return side === 'left' ? COLOR_LEFT : COLOR_RIGHT;
@@ -27,6 +31,21 @@ export function drawGame(ctx: CanvasRenderingContext2D, state: FarmState, myUser
 
     drawPen(ctx, 'left', leftPlayer?.score ?? 0, myPlayer?.side === 'left');
     drawPen(ctx, 'right', rightPlayer?.score ?? 0, myPlayer?.side === 'right');
+
+    // ── Snus powerup ─────────────────────────────────────────────────────────
+    if (state.snus) {
+        ctx.save();
+        const s = state.snus;
+        const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 200);
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, 20, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 220, 50, ${pulse * 0.35})`;
+        ctx.fill();
+        const size = 32;
+        ctx.globalAlpha = 1;
+        ctx.drawImage(snusImg, s.x - size / 2, s.y - size / 2, size, size);
+        ctx.restore();
+    }
 
     // ── Chickens ─────────────────────────────────────────────────────────────
     ctx.font = '22px serif';
@@ -64,6 +83,19 @@ export function drawGame(ctx: CanvasRenderingContext2D, state: FarmState, myUser
         ctx.beginPath();
         ctx.rect(player.x - 11, player.y - FARMER_RADIUS - 5, 22, 3);
         ctx.fill();
+
+        // Speed boost glow
+        if (player.speedBoostTicks > 0) {
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, FARMER_RADIUS + 5, 0, Math.PI * 2);
+            ctx.strokeStyle = '#ffe030';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.font = '12px serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText('⚡', player.x, player.y - FARMER_RADIUS - 12);
+        }
 
         // Username label
         ctx.fillStyle = isMe ? '#fff' : 'rgba(255,255,255,0.75)';
@@ -118,7 +150,6 @@ function drawPen(
 function drawHud(ctx: CanvasRenderingContext2D, state: FarmState, myUserId: string): void {
     const leftPlayer = state.players.find(p => p.side === 'left');
     const rightPlayer = state.players.find(p => p.side === 'right');
-    const myPlayer = state.players.find(p => p.userId === myUserId);
 
     const hudY = 14;
     const hudH = 36;

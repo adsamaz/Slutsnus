@@ -70,15 +70,17 @@ model GameSessionPlayer {
 }
 
 model LeaderboardEntry {
-  id         String   @id @default(cuid())
-  gameType   String
-  userId     String
-  score      Int
-  recordedAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  gameType    String
+  userId      String
+  score       Int
+  timeTakenMs Int?
+  recordedAt  DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
 
   @@index([gameType, score(sort: Desc)])
+  @@index([gameType, timeTakenMs(sort: Asc)])
 }
 
 model Friendship {

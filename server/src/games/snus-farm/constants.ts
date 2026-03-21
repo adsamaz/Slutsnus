@@ -33,8 +33,9 @@ export const FARMER_MAX_X = CANVAS_W - FARMER_RADIUS;
 export const FARMER_MIN_Y = FARMER_RADIUS;
 export const FARMER_MAX_Y = CANVAS_H - FARMER_RADIUS;
 
-// Chicken spawn zone (center third of field)
-export const SPAWN_MIN_X = 250;
-export const SPAWN_MAX_X = 550;
-export const SPAWN_MIN_Y = 100;
-export const SPAWN_MAX_Y = 500;
+// Snus powerup
+export const SNUS_RADIUS = 14;
+export const SNUS_SPAWN_INTERVAL_TICKS = 500; // spawn every ~10s
+export const SNUS_SPEED_BOOST = 1.5;          // multiplier while active
+export const SNUS_BOOST_TICKS = 300;          // ~6 seconds
+export const SNUS_SPAWN_MARGIN = 20;          // keep away from edges

@@ -1,13 +1,19 @@
 import { createSignal, onMount, onCleanup, Show } from 'solid-js';
+import { useNavigate } from '@solidjs/router';
 import { useSocket } from '../../stores/socket';
 import { useAuth } from '../../stores/auth';
 import type { ArenaState, GameAction } from '@slutsnus/shared';
 import { drawClassSelect, drawGame, drawEndScreen, getClassCardAtPoint } from './render';
 import { CANVAS_W, CANVAS_H } from './constants';
+import {
+    soundArenaStart, soundShoot, soundFireball, soundHit, soundDeath,
+    soundHeal, soundDamageBoost, soundArenaWin, soundArenaLose,
+} from './sounds';
 
 interface SnusArenaProps {
     state: ArenaState;
     roomCode: string;
+    isSolo: boolean;
     onAction: (action: GameAction) => void;
 }
 
@@ -16,6 +22,7 @@ const TICK_MS = 20;
 export function SnusArenaGame(props: SnusArenaProps) {
     const socket = useSocket();
     const [authState] = useAuth();
+    const navigate = useNavigate();
 
     let canvasRef!: HTMLCanvasElement;
 
@@ -25,6 +32,14 @@ export function SnusArenaGame(props: SnusArenaProps) {
     let rafId = 0;
 
     const myUserId = () => authState.user?.id ?? '';
+
+    // ── Sound state tracking ─────────────────────────────────────────────────
+
+    let prevProjectileIds = new Set<string>();
+    let prevPlayerHp = new Map<string, number>();
+    let prevPlayerAlive = new Map<string, boolean>();
+    let prevPowerupActive = new Map<string, boolean>();
+    let soundedGameEnd = false;
 
     // ── Input state ──────────────────────────────────────────────────────────
 
@@ -38,6 +53,8 @@ export function SnusArenaGame(props: SnusArenaProps) {
         if (keys.has('KeyS') || keys.has('ArrowDown'))  dy += 1;
         if (keys.has('KeyA') || keys.has('ArrowLeft'))  dx -= 1;
         if (keys.has('KeyD') || keys.has('ArrowRight')) dx += 1;
+        const mag = Math.sqrt(dx * dx + dy * dy);
+        if (mag > 1) { dx /= mag; dy /= mag; }
         return { dx, dy };
     };
 
@@ -117,10 +134,68 @@ export function SnusArenaGame(props: SnusArenaProps) {
         rafId = requestAnimationFrame(renderLoop);
     };
 
+    // ── Sound logic ──────────────────────────────────────────────────────────
+
+    const processSounds = (next: ArenaState) => {
+        const me = next.players.find(p => p.userId === myUserId());
+
+        // Game start (selecting → playing)
+        const prev = prevState();
+        if (prev?.status === 'selecting' && next.status === 'playing') {
+            soundArenaStart();
+        }
+
+        if (next.status === 'playing') {
+            // New projectiles spawned — detect by id
+            const nextIds = new Set(next.projectiles.map(p => p.id));
+            for (const id of nextIds) {
+                if (!prevProjectileIds.has(id)) {
+                    const proj = next.projectiles.find(p => p.id === id);
+                    if (proj?.type === 'fireball') soundFireball();
+                    else soundShoot();
+                }
+            }
+            prevProjectileIds = nextIds;
+
+            // Player HP decreased (hit) or died
+            for (const player of next.players) {
+                const prevHp = prevPlayerHp.get(player.userId) ?? player.hp;
+                const prevAlive = prevPlayerAlive.get(player.userId) ?? player.alive;
+                if (!player.alive && prevAlive) {
+                    soundDeath();
+                } else if (player.hp < prevHp && player.alive) {
+                    if (player.userId === myUserId()) soundHit();
+                }
+                prevPlayerHp.set(player.userId, player.hp);
+                prevPlayerAlive.set(player.userId, player.alive);
+            }
+
+            // Powerup collected (active went from true → false = collected)
+            for (const pu of next.powerups) {
+                const wasActive = prevPowerupActive.get(pu.id) ?? pu.active;
+                if (wasActive && !pu.active) {
+                    if (pu.type === 'heal') soundHeal();
+                    else soundDamageBoost();
+                }
+                prevPowerupActive.set(pu.id, pu.active);
+            }
+        }
+
+        // Game ended
+        if (next.status === 'ended' && !soundedGameEnd) {
+            soundedGameEnd = true;
+            const myResult = next.results?.find(r => r.userId === myUserId());
+            const won = myResult?.rank === 1;
+            if (won) soundArenaWin();
+            else soundArenaLose();
+        }
+    };
+
     // ── Socket listener ──────────────────────────────────────────────────────
 
     const onGameState = ({ state }: { state: unknown }) => {
         const next = state as ArenaState;
+        processSounds(next);
         setPrevState(currentState());
         setCurrentState(next);
         setLastStateAt(Date.now());
@@ -129,6 +204,19 @@ export function SnusArenaGame(props: SnusArenaProps) {
     const onContextMenu = (e: MouseEvent) => e.preventDefault();
 
     onMount(() => {
+        soundArenaStart();
+
+        // Seed tracking maps from initial state
+        const init = props.state;
+        prevProjectileIds = new Set(init.projectiles.map(p => p.id));
+        for (const p of init.players) {
+            prevPlayerHp.set(p.userId, p.hp);
+            prevPlayerAlive.set(p.userId, p.alive);
+        }
+        for (const pu of init.powerups) {
+            prevPowerupActive.set(pu.id, pu.active);
+        }
+
         socket.on('game:state', onGameState);
         window.addEventListener('keydown', onKeyDown);
         window.addEventListener('keyup', onKeyUp);
@@ -149,10 +237,6 @@ export function SnusArenaGame(props: SnusArenaProps) {
         }
         cancelAnimationFrame(rafId);
     });
-
-    // ── Mode selector (shown before host starts) ─────────────────────────────
-    // This is rendered as HTML since it's needed on the lobby page.
-    // GameContainer passes mode via room:start payload.
 
     return (
         <div class="snus-arena-wrapper" style={{ display: 'flex', 'flex-direction': 'column', 'align-items': 'center', gap: '8px' }}>
@@ -175,7 +259,13 @@ export function SnusArenaGame(props: SnusArenaProps) {
             <Show when={currentState().status === 'ended'}>
                 <div style={{ display: 'flex', gap: '12px', 'margin-top': '8px' }}>
                     <button
-                        onClick={() => socket.emit('room:start', { roomCode: props.roomCode })}
+                        onClick={() => {
+                            if (props.isSolo) {
+                                socket.emit('room:start', { roomCode: props.roomCode });
+                            } else {
+                                navigate(`/lobby/${props.roomCode}`);
+                            }
+                        }}
                         style={{ padding: '8px 20px', background: '#2563eb', color: '#fff', border: 'none', 'border-radius': '6px', cursor: 'pointer', 'font-size': '14px' }}
                     >
                         Play Again
@@ -185,4 +275,3 @@ export function SnusArenaGame(props: SnusArenaProps) {
         </div>
     );
 }
-

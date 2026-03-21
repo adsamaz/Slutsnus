@@ -1,32 +1,12 @@
-let ctx: AudioContext | null = null;
-
-function getCtx(): AudioContext {
-    if (!ctx) ctx = new AudioContext();
-    // Resume if suspended (browser autoplay policy)
-    if (ctx.state === 'suspended') ctx.resume();
-    return ctx;
-}
-
-function play(fn: (ac: AudioContext) => void): void {
-    try { fn(getCtx()); } catch { /* ignore if audio unavailable */ }
-}
-
-function envelope(gain: GainNode, ac: AudioContext, attack: number, decay: number, sustain: number, release: number, peak = 0.4): void {
-    const now = ac.currentTime;
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(peak, now + attack);
-    gain.gain.linearRampToValueAtTime(sustain * peak, now + attack + decay);
-    gain.gain.setValueAtTime(sustain * peak, now + attack + decay);
-    gain.gain.linearRampToValueAtTime(0, now + attack + decay + release);
-}
+import { play, envelope } from '../audio';
 
 /** Fresh snus caught — soft triangle bloop, rising glide */
 export function soundFreshCatch(): void {
-    play(ac => {
+    play((ac, dest) => {
         const osc = ac.createOscillator();
         const gain = ac.createGain();
         osc.connect(gain);
-        gain.connect(ac.destination);
+        gain.connect(dest);
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(220, ac.currentTime);
         osc.frequency.exponentialRampToValueAtTime(330, ac.currentTime + 0.1);
@@ -38,14 +18,14 @@ export function soundFreshCatch(): void {
 
 /** Fresh snus caught with beer (×3) — three gentle ascending triangle chimes */
 export function soundFreshCatchBeer(): void {
-    play(ac => {
+    play((ac, dest) => {
         const freqs = [220, 277, 330];
         const offsets = [0, 0.08, 0.16];
         freqs.forEach((freq, i) => {
             const osc = ac.createOscillator();
             const gain = ac.createGain();
             osc.connect(gain);
-            gain.connect(ac.destination);
+            gain.connect(dest);
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(freq, ac.currentTime + offsets[i]);
             osc.frequency.exponentialRampToValueAtTime(freq * 1.1, ac.currentTime + offsets[i] + 0.1);
@@ -62,13 +42,13 @@ export function soundFreshCatchBeer(): void {
 
 /** Spent snus caught — soft low thud */
 export function soundSpentCatch(): void {
-    play(ac => {
+    play((ac, dest) => {
         const osc = ac.createOscillator();
         const filter = ac.createBiquadFilter();
         const gain = ac.createGain();
         osc.connect(filter);
         filter.connect(gain);
-        gain.connect(ac.destination);
+        gain.connect(dest);
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(108, ac.currentTime);
         osc.frequency.exponentialRampToValueAtTime(54, ac.currentTime + 0.04);
@@ -83,11 +63,11 @@ export function soundSpentCatch(): void {
 
 /** Missed a fresh snus — life lost, descending square steps */
 export function soundLifeLost(): void {
-    play(ac => {
+    play((ac, dest) => {
         const osc = ac.createOscillator();
         const gain = ac.createGain();
         osc.connect(gain);
-        gain.connect(ac.destination);
+        gain.connect(dest);
         osc.type = 'square';
         osc.frequency.setValueAtTime(165, ac.currentTime);
         osc.frequency.setValueAtTime(110, ac.currentTime + 0.08);
@@ -100,7 +80,7 @@ export function soundLifeLost(): void {
         const osc2 = ac.createOscillator();
         const gain2 = ac.createGain();
         osc2.connect(gain2);
-        gain2.connect(ac.destination);
+        gain2.connect(dest);
         osc2.type = 'triangle';
         osc2.frequency.setValueAtTime(80, ac.currentTime);
         osc2.frequency.exponentialRampToValueAtTime(40, ac.currentTime + 0.4);
@@ -115,7 +95,7 @@ export function soundLifeLost(): void {
 
 /** Powerup caught (wideBar, slowRain, beer) — warm triangle arpeggio */
 export function soundPowerup(): void {
-    play(ac => {
+    play((ac, dest) => {
         const freqs = [131, 165, 196, 262];
         const offsets = [0, 0.08, 0.16, 0.24];
         const holds = [0.07, 0.07, 0.07, 0.14];
@@ -123,7 +103,7 @@ export function soundPowerup(): void {
             const osc = ac.createOscillator();
             const gain = ac.createGain();
             osc.connect(gain);
-            gain.connect(ac.destination);
+            gain.connect(dest);
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(freq, ac.currentTime + offsets[i]);
             const t = ac.currentTime + offsets[i];
@@ -143,7 +123,7 @@ export function soundPowerup(): void {
 
 /** Game start — ascending fanfare arpeggio */
 export function soundGameStart(): void {
-    play(ac => {
+    play((ac, dest) => {
         const freqs = [196, 247, 294, 392, 523];
         const offsets = [0, 0.1, 0.2, 0.3, 0.4];
         const holds = [0.08, 0.08, 0.08, 0.08, 0.2];
@@ -151,7 +131,7 @@ export function soundGameStart(): void {
             const osc = ac.createOscillator();
             const gain = ac.createGain();
             osc.connect(gain);
-            gain.connect(ac.destination);
+            gain.connect(dest);
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(freq, ac.currentTime + offsets[i]);
             const t = ac.currentTime + offsets[i];
@@ -169,11 +149,11 @@ export function soundGameStart(): void {
 
 /** Debuff caught (fastRain, shrinkBar, blind) — low dissonant triangle drop */
 export function soundDebuff(): void {
-    play(ac => {
+    play((ac, dest) => {
         const osc = ac.createOscillator();
         const gain = ac.createGain();
         osc.connect(gain);
-        gain.connect(ac.destination);
+        gain.connect(dest);
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(160, ac.currentTime);
         osc.frequency.setValueAtTime(113, ac.currentTime + 0.06);

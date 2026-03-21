@@ -2,6 +2,7 @@ import { createSignal, onCleanup, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { useSocket } from '../stores/socket';
 import { useRoom } from '../stores/room';
+import { getVolume, setVolume } from './audio';
 import { SnusregnGame } from './snusregn/index';
 import { bakeItemBitmaps } from './snusregn/render';
 import type { ItemBitmaps } from './snusregn/render';
@@ -80,9 +81,29 @@ export default function GameContainer(props: GameContainerProps) {
     });
 
     const gameType = () => roomState.room?.gameType ?? '';
+    const isSolo = () => (roomState.room?.players.length ?? 0) <= 1;
+
+    const [volume, setVolumeSignal] = createSignal(getVolume());
+    const handleVolume = (e: Event) => {
+        const v = parseFloat((e.target as HTMLInputElement).value);
+        setVolume(v);
+        setVolumeSignal(v);
+    };
 
     return (
         <div class="game-wrapper">
+            <div class="game-volume-control">
+                <span>🔊</span>
+                <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={volume()}
+                    onInput={handleVolume}
+                    title="Sound volume"
+                />
+            </div>
             <Show when={!gameState()}>
                 <div class="game-loading">
                     <p>Waiting for game to start...</p>
@@ -104,6 +125,7 @@ export default function GameContainer(props: GameContainerProps) {
                     <SnusArenaGame
                         state={s() as ArenaState}
                         roomCode={props.roomCode}
+                        isSolo={isSolo()}
                         onAction={(action) => socket.emit('game:action', { roomCode: props.roomCode, action: action as GameAction })}
                     />
                 )}
@@ -113,6 +135,7 @@ export default function GameContainer(props: GameContainerProps) {
                     <SnusFarmGame
                         state={s() as FarmState}
                         roomCode={props.roomCode}
+                        isSolo={isSolo()}
                         onAction={(action) => socket.emit('game:action', { roomCode: props.roomCode, action: action as GameAction })}
                     />
                 )}

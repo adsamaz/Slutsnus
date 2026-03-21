@@ -1,9 +1,22 @@
 import { createResource, createSignal, For, Show } from 'solid-js';
 import { GameType, LeaderboardEntry } from '@slutsnus/shared';
 
-const GAMES: { id: GameType; name: string }[] = [
-    { id: 'snusregn', name: 'Snusrain' },
+const GAMES: { id: GameType; name: string; timeBased: boolean }[] = [
+    { id: 'snusregn', name: 'Snusrain', timeBased: false },
+    { id: 'snus-farm', name: 'Snus Farm', timeBased: true },
+    { id: 'snus-arena', name: 'Snus Arena', timeBased: true },
 ];
+
+function formatTime(ms: number): string {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const centiseconds = Math.floor((ms % 1000) / 10);
+    if (minutes > 0) {
+        return `${minutes}:${String(seconds).padStart(2, '0')}.${String(centiseconds).padStart(2, '0')}`;
+    }
+    return `${seconds}.${String(centiseconds).padStart(2, '0')}s`;
+}
 
 async function fetchLeaderboard(gameType: GameType): Promise<LeaderboardEntry[]> {
     const res = await fetch(`/api/leaderboard/${gameType}`, { credentials: 'include' });
@@ -15,6 +28,8 @@ async function fetchLeaderboard(gameType: GameType): Promise<LeaderboardEntry[]>
 export default function Leaderboard() {
     const [activeGame, setActiveGame] = createSignal<GameType>('snusregn');
     const [entries] = createResource(activeGame, fetchLeaderboard);
+
+    const currentGame = () => GAMES.find(g => g.id === activeGame())!;
 
     return (
         <main class="page">
@@ -50,7 +65,7 @@ export default function Leaderboard() {
                                 <tr>
                                     <th>#</th>
                                     <th>Player</th>
-                                    <th>Score</th>
+                                    <th>{currentGame().timeBased ? 'Time' : 'Score'}</th>
                                     <th>Date</th>
                                 </tr>
                             </thead>
@@ -60,7 +75,11 @@ export default function Leaderboard() {
                                         <tr>
                                             <td class={entry.rank <= 3 ? `rank-${entry.rank}` : ''}>{entry.rank}</td>
                                             <td>{entry.username}</td>
-                                            <td>{entry.score}</td>
+                                            <td>
+                                                {currentGame().timeBased
+                                                    ? (entry.timeTakenMs != null ? formatTime(entry.timeTakenMs) : '—')
+                                                    : entry.score}
+                                            </td>
                                             <td>{new Date(entry.recordedAt).toLocaleDateString()}</td>
                                         </tr>
                                     )}

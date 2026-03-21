@@ -211,6 +211,7 @@ export function roomHandlers(
                                     gameType: room.gameType,
                                     userId: result.userId,
                                     score: result.score,
+                                    timeTakenMs: result.timeTakenMs ?? null,
                                 },
                             });
                         }
@@ -218,7 +219,17 @@ export function roomHandlers(
                 }
             };
 
+            // Destroy any previously running engine for this room before starting a new one
+            const existingEngine = activeGames.get(roomCode);
+            if (existingEngine) {
+                existingEngine.destroy();
+                activeGames.delete(roomCode);
+            }
+
             activeGames.set(roomCode, engine);
+
+            // Clear any stale pending start for this room
+            pendingGameStarts.delete(roomCode);
 
             pendingGameStarts.set(roomCode, {
                 readySet: new Set(),
