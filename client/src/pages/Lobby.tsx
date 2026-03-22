@@ -6,7 +6,7 @@ import { useRoom } from '../stores/room';
 import { useFriends } from '../stores/friends';
 import Button from '../components/Button';
 import Avatar from '../components/Avatar';
-import type { RoomInfo, RoomPlayer } from '@slutsnus/shared';
+import type { RoomInfo, RoomPlayer, FactoryDifficulty } from '@slutsnus/shared';
 
 export default function Lobby() {
     const params = useParams<{ code: string }>();
@@ -23,6 +23,7 @@ export default function Lobby() {
     const [error, setError] = createSignal('');
     const [copied, setCopied] = createSignal(false);
     const [invited, setInvited] = createSignal<Set<string>>(new Set());
+    const [factoryDifficulty, setFactoryDifficulty] = createSignal<FactoryDifficulty>('medium');
 
     const handleCopyCode = () => {
         navigator.clipboard.writeText(params.code);
@@ -68,7 +69,11 @@ export default function Lobby() {
 
     const handleStart = () => {
         setStarting(true);
-        socket.emit('room:start', { roomCode: params.code });
+        const r = room();
+        socket.emit('room:start', {
+            roomCode: params.code,
+            ...(r?.gameType === 'snusfactory' ? { factoryDifficulty: factoryDifficulty() } : {}),
+        });
     };
 
     const handleLeave = async () => {
@@ -156,6 +161,52 @@ export default function Lobby() {
                                     )}
                                 </For>
                             </div>
+
+                            <Show when={r().gameType === 'snusfactory' && isHost()}>
+                                <div class="factory-difficulty-picker">
+                                    <p class="factory-difficulty-label">Difficulty</p>
+                                    <div class="factory-difficulty-tins">
+                                        {(['easy', 'medium', 'hard'] as FactoryDifficulty[]).map((level, i) => (
+                                            <button
+                                                class={`factory-tin${factoryDifficulty() === level ? ' factory-tin--selected' : ''}`}
+                                                onClick={() => setFactoryDifficulty(level)}
+                                                title={level.charAt(0).toUpperCase() + level.slice(1)}
+                                            >
+                                                <svg viewBox="0 0 80 80" width="80" height="80" style={{ display: 'block' }}>
+                                                    <defs>
+                                                        <linearGradient id={`tin-grad-${level}`} x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="0%" stop-color="#2a6090" />
+                                                            <stop offset="100%" stop-color="#0f2a45" />
+                                                        </linearGradient>
+                                                        <linearGradient id={`lid-grad-${level}`} x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="0%" stop-color="#5090c0" />
+                                                            <stop offset="100%" stop-color="#2a6090" />
+                                                        </linearGradient>
+                                                    </defs>
+                                                    {/* Tin body */}
+                                                    <ellipse cx="40" cy="68" rx="34" ry="8" fill="#1a2a3a" opacity="0.4" />
+                                                    <rect x="6" y="18" width="68" height="50" rx="10" ry="10" fill={`url(#tin-grad-${level})`} />
+                                                    {/* Lid */}
+                                                    <ellipse cx="40" cy="18" rx="34" ry="9" fill={`url(#lid-grad-${level})`} />
+                                                    <ellipse cx="40" cy="18" rx="28" ry="6" fill="#3a6090" opacity="0.5" />
+                                                    {/* Dots */}
+                                                    {[0, 1, 2].map(d => (
+                                                        <circle
+                                                            cx={28 + d * 12}
+                                                            cy="47"
+                                                            r="5"
+                                                            fill={d <= i ? '#e0eaf8' : 'none'}
+                                                            stroke="#4a80b0"
+                                                            stroke-width="1.5"
+                                                        />
+                                                    ))}
+                                                </svg>
+                                                <span class="factory-tin-label">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </Show>
 
                             <div class="lobby-actions">
                                 <Show when={!isHost()}>

@@ -1,10 +1,15 @@
-import { GameAction, PlayerInfo } from '@slutsnus/shared';
+import { GameAction, PlayerInfo, FactoryDifficulty } from '@slutsnus/shared';
 import { SnusregnEngine } from './snusregn/engine';
 import { SnusArenaEngine } from './snus-arena/engine';
 import { SnusFarmEngine } from './snus-farm/engine';
+import { SnusFactoryEngine } from './snusfactory/engine';
+
+export interface GameEngineOptions {
+    difficulty?: FactoryDifficulty;
+}
 
 export interface GameEngine {
-    init(roomId: string, players: PlayerInfo[], onStateUpdate: (state: unknown) => void): void;
+    init(roomId: string, players: PlayerInfo[], onStateUpdate: (state: unknown) => void, options?: GameEngineOptions): void;
     handleEvent(playerId: string, action: GameAction): void;
     getState(): unknown;
     destroy(): void;
@@ -24,4 +29,5 @@ export const gameRegistry: Record<string, new () => GameEngine> = {
     'snusregn': SnusregnEngine,
     'snus-arena': SnusArenaEngine,
     'snus-farm': SnusFarmEngine,
+    'snusfactory': SnusFactoryEngine,
 };

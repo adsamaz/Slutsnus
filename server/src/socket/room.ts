@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { ClientToServerEvents, ServerToClientEvents, RoomInfo, RoomPlayer, GameResult, PlayerInfo } from '@slutsnus/shared';
+import { ClientToServerEvents, ServerToClientEvents, RoomInfo, RoomPlayer, GameResult, PlayerInfo, FactoryDifficulty } from '@slutsnus/shared';
 import { prisma } from '../db/client';
 import { gameRegistry, TurnBasedGameEngine } from '../games/registry';
 import { activeGames, onlineUsers } from './index';
@@ -111,7 +111,7 @@ export function roomHandlers(
         } catch { /* intentionally ignored */ }
     });
 
-    socket.on('room:start', async ({ roomCode }) => {
+    socket.on('room:start', async ({ roomCode, factoryDifficulty }) => {
         try {
             const room = await prisma.room.findUnique({
                 where: { code: roomCode.toUpperCase() },
@@ -230,10 +230,12 @@ export function roomHandlers(
             // Clear any stale pending start for this room
             pendingGameStarts.delete(roomCode);
 
+            const difficulty: FactoryDifficulty = (room.gameType === 'snusfactory' && factoryDifficulty) ? factoryDifficulty : 'medium';
+
             pendingGameStarts.set(roomCode, {
                 readySet: new Set(),
                 startFn: () => {
-                    engine.init(room.id, players, onUpdate);
+                    engine.init(room.id, players, onUpdate, { difficulty });
                 },
             });
 

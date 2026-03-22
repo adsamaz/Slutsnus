@@ -28,7 +28,7 @@ export interface AuthResponse {
 // Rooms
 // ─────────────────────────────────────────────────
 export type RoomStatus = 'waiting' | 'playing' | 'ended';
-export type GameType = 'snusregn' | 'snus-arena' | 'snus-farm';
+export type GameType = 'snusregn' | 'snus-arena' | 'snus-farm' | 'snusfactory';
 
 export interface RoomPlayer {
     userId: string;
@@ -103,7 +103,7 @@ export interface ClientToServerEvents {
     'room:join': (data: { roomCode: string }) => void;
     'room:ready': (data: { roomCode: string }) => void;
     'room:leave': (data: { roomCode: string }) => void;
-    'room:start': (data: { roomCode: string; gameMode?: ArenaGameMode }) => void;
+    'room:start': (data: { roomCode: string; gameMode?: ArenaGameMode; factoryDifficulty?: FactoryDifficulty }) => void;
     'game:action': (data: { roomCode: string; action: GameAction }) => void;
     'game:ready': (data: { roomCode: string }) => void;
     'friends:invite': (data: { targetUserId: string; roomCode: string }) => void;
@@ -412,3 +412,92 @@ export interface FarmState {
 
 export type FarmAction =
     | { type: 'farm:move'; payload: { dx: number; dy: number } };
+
+// ─────────────────────────────────────────────────
+// Snusfactory specific
+// ─────────────────────────────────────────────────
+
+export type FactoryDifficulty = 'easy' | 'medium' | 'hard';
+
+export type SnusFlavorType = 'mint' | 'juniper' | 'licorice' | 'original';
+
+export type FactoryItemType =
+    | 'leaf'
+    | 'ripe-leaf'
+    | 'flavor-mint'
+    | 'flavor-juniper'
+    | 'flavor-licorice'
+    | 'ground-mint'
+    | 'ground-juniper'
+    | 'ground-licorice'
+    | 'ground-original'
+    | 'can-mint'
+    | 'can-juniper'
+    | 'can-licorice'
+    | 'can-original';
+
+export type StationType =
+    | 'planter-l'
+    | 'planter-r'
+    | 'patch-1'
+    | 'patch-2'
+    | 'patch-3'
+    | 'flavor-shelf-mint'
+    | 'flavor-shelf-juniper'
+    | 'flavor-shelf-licorice'
+    | 'grinder'
+    | 'packager'
+    | 'order-0'
+    | 'order-1'
+    | 'order-2'
+    | 'storage-l-1'
+    | 'storage-l-2'
+    | 'storage-r-1'
+    | 'storage-r-2';
+
+export interface FactoryStation {
+    id: StationType;
+    state: number;                      // planter: refill ticks; patch: grow ticks (-1=ripe); grinder/packager: busy ticks; order: expiry ticks (-1=empty)
+    hasItem: boolean;
+    itemFlavor?: SnusFlavorType | null; // grinder/packager output flavor, order required flavor
+    leafLoaded?: boolean;               // grinder only: leaf loaded, waiting for flavor
+    flavorLoaded?: SnusFlavorType | null; // grinder only: flavor pre-loaded, waiting for leaf
+    occupiedByPlayerId?: string | null;
+}
+
+export interface FactoryPlayer {
+    userId: string;
+    username: string;
+    x: number;
+    y: number;
+    carrying: FactoryItemType | null;
+    colorIndex: number;                 // 0–3
+    interacting: boolean;
+    speedBoostTicks: number;            // > 0 while speed-boosted from snus pouch
+}
+
+export interface FactorySnusPouch {
+    x: number;
+    y: number;
+    speed: number;
+    active: boolean;
+}
+
+export interface FactoryState {
+    status: 'playing' | 'ended';
+    tickCount: number;
+    timeRemainingTicks: number;
+    score: number;
+    targetScore: number;
+    difficulty: FactoryDifficulty;
+    players: FactoryPlayer[];
+    stations: FactoryStation[];
+    snusPouch: FactorySnusPouch | null;
+    results?: GameResult[];
+}
+
+export type FactoryAction =
+    | { type: 'factory:move';                payload: { dx: number; dy: number } }
+    | { type: 'factory:interact';            payload: { interacting: boolean } }
+    | { type: 'factory:drop' }
+    | { type: 'factory:grinder-slot-pickup'; payload: { slot: 'leaf' | 'flavor' } };

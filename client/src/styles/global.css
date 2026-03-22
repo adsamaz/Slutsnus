@@ -472,7 +472,7 @@ h5 {
     position: relative;
     z-index: 1;
     text-align: center;
-    padding: 5rem 2rem 3.5rem;
+    padding: 5rem 2rem 1.5rem;
 }
 
 .hero-eyebrow {
@@ -529,8 +529,8 @@ h5 {
 }
 
 .home-games-grid {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
 }
 
@@ -538,12 +538,12 @@ h5 {
 .home-game-card {
     position: relative;
     display: flex;
-    align-items: center;
-    gap: 2rem;
+    flex-direction: column;
+    gap: 1rem;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
-    padding: 2rem 2rem 2rem 2.5rem;
+    padding: 1.5rem;
     overflow: hidden;
     transition: border-color 200ms ease, transform 200ms ease, box-shadow 200ms ease;
     box-shadow: var(--shadow-sm);
@@ -572,8 +572,8 @@ h5 {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 96px;
-    height: 96px;
+    width: 72px;
+    height: 72px;
     background: rgba(57, 211, 83, 0.06);
     border: 1px solid rgba(57, 211, 83, 0.15);
     border-radius: 50%;
@@ -659,7 +659,7 @@ h5 {
 .room-actions {
     position: relative;
     z-index: 1;
-    margin-top: 2.5rem;
+    margin-top: 1rem;
     padding: 2rem 2.5rem;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -667,14 +667,28 @@ h5 {
     animation: fade-up 0.25s ease;
 }
 
+.room-actions-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+}
+
 .room-actions-label {
     font-size: 0.95rem;
     color: var(--color-muted);
-    margin-bottom: 1.25rem;
+    flex-shrink: 0;
+    align-self: flex-start;
 }
 
 .room-actions-label strong {
     color: var(--color-text);
+}
+
+.room-actions-header .factory-difficulty-picker {
+    margin-bottom: 0;
+    margin-left: auto;
 }
 
 .room-actions-inner {
@@ -701,9 +715,14 @@ h5 {
 }
 
 /* --- Lobby --- */
+.lobby-page {
+    padding-top: 1.5rem !important;
+    padding-bottom: 1.5rem !important;
+}
+
 .lobby-layout {
     display: flex;
-    gap: 2rem;
+    gap: 1.5rem;
     align-items: flex-start;
 }
 
@@ -720,7 +739,7 @@ h5 {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .lobby-title-row {
@@ -772,7 +791,7 @@ h5 {
 }
 
 .player-list {
-    margin-bottom: 1.75rem;
+    margin-bottom: 1.25rem;
 }
 
 .player-list h3 {
@@ -1153,11 +1172,8 @@ h5 {
         font-size: 3.5rem;
     }
 
-    .home-game-card {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-        padding: 1.5rem;
+    .home-games-grid {
+        grid-template-columns: 1fr;
     }
 
     .home-game-card-icon {
@@ -1171,6 +1187,16 @@ h5 {
 
     .room-actions {
         padding: 1.5rem;
+    }
+
+    .room-actions-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .room-actions-header .factory-difficulty-picker {
+        margin-left: 0;
     }
 
     .room-actions-inner {
@@ -1219,4 +1245,62 @@ h5 {
         min-width: unset;
         max-width: 100%;
     }
+}
+
+/* --- Factory difficulty picker --- */
+.factory-difficulty-picker {
+    margin-bottom: 0.75rem;
+}
+
+.factory-difficulty-label {
+    font-size: 0.8rem;
+    color: var(--color-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.4rem;
+}
+
+.factory-difficulty-tins {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-end;
+}
+
+.factory-tin {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--radius);
+    transition: transform var(--transition), background var(--transition);
+}
+
+.factory-tin svg {
+    width: 52px !important;
+    height: 52px !important;
+}
+
+.factory-tin:hover {
+    background: var(--color-surface-2);
+    transform: translateY(-2px);
+}
+
+.factory-tin--selected {
+    background: var(--color-surface-2);
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+}
+
+.factory-tin-label {
+    font-size: 0.7rem;
+    color: var(--color-muted);
+    font-weight: 500;
+}
+
+.factory-tin--selected .factory-tin-label {
+    color: var(--color-accent);
 }

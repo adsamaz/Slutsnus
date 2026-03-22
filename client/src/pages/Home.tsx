@@ -3,7 +3,7 @@ import { useNavigate } from '@solidjs/router';
 import { useAuth } from '../stores/auth';
 import { useRoom } from '../stores/room';
 import Button from '../components/Button';
-import { GameType } from '@slutsnus/shared';
+import { GameType, FactoryDifficulty } from '@slutsnus/shared';
 
 type Game = { id: GameType; name: string; description: string; badges: string[]; tagline: string; icon: string };
 
@@ -32,6 +32,14 @@ const GAMES: Game[] = [
         badges: ['1-2 Players', 'Casual', 'Real-time'],
         icon: '🐔',
     },
+    {
+        id: 'snusfactory',
+        name: 'Snusfactory',
+        tagline: 'Grow it. Grind it. Package it. Sell it.',
+        description: 'Co-op factory chaos. Grow tobacco, add the right flavor, package cans, and fulfill customer orders before time runs out.',
+        badges: ['1-4 Players', 'Co-op', 'Real-time'],
+        icon: '🏭',
+    },
 ];
 
 export default function Home() {
@@ -45,6 +53,7 @@ export default function Home() {
     const [creating, setCreating] = createSignal(false);
     const [startingSolo, setStartingSolo] = createSignal(false);
     const [joining, setJoining] = createSignal(false);
+    const [factoryDifficulty, setFactoryDifficulty] = createSignal<FactoryDifficulty>('medium');
 
     const handleCreate = async () => {
         const game = selectedGame();
@@ -65,7 +74,8 @@ export default function Home() {
         if (!game) return;
         setStartingSolo(true);
         try {
-            const code = await roomActions.startSolo(game.id);
+            const diff = game.id === 'snusfactory' ? factoryDifficulty() : undefined;
+            const code = await roomActions.startSolo(game.id, diff);
             navigate(`/game/${code}`);
         } catch (e: unknown) {
             console.error(e);
@@ -117,7 +127,7 @@ export default function Home() {
                         >
                             <div class="home-game-card-glow" aria-hidden="true" />
                             <div class="home-game-card-icon">
-                                <span style={{ "font-size": "72px", "line-height": "1" }}>{game.icon}</span>
+                                <span style={{ "font-size": "48px", "line-height": "1" }}>{game.icon}</span>
                             </div>
                             <div class="home-game-card-body">
                                 <p class="home-game-card-tagline">{game.tagline}</p>
@@ -138,7 +148,51 @@ export default function Home() {
             <Show when={selectedGame()}>
                 {(game) => (
                     <section class="room-actions">
+                        <div class="room-actions-header">
                         <p class="room-actions-label">Ready to play <strong>{game().name}</strong>?</p>
+                        <Show when={game().id === 'snusfactory'}>
+                            <div class="factory-difficulty-picker">
+                                <p class="factory-difficulty-label">Difficulty</p>
+                                <div class="factory-difficulty-tins">
+                                    {(['easy', 'medium', 'hard'] as FactoryDifficulty[]).map((level, i) => (
+                                        <button
+                                            class={`factory-tin${factoryDifficulty() === level ? ' factory-tin--selected' : ''}`}
+                                            onClick={() => setFactoryDifficulty(level)}
+                                            title={level.charAt(0).toUpperCase() + level.slice(1)}
+                                        >
+                                            <svg viewBox="0 0 80 80" width="80" height="80" style={{ display: 'block' }}>
+                                                <defs>
+                                                    <linearGradient id={`home-tin-grad-${level}`} x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="0%" stop-color="#2a6090" />
+                                                        <stop offset="100%" stop-color="#0f2a45" />
+                                                    </linearGradient>
+                                                    <linearGradient id={`home-lid-grad-${level}`} x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="0%" stop-color="#5090c0" />
+                                                        <stop offset="100%" stop-color="#2a6090" />
+                                                    </linearGradient>
+                                                </defs>
+                                                <ellipse cx="40" cy="68" rx="34" ry="8" fill="#1a2a3a" opacity="0.4" />
+                                                <rect x="6" y="18" width="68" height="50" rx="10" ry="10" fill={`url(#home-tin-grad-${level})`} />
+                                                <ellipse cx="40" cy="18" rx="34" ry="9" fill={`url(#home-lid-grad-${level})`} />
+                                                <ellipse cx="40" cy="18" rx="28" ry="6" fill="#3a6090" opacity="0.5" />
+                                                {[0, 1, 2].map(d => (
+                                                    <circle
+                                                        cx={28 + d * 12}
+                                                        cy="47"
+                                                        r="5"
+                                                        fill={d <= i ? '#e0eaf8' : 'none'}
+                                                        stroke="#4a80b0"
+                                                        stroke-width="1.5"
+                                                    />
+                                                ))}
+                                            </svg>
+                                            <span class="factory-tin-label">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </Show>
+                        </div>
                         <div class="room-actions-inner">
                             <Button onClick={handleStartSolo} disabled={startingSolo()}>
                                 {startingSolo() ? 'Starting...' : 'Play Solo'}
