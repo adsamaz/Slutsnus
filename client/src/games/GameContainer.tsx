@@ -57,7 +57,10 @@ export default function GameContainer(props: GameContainerProps) {
     const onState = ({ state }: { state: unknown }) => setGameState(state);
     const onError = () => navigate('/');
 
-    const onStarted = () => socket.emit('game:ready', { roomCode: props.roomCode });
+    const onStarted = () => {
+        setGameState(null);
+        socket.emit('game:ready', { roomCode: props.roomCode });
+    };
     // For snus-arena, host sends mode with room:start (emitted from LobbyPage).
     // GameContainer itself just needs to pass the mode down to the game component.
 
