@@ -77,7 +77,7 @@ export default function Leaderboard() {
                                             <td class={entry.rank <= 3 ? `rank-${entry.rank}` : ''}>{entry.rank}</td>
                                             <td>
                                                 <span class="leaderboard-player">
-                                                    <Avatar username={entry.username} avatarUrl={entry.avatarUrl} />
+                                                    <Avatar username={entry.username} avatarUrl={entry.avatarUrl} size="md" />
                                                     {entry.username}
                                                 </span>
                                             </td>

@@ -128,7 +128,7 @@ export default function Lobby() {
                                 <For each={r().players}>
                                     {(player: RoomPlayer) => (
                                         <div class="player-item">
-                                            <Avatar username={player.username} avatarUrl={player.avatarUrl} />
+                                            <Avatar username={player.username} avatarUrl={player.avatarUrl} size="md" />
                                             <span class={`status-dot ${player.ready || player.userId === r().hostId ? 'online' : 'offline'}`} />
                                             <span class="player-name">{player.username}</span>
                                             <Show when={player.userId === r().hostId}>
