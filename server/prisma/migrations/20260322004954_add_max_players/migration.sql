@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Room" ADD COLUMN     "maxPlayers" INTEGER NOT NULL DEFAULT 2;

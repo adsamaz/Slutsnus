@@ -305,7 +305,7 @@ export function SnusregnGame(props: SnusregnGameProps) {
                                         window.location.href = '/';
                                     }}
                                 >
-                                    {actionPending() === 'lobby' ? 'Loading…' : 'Back to lobby'}
+                                    {actionPending() === 'lobby' ? 'Loading…' : 'Back to start'}
                                 </button>
                             </div>
                         </div>

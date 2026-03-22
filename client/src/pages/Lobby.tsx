@@ -58,6 +58,14 @@ export default function Lobby() {
         socket.emit('room:ready', { roomCode: params.code });
     };
 
+    const arenaMode = () => {
+        const count = room()?.players.length ?? 0;
+        if (count <= 1) return 'Solo';
+        if (count === 2) return '1v1';
+        if (count === 3) return '2v1';
+        return '2v2';
+    };
+
     const handleStart = () => {
         setStarting(true);
         socket.emit('room:start', { roomCode: params.code });
@@ -84,7 +92,7 @@ export default function Lobby() {
     socket.on('room:dissolved', onDissolved);
     onCleanup(() => socket.off('room:dissolved', onDissolved));
 
-    const lobbyFull = () => (room()?.players.length ?? 0) >= 2;
+    const lobbyFull = () => (room()?.players.length ?? 0) >= (room()?.maxPlayers ?? 2);
 
     const invitableFriends = () => {
         const playerIds = new Set(room()?.players.map((p) => p.userId) ?? []);
@@ -124,7 +132,12 @@ export default function Lobby() {
                             </div>
 
                             <div class="player-list">
-                                <h3>Players ({r().players.length} / 2)</h3>
+                                <h3>
+                                    Players ({r().players.length} / {r().maxPlayers ?? 2})
+                                    <Show when={r().gameType === 'snus-arena'}>
+                                        <span class="mode-badge">{arenaMode()}</span>
+                                    </Show>
+                                </h3>
                                 <For each={r().players}>
                                     {(player: RoomPlayer) => (
                                         <div class="player-item">

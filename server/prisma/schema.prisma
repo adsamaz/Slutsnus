@@ -23,12 +23,13 @@ model User {
 }
 
 model Room {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  gameType  String
-  hostId    String
-  status    String   @default("waiting")
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  code       String   @unique
+  gameType   String
+  hostId     String
+  status     String   @default("waiting")
+  maxPlayers Int      @default(2)
+  createdAt  DateTime @default(now())
 
   host     User         @relation("HostedRooms", fields: [hostId], references: [id])
   players  RoomPlayer[]

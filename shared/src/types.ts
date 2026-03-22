@@ -44,6 +44,7 @@ export interface RoomInfo {
     hostId: string;
     status: RoomStatus;
     players: RoomPlayer[];
+    maxPlayers: number;
 }
 
 // ─────────────────────────────────────────────────
@@ -289,7 +290,7 @@ export type SnusregnAction =
 export type ArenaClass = 'warrior' | 'archer' | 'mage';
 export type ArenaTeam = 'alpha' | 'beta';
 export type ArenaAbilitySlot = 'Q' | 'W' | 'E';
-export type ArenaGameMode = '1v1' | 'solo' | '2v2';
+export type ArenaGameMode = '1v1' | 'solo' | '2v2' | '2v1';
 
 export interface ArenaAbilityState {
     slot: ArenaAbilitySlot;

@@ -176,7 +176,7 @@ export function SnusFarmGame(props: SnusFarmProps) {
                         onClick={() => { window.location.href = '/'; }}
                         style={{ padding: '0.75rem 2rem', background: '#238636', color: '#e6edf3', border: 'none', 'border-radius': '8px', cursor: 'pointer', 'font-size': '1.1rem', 'font-weight': '700', 'font-family': 'monospace' }}
                     >
-                        Back to lobby
+                        Back to start
                     </button>
                 </div>
             </Show>

@@ -32,6 +32,7 @@ async function buildRoomInfo(roomId: string): Promise<RoomInfo | null> {
         hostId: room.hostId,
         status: room.status as RoomInfo['status'],
         players,
+        maxPlayers: room.maxPlayers,
     };
 }
 
@@ -41,6 +42,9 @@ router.post('/create', async (req: AuthenticatedRequest, res: Response) => {
         res.status(400).json({ error: 'gameType is required' });
         return;
     }
+
+    // snus-arena supports up to 4 players (1v1, 2v1, 2v2 all inferred from count)
+    const maxPlayers = gameType === 'snus-arena' ? 4 : 2;
 
     try {
         let code = generateCode();
@@ -58,6 +62,7 @@ router.post('/create', async (req: AuthenticatedRequest, res: Response) => {
                 code,
                 gameType,
                 hostId: req.user!.userId,
+                maxPlayers,
                 players: { create: { userId: req.user!.userId, ready: false } },
             },
         });
@@ -90,6 +95,11 @@ router.post('/join', async (req: AuthenticatedRequest, res: Response) => {
             where: { roomId_userId: { roomId: room.id, userId: req.user!.userId } },
         });
         if (!existing) {
+            const playerCount = await prisma.roomPlayer.count({ where: { roomId: room.id } });
+            if (playerCount >= room.maxPlayers) {
+                res.status(400).json({ error: 'Room is full' });
+                return;
+            }
             await prisma.roomPlayer.create({
                 data: { roomId: room.id, userId: req.user!.userId, ready: false },
             });

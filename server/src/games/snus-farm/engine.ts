@@ -119,6 +119,58 @@ export class SnusFarmEngine implements GameEngine {
 
         this.tickCount++;
 
+        // 0. Bot AI: steer bots toward nearest free chicken
+        for (const player of this.players.values()) {
+            if (!player.info.userId.startsWith('bot-')) continue;
+            const pen = player.side === 'left' ? PEN_LEFT : PEN_RIGHT;
+
+            // Find the nearest free chicken
+            let bestChicken: ChickenInternal | null = null;
+            let bestDist = Infinity;
+            for (const chicken of this.chickens) {
+                if (chicken.inPen) continue;
+                const d = Math.hypot(chicken.x - player.x, chicken.y - player.y);
+                if (d < bestDist) { bestDist = d; bestChicken = chicken; }
+            }
+
+            let targetX: number;
+            let targetY: number;
+
+            if (bestChicken === null) {
+                // No chickens left, idle
+                player.inputDx = 0;
+                player.inputDy = 0;
+                continue;
+            }
+
+            if (bestDist > FARMER_PUSH_RADIUS * 1.5) {
+                // Far from chicken — move directly to it
+                targetX = bestChicken.x;
+                targetY = bestChicken.y;
+            } else {
+                // Close enough to herd — position behind chicken relative to pen
+                // "Behind" = on the opposite side of the chicken from the pen
+                const toPenDx = pen.x - bestChicken.x;
+                const toPenDy = pen.y - bestChicken.y;
+                const toPenDist = Math.hypot(toPenDx, toPenDy);
+                if (toPenDist > 0) {
+                    // Target point behind the chicken (away from pen), close enough to push
+                    const behindDist = FARMER_PUSH_RADIUS * 0.6;
+                    targetX = bestChicken.x - (toPenDx / toPenDist) * behindDist;
+                    targetY = bestChicken.y - (toPenDy / toPenDist) * behindDist;
+                } else {
+                    targetX = bestChicken.x;
+                    targetY = bestChicken.y;
+                }
+            }
+
+            const dx = targetX - player.x;
+            const dy = targetY - player.y;
+            const dist = Math.hypot(dx, dy);
+            player.inputDx = dist > 2 ? dx / dist : 0;
+            player.inputDy = dist > 2 ? dy / dist : 0;
+        }
+
         // 1. Move players
         for (const player of this.players.values()) {
             const { inputDx, inputDy } = player;

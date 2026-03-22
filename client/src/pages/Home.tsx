@@ -21,7 +21,7 @@ const GAMES: Game[] = [
         name: 'Snus Arena',
         tagline: 'Choose your class. Fight for the arena.',
         description: 'Pick a class with unique abilities and battle it out in the arena. Use powerups, dodge projectiles, and outlast your opponent.',
-        badges: ['1-2 Players', 'Action', 'Real-time'],
+        badges: ['1-4 Players', 'Action', 'Real-time'],
         icon: '⚔️',
     },
     {
@@ -29,7 +29,7 @@ const GAMES: Game[] = [
         name: 'Snus Farm',
         tagline: 'Herd your chickens. Outsmart your rival farmer.',
         description: 'Chase chickens across a shared farm and push them into your pen. First farmer to 5 chickens wins.',
-        badges: ['2 Players', 'Casual', 'Real-time'],
+        badges: ['1-2 Players', 'Casual', 'Real-time'],
         icon: '🐔',
     },
 ];

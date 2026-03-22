@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { ClientToServerEvents, ServerToClientEvents, RoomInfo, RoomPlayer, GameResult, PlayerInfo, ArenaGameMode } from '@slutsnus/shared';
+import { ClientToServerEvents, ServerToClientEvents, RoomInfo, RoomPlayer, GameResult, PlayerInfo } from '@slutsnus/shared';
 import { prisma } from '../db/client';
 import { gameRegistry, TurnBasedGameEngine } from '../games/registry';
 import { activeGames, onlineUsers } from './index';
@@ -30,6 +30,7 @@ async function buildRoomInfo(roomId: string): Promise<RoomInfo | null> {
         hostId: room.hostId,
         status: room.status as RoomInfo['status'],
         players,
+        maxPlayers: room.maxPlayers,
     };
 }
 
@@ -110,7 +111,7 @@ export function roomHandlers(
         } catch { /* intentionally ignored */ }
     });
 
-    socket.on('room:start', async ({ roomCode, gameMode }) => {
+    socket.on('room:start', async ({ roomCode }) => {
         try {
             const room = await prisma.room.findUnique({
                 where: { code: roomCode.toUpperCase() },
@@ -125,8 +126,7 @@ export function roomHandlers(
                 return;
             }
             const isSolo = room.players.length === 1 && room.players[0].userId === room.hostId;
-            const willHaveBots = room.gameType === 'snus-arena' && (gameMode === 'solo' || gameMode === '2v2');
-            if (!isSolo && !willHaveBots && room.players.length < 2) {
+            if (!isSolo && room.players.length < 2) {
                 socket.emit('room:error', { message: 'Need at least 2 players to start' });
                 return;
             }
@@ -148,16 +148,14 @@ export function roomHandlers(
                 username: rp.user.username,
             }));
 
-            // For snus-arena, inject bot players according to the requested mode
+            // For snus-arena, infer mode from human player count:
+            //   1 → solo (add 1 bot)
+            //   2 → 1v1 (no bots)
+            //   3 → 2v1 (no bots, engine assigns [0,1]=alpha [2]=beta)
+            //   4 → 2v2 (no bots, engine assigns [0,1]=alpha [2,3]=beta)
             const players: PlayerInfo[] = [...humanPlayers];
-            if (room.gameType === 'snus-arena') {
-                const mode: ArenaGameMode = gameMode ?? (humanPlayers.length === 1 ? 'solo' : '1v1');
-                if (mode === 'solo') {
-                    players.push({ userId: 'bot-0', username: 'Bot' });
-                } else if (mode === '2v2') {
-                    players.push({ userId: 'bot-0', username: 'Bot 1' });
-                    players.push({ userId: 'bot-1', username: 'Bot 2' });
-                }
+            if (room.gameType === 'snus-arena' && humanPlayers.length === 1) {
+                players.push({ userId: 'bot-0', username: 'Bot' });
             }
             // For snus-farm solo, inject a bot so the right pen has an owner
             if (room.gameType === 'snus-farm' && humanPlayers.length === 1) {
