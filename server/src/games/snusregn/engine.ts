@@ -223,17 +223,17 @@ export class SnusregnEngine implements GameEngine {
             }
         }
 
-        // 2. Effective fall speed — power ramp quantized to 150-tick steps so speed only
-        //    increases at intervals rather than every tick
-        const speedStep = Math.floor(this.tickCount / 50);
-        const ramp = Math.pow(speedStep * 50, FALL_SPEED_EXPONENTIAL) * FALL_SPEED_INCREMENT;
+        // 2. Effective fall speed — smooth power ramp so all items have consistent speed.
+        const ramp = Math.pow(this.tickCount, FALL_SPEED_EXPONENTIAL) * FALL_SPEED_INCREMENT;
         const baseSpeed = BASE_FALL_SPEED + ramp;
         // Effect multipliers applied at move time so they affect all airborne items immediately
         const fastBonus = hasEffect(player, 'fastRain') ? BASE_FALL_SPEED * 0.5 : 0;
         const effectMult = hasEffect(player, 'slowRain') ? 0.7 : 1.0;
 
         // 3. Spawn interval — grows with base speed so item density stays constant
-        const spawnInterval = Math.round(BASE_SPAWN_INTERVAL / (baseSpeed / BASE_FALL_SPEED));
+        //    Also account for slowRain/fastRain multipliers so items don't pile up when falling slower
+        const effectiveSpeed = (baseSpeed + fastBonus) * effectMult;
+        const spawnInterval = Math.round(BASE_SPAWN_INTERVAL / (effectiveSpeed / BASE_FALL_SPEED));
 
         // 4. Move items (capture prevY before advancing for swept collision)
         // spawnSpeed is the difficulty baseline frozen at spawn; effects are applied here so
