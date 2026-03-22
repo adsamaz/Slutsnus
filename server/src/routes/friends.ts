@@ -42,6 +42,7 @@ async function buildFriendList(userId: string): Promise<FriendInfo[]> {
             return {
                 userId: friendId,
                 username: friend.username,
+                avatarUrl: friend.avatarUrl ?? null,
                 friendshipStatus: f.status as FriendshipStatus,
                 direction: isRequester ? 'outgoing' : ('incoming' as FriendInfo['direction']),
                 online: (onlineUsers.get(friendId)?.size ?? 0) > 0,
@@ -74,9 +75,9 @@ router.get('/search', async (req: AuthenticatedRequest, res: Response) => {
                 NOT: { id: req.user!.userId },
             },
             take: 20,
-            select: { id: true, username: true },
+            select: { id: true, username: true, avatarUrl: true },
         });
-        const result: UserPublic[] = users.map((u: { id: string; username: string }) => ({ id: u.id, username: u.username }));
+        const result: UserPublic[] = users.map((u: { id: string; username: string; avatarUrl: string | null }) => ({ id: u.id, username: u.username, avatarUrl: u.avatarUrl }));
         res.json(result);
     } catch {
         res.status(500).json({ error: 'Internal server error' });

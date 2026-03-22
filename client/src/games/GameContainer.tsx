@@ -1,4 +1,4 @@
-import { createSignal, onCleanup, Show } from 'solid-js';
+import { createSignal, onCleanup, onMount, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { useSocket } from '../stores/socket';
 import { useRoom } from '../stores/room';
@@ -61,17 +61,21 @@ export default function GameContainer(props: GameContainerProps) {
     // For snus-arena, host sends mode with room:start (emitted from LobbyPage).
     // GameContainer itself just needs to pass the mode down to the game component.
 
-    socket.on('game:state', onState);
-    socket.on('room:error', onError);
-    socket.on('room:started', onStarted);
-    // Ensure socket is in the room (handles reconnects), then signal ready to start
-    socket.emit('room:join', { roomCode: props.roomCode });
-    socket.emit('game:ready', { roomCode: props.roomCode });
+    let fallbackTimer: ReturnType<typeof setTimeout>;
 
-    // If no game:state arrives within 3s, the game isn't running — go home
-    const fallbackTimer = setTimeout(() => {
-        if (!gameState()) navigate('/');
-    }, 3000);
+    onMount(() => {
+        socket.on('game:state', onState);
+        socket.on('room:error', onError);
+        socket.on('room:started', onStarted);
+        // Ensure socket is in the room (handles reconnects), then signal ready to start
+        socket.emit('room:join', { roomCode: props.roomCode });
+        socket.emit('game:ready', { roomCode: props.roomCode });
+
+        // If no game:state arrives within 3s, the game isn't running — go home
+        fallbackTimer = setTimeout(() => {
+            if (!gameState()) navigate('/');
+        }, 3000);
+    });
 
     onCleanup(() => {
         socket.off('game:state', onState);

@@ -76,6 +76,7 @@ export type FriendshipStatus = 'pending' | 'accepted' | 'blocked';
 export interface FriendInfo {
     userId: string;
     username: string;
+    avatarUrl?: string | null;
     friendshipStatus: FriendshipStatus;
     direction: 'incoming' | 'outgoing' | 'mutual';
     online: boolean;

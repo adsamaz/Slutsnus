@@ -1,6 +1,7 @@
 import { createSignal, For, Show } from 'solid-js';
 import { useFriends } from '../stores/friends';
 import Button from '../components/Button';
+import Avatar from '../components/Avatar';
 import type { UserPublic } from '@slutsnus/shared';
 
 export default function Friends() {
@@ -56,6 +57,7 @@ export default function Friends() {
                                 const existing = () => friendsState.friends.find((f) => f.userId === user.id);
                                 return (
                                     <div class="friend-item">
+                                        <Avatar username={user.username} avatarUrl={user.avatarUrl} />
                                         <span>{user.username}</span>
                                         <Show
                                             when={!existing()}
@@ -84,6 +86,7 @@ export default function Friends() {
                     <For each={pending()}>
                         {(f) => (
                             <div class="friend-item">
+                                <Avatar username={f.username} avatarUrl={f.avatarUrl} />
                                 <span>{f.username}</span>
                                 <div style={{ 'margin-left': 'auto', display: 'flex', gap: '6px' }}>
                                     <Button
@@ -114,6 +117,7 @@ export default function Friends() {
                     <For each={outgoing()}>
                         {(f) => (
                             <div class="friend-item">
+                                <Avatar username={f.username} avatarUrl={f.avatarUrl} />
                                 <span>{f.username}</span>
                                 <span class="muted" style={{ 'margin-left': 'auto', 'font-size': '0.8rem' }}>Pending...</span>
                             </div>
@@ -131,6 +135,7 @@ export default function Friends() {
                 <For each={accepted()}>
                     {(f) => (
                         <div class="friend-item">
+                            <Avatar username={f.username} avatarUrl={f.avatarUrl} />
                             <span class={`status-dot ${f.online ? 'online' : 'offline'}`} />
                             <span>{f.username}</span>
                             <Show when={f.online}>
