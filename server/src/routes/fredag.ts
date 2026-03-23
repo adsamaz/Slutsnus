@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { prisma } from '../db/client';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
-import type { FredagPostType } from '../../../shared/src/types';
+import type { FredagPostType } from '@slutsnus/shared';
 
 const router = Router();
 
@@ -216,7 +216,7 @@ router.post(
 
 // POST /api/fredag/:postId/react — toggle an emoji reaction
 router.post('/:postId/react', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
-    const { postId } = req.params;
+    const postId = req.params.postId as string;
     const userId = req.user!.userId;
     const emoji = req.body.emoji as string;
 
