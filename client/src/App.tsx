@@ -17,6 +17,7 @@ const GamePage = lazy(() => import('./pages/GamePage'));
 const Friends = lazy(() => import('./pages/Friends'));
 const Leaderboard = lazy(() => import('./pages/Leaderboard'));
 const Profile = lazy(() => import('./pages/Profile'));
+const Fredag = lazy(() => import('./pages/Fredag'));
 
 function Layout(props: ParentProps) {
     return (
@@ -76,6 +77,14 @@ export default function App() {
                                 component={() => (
                                     <ProtectedRoute>
                                         <Profile />
+                                    </ProtectedRoute>
+                                )}
+                            />
+                            <Route
+                                path="/fredag"
+                                component={() => (
+                                    <ProtectedRoute>
+                                        <Fredag />
                                     </ProtectedRoute>
                                 )}
                             />

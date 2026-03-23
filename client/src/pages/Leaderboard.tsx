@@ -2,10 +2,11 @@ import { createResource, createSignal, For, Show } from 'solid-js';
 import { GameType, LeaderboardEntry } from '@slutsnus/shared';
 import Avatar from '../components/Avatar';
 
-const GAMES: { id: GameType; name: string; timeBased: boolean }[] = [
+const GAMES: { id: GameType; name: string; timeBased: boolean; hasDifficulty?: boolean }[] = [
     { id: 'snusregn', name: 'Snusrain', timeBased: false },
     { id: 'snus-farm', name: 'Snus Farm', timeBased: true },
     { id: 'snus-arena', name: 'Snus Arena', timeBased: true },
+    { id: 'snusfactory', name: 'Snus Factory', timeBased: true, hasDifficulty: true },
 ];
 
 function formatTime(ms: number): string {
@@ -66,29 +67,48 @@ export default function Leaderboard() {
                                 <tr>
                                     <th>#</th>
                                     <th>Player</th>
+                                    <Show when={currentGame().hasDifficulty}>
+                                        <th>Difficulty</th>
+                                    </Show>
                                     <th>{currentGame().timeBased ? 'Time' : 'Score'}</th>
                                     <th>Date</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <For each={entries()}>
-                                    {(entry) => (
-                                        <tr>
-                                            <td class={entry.rank <= 3 ? `rank-${entry.rank}` : ''}>{entry.rank}</td>
-                                            <td>
-                                                <span class="leaderboard-player">
-                                                    <Avatar username={entry.username} avatarUrl={entry.avatarUrl} size="md" />
-                                                    {entry.username}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                {currentGame().timeBased
-                                                    ? (entry.timeTakenMs != null ? formatTime(entry.timeTakenMs) : '—')
-                                                    : entry.score}
-                                            </td>
-                                            <td>{new Date(entry.recordedAt).toLocaleDateString()}</td>
-                                        </tr>
-                                    )}
+                                    {(entry, i) => {
+                                        const prevDiff = () => i() > 0 ? entries()![i() - 1].difficulty : null;
+                                        const isNewGroup = () => currentGame().hasDifficulty && entry.difficulty !== prevDiff();
+                                        return (
+                                            <>
+                                                <Show when={isNewGroup()}>
+                                                    <tr>
+                                                        <td colspan="4" style={{ 'padding-top': '12px', 'font-weight': '700', 'text-transform': 'capitalize', color: '#888', 'font-size': '12px' }}>
+                                                            {entry.difficulty}
+                                                        </td>
+                                                    </tr>
+                                                </Show>
+                                                <tr>
+                                                    <td class={entry.rank <= 3 ? `rank-${entry.rank}` : ''}>{entry.rank}</td>
+                                                    <td>
+                                                        <span class="leaderboard-player">
+                                                            <Avatar username={entry.username} avatarUrl={entry.avatarUrl} size="md" />
+                                                            {entry.username}
+                                                        </span>
+                                                    </td>
+                                                    <Show when={currentGame().hasDifficulty}>
+                                                        <td style={{ 'text-transform': 'capitalize' }}>{entry.difficulty ?? '—'}</td>
+                                                    </Show>
+                                                    <td>
+                                                        {currentGame().timeBased
+                                                            ? (entry.timeTakenMs != null ? formatTime(entry.timeTakenMs) : '—')
+                                                            : entry.score}
+                                                    </td>
+                                                    <td>{new Date(entry.recordedAt).toLocaleDateString()}</td>
+                                                </tr>
+                                            </>
+                                        );
+                                    }}
                                 </For>
                             </tbody>
                         </table>

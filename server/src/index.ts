@@ -10,6 +10,7 @@ import roomsRouter from './routes/rooms';
 import friendsRouter from './routes/friends';
 import leaderboardRouter from './routes/leaderboard';
 import profileRouter from './routes/profile';
+import fredagRouter from './routes/fredag';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -28,6 +29,7 @@ app.use('/api/rooms', roomsRouter);
 app.use('/api/friends', friendsRouter);
 app.use('/api/leaderboard', leaderboardRouter);
 app.use('/api/profile', profileRouter);
+app.use('/api/fredag', fredagRouter);
 
 const uploadsDir = path.join(__dirname, '../../uploads');
 app.use('/uploads', express.static(uploadsDir));

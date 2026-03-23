@@ -22,6 +22,7 @@ export default function Navbar() {
                 <Show when={auth.user}>
                     <A href="/friends" class="nav-link">Friends</A>
                     <A href="/leaderboard" class="nav-link">Leaderboard</A>
+                    <A href="/fredag" class="nav-link">Fredag</A>
                 </Show>
             </div>
             <div class="navbar-auth">

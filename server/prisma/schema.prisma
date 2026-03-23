@@ -20,6 +20,8 @@ model User {
   receivedFriendships Friendship[]        @relation("ReceivedFriendships")
   sessionPlayers      GameSessionPlayer[]
   winLossRecords      WinLossRecord[]
+  fredagPosts         FredagPost[]
+  fredagReactions     FredagReaction[]
 }
 
 model Room {
@@ -77,6 +79,7 @@ model LeaderboardEntry {
   userId      String
   score       Int
   timeTakenMs Int?
+  difficulty  String?
   recordedAt  DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
@@ -96,6 +99,31 @@ model Friendship {
   addressee User @relation("ReceivedFriendships", fields: [addresseeId], references: [id])
 
   @@unique([requesterId, addresseeId])
+}
+
+model FredagPost {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // 'bild' | 'lat' | 'ol'
+  fileUrl   String
+  caption   String?
+  createdAt DateTime @default(now())
+
+  user      User              @relation(fields: [userId], references: [id])
+  reactions FredagReaction[]
+}
+
+model FredagReaction {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  post      FredagPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id])
+
+  @@unique([postId, userId])
 }
 
 // Win/loss record per player per game type — upserted on game end (CONTEXT.md locked decision)

@@ -211,6 +211,7 @@ export function roomHandlers(
                                     userId: result.userId,
                                     score: result.score,
                                     timeTakenMs: result.timeTakenMs ?? null,
+                                    difficulty: result.difficulty ?? null,
                                 },
                             });
                         }

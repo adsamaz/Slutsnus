@@ -66,6 +66,7 @@ export interface GameResult {
     score: number;
     rank: number;
     timeTakenMs?: number;
+    difficulty?: string;
 }
 
 // ─────────────────────────────────────────────────
@@ -93,6 +94,7 @@ export interface LeaderboardEntry {
     avatarUrl?: string | null;
     score: number;
     timeTakenMs?: number;
+    difficulty?: string | null;
     recordedAt: string;
 }
 
@@ -125,6 +127,30 @@ export interface ServerToClientEvents {
         gameType: GameType;
     }) => void;
     'friends:update': () => void;
+}
+
+// ─────────────────────────────────────────────────
+// Fredag
+// ─────────────────────────────────────────────────
+
+export type FredagPostType = 'bild' | 'lat' | 'ol';
+
+export interface FredagReactionSummary {
+    emoji: string;
+    count: number;
+    reactedByMe: boolean;
+}
+
+export interface FredagPostData {
+    id: string;
+    type: FredagPostType;
+    fileUrl: string;
+    caption?: string | null;
+    createdAt: string;
+    userId: string;
+    username: string;
+    avatarUrl?: string | null;
+    reactions: FredagReactionSummary[];
 }
 
 // ─────────────────────────────────────────────────

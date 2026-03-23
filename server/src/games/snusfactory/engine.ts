@@ -518,6 +518,7 @@ export class SnusFactoryEngine implements GameEngine {
             score: this.score,
             rank,
             timeTakenMs,
+            difficulty: this.difficulty,
         }));
 
         this.onStateUpdate?.(this.buildState());

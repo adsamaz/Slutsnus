@@ -1304,3 +1304,227 @@ h5 {
 .factory-tin--selected .factory-tin-label {
     color: var(--color-accent);
 }
+
+/* --- Fredag page --- */
+.fredag-page {
+    max-width: 640px;
+}
+
+.fredag-upload-card {
+    margin-bottom: 1.5rem;
+}
+
+.fredag-upload-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.75rem;
+}
+
+.fredag-dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 120px;
+    border: 2px dashed var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-2);
+    cursor: pointer;
+    transition: border-color var(--transition), background var(--transition);
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    position: relative;
+}
+
+.fredag-dropzone:hover,
+.fredag-dropzone--over {
+    border-color: var(--color-accent);
+    background: var(--color-accent-glow);
+}
+
+.fredag-dropzone--has-file {
+    min-height: unset;
+    border-style: solid;
+    border-color: var(--color-border);
+}
+
+.fredag-dropzone-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--color-muted);
+    font-size: 0.88rem;
+    pointer-events: none;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.fredag-dropzone-icon {
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.fredag-dropzone-replace {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.55);
+    color: var(--color-muted);
+    font-size: 0.75rem;
+    text-align: center;
+    padding: 4px;
+    opacity: 0;
+    transition: opacity var(--transition);
+}
+
+.fredag-dropzone:hover .fredag-dropzone-replace,
+.fredag-dropzone--over .fredag-dropzone-replace {
+    opacity: 1;
+}
+
+.fredag-upload-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.fredag-caption-input {
+    flex: 1;
+    min-width: 140px;
+}
+
+.fredag-preview {
+    width: 100%;
+    max-height: 280px;
+    object-fit: cover;
+    display: block;
+    border-radius: calc(var(--radius-lg) - 2px);
+}
+
+.fredag-posts {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.fredag-empty {
+    text-align: center;
+    padding: 3rem 1.75rem;
+    font-size: 2rem;
+}
+
+.fredag-empty p:first-child {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+}
+
+.fredag-post {
+    padding: 1.25rem;
+}
+
+.fredag-post-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0.75rem;
+}
+
+.fredag-post-username {
+    font-weight: 600;
+    font-size: 0.9rem;
+    flex: 1;
+}
+
+.fredag-post-date {
+    font-size: 0.78rem;
+}
+
+.fredag-post-image {
+    width: 100%;
+    border-radius: var(--radius);
+    display: block;
+    border: 1px solid var(--color-border);
+}
+
+.fredag-spotify-embed {
+    width: 100%;
+    border: none;
+    border-radius: 12px;
+    display: block;
+}
+
+.fredag-post-caption {
+    margin-top: 0.6rem;
+    font-size: 0.9rem;
+    color: var(--color-text);
+    line-height: 1.5;
+}
+
+.fredag-reactions {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.fredag-reaction-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    min-height: 28px;
+}
+
+.fredag-reaction-pill {
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background var(--transition), border-color var(--transition);
+}
+
+.fredag-reaction-pill:hover {
+    background: var(--color-secondary-hover);
+    border-color: var(--color-accent);
+}
+
+.fredag-reaction-pill--mine {
+    background: var(--color-accent-glow);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+
+.fredag-emoji-picker {
+    display: flex;
+    gap: 4px;
+}
+
+.fredag-emoji-btn {
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    font-size: 1.1rem;
+    padding: 3px 6px;
+    cursor: pointer;
+    transition: background var(--transition), border-color var(--transition), transform var(--transition);
+    line-height: 1;
+}
+
+.fredag-emoji-btn:hover {
+    background: var(--color-surface-2);
+    border-color: var(--color-border);
+    transform: scale(1.15);
+}
+
+.fredag-emoji-btn--active {
+    background: var(--color-accent-glow);
+    border-color: var(--color-accent);
+}
