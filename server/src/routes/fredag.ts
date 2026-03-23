@@ -89,15 +89,16 @@ router.get('/', authMiddleware, async (req: AuthenticatedRequest, res: Response)
         take: 100,
         include: {
             user: { select: { username: true, avatarUrl: true } },
-            reactions: true,
+            reactions: { include: { user: { select: { username: true } } } },
         },
     });
 
     const result = posts.map(post => {
-        const emojiMap = new Map<string, { count: number; reactedByMe: boolean }>();
+        const emojiMap = new Map<string, { count: number; reactedByMe: boolean; users: string[] }>();
         for (const r of post.reactions) {
-            const entry = emojiMap.get(r.emoji) ?? { count: 0, reactedByMe: false };
+            const entry = emojiMap.get(r.emoji) ?? { count: 0, reactedByMe: false, users: [] };
             entry.count += 1;
+            entry.users.push(r.user.username);
             if (r.userId === userId) entry.reactedByMe = true;
             emojiMap.set(r.emoji, entry);
         }
@@ -105,6 +106,7 @@ router.get('/', authMiddleware, async (req: AuthenticatedRequest, res: Response)
             emoji,
             count: data.count,
             reactedByMe: data.reactedByMe,
+            users: data.users,
         }));
 
         return {
@@ -247,11 +249,15 @@ router.post('/:postId/react', authMiddleware, async (req: AuthenticatedRequest, 
         await prisma.fredagReaction.create({ data: { postId, userId, emoji } });
     }
 
-    const reactions = await prisma.fredagReaction.findMany({ where: { postId } });
-    const emojiMap = new Map<string, { count: number; reactedByMe: boolean }>();
+    const reactions = await prisma.fredagReaction.findMany({
+        where: { postId },
+        include: { user: { select: { username: true } } },
+    });
+    const emojiMap = new Map<string, { count: number; reactedByMe: boolean; users: string[] }>();
     for (const r of reactions) {
-        const entry = emojiMap.get(r.emoji) ?? { count: 0, reactedByMe: false };
+        const entry = emojiMap.get(r.emoji) ?? { count: 0, reactedByMe: false, users: [] };
         entry.count += 1;
+        entry.users.push(r.user.username);
         if (r.userId === userId) entry.reactedByMe = true;
         emojiMap.set(r.emoji, entry);
     }
@@ -259,6 +265,7 @@ router.post('/:postId/react', authMiddleware, async (req: AuthenticatedRequest, 
         emoji,
         count: data.count,
         reactedByMe: data.reactedByMe,
+        users: data.users,
     }));
 
     res.json({ reactions: summary });

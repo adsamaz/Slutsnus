@@ -139,6 +139,7 @@ export interface FredagReactionSummary {
     emoji: string;
     count: number;
     reactedByMe: boolean;
+    users: string[];
 }
 
 export interface FredagPostData {

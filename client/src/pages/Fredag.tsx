@@ -283,7 +283,7 @@ export default function Fredag() {
                                                 <button
                                                     class={`fredag-reaction-pill${r.reactedByMe ? ' fredag-reaction-pill--mine' : ''}`}
                                                     onClick={() => handleReact(post.id, r.emoji)}
-                                                    title={r.reactedByMe ? 'Remove reaction' : `React with ${r.emoji}`}
+                                                    title={r.users.join(', ')}
                                                 >
                                                     {r.emoji} {r.count}
                                                 </button>
