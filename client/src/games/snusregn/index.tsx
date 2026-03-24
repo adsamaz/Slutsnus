@@ -247,6 +247,7 @@ export function SnusregnGame(props: SnusregnGameProps) {
                     class="snusregn-canvas"
                     width={450}
                     height={900}
+                    style={{ 'aspect-ratio': `${isSolo() ? LANE_W : LANE_W * 2 + LANE_GAP} / 900` }}
                 />
                 <Show when={selfEffects().length > 0}>
                     <div class="snusregn-effect-bars">

@@ -1,4 +1,4 @@
-import { createSignal, Show } from 'solid-js';
+import { createSignal, onCleanup, onMount, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { useAuth } from '../stores/auth';
 import { useRoom } from '../stores/room';
@@ -54,6 +54,13 @@ export default function Home() {
     const [startingSolo, setStartingSolo] = createSignal(false);
     const [joining, setJoining] = createSignal(false);
     const [factoryDifficulty, setFactoryDifficulty] = createSignal<FactoryDifficulty>('medium');
+    const mq = window.matchMedia('(max-width: 600px)');
+    const [isMobile, setIsMobile] = createSignal(mq.matches);
+    onMount(() => {
+        const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+        mq.addEventListener('change', handler);
+        onCleanup(() => mq.removeEventListener('change', handler));
+    });
 
     const handleCreate = async () => {
         const game = selectedGame();
@@ -106,6 +113,110 @@ export default function Home() {
         setJoinCode('');
     };
 
+    const selectedIdx = () => GAMES.findIndex(g => g.id === selectedGame()?.id);
+
+    const renderCard = (game: Game) => (
+        <div
+            class={`home-game-card${selectedGame()?.id === game.id ? ' home-game-card--selected' : ''}`}
+            onClick={() => auth.user && selectGame(game)}
+            style={{ cursor: auth.user ? 'pointer' : 'default' }}
+        >
+            <div class="home-game-card-glow" aria-hidden="true" />
+            <div class="home-game-card-icon">
+                <span style={{ "font-size": "48px", "line-height": "1" }}>{game.icon}</span>
+            </div>
+            <div class="home-game-card-body">
+                <p class="home-game-card-tagline">{game.tagline}</p>
+                <h2 class="home-game-card-title">{game.name}</h2>
+                <p class="home-game-card-desc">{game.description}</p>
+                <div class="home-game-card-badges">
+                    {game.badges.map(b => <span class="badge">{b}</span>)}
+                </div>
+            </div>
+            <div class="home-game-card-cta">
+                {selectedGame()?.id === game.id ? 'Selected ✓' : auth.user ? 'Select →' : <><a href="/login">Log in</a> to play</>}
+            </div>
+        </div>
+    );
+
+    const roomActionsPanel = () => {
+        const game = selectedGame();
+        if (!game) return null;
+        return (
+            <section class="room-actions">
+                <div class="room-actions-header">
+                    <p class="room-actions-label">Ready to play <strong>{game.name}</strong>?</p>
+                    <Show when={game.id === 'snusfactory'}>
+                        <div class="factory-difficulty-picker">
+                            <p class="factory-difficulty-label">Difficulty</p>
+                            <div class="factory-difficulty-tins">
+                                {(['easy', 'medium', 'hard'] as FactoryDifficulty[]).map((level, i) => (
+                                    <button
+                                        class={`factory-tin${factoryDifficulty() === level ? ' factory-tin--selected' : ''}`}
+                                        onClick={() => setFactoryDifficulty(level)}
+                                        title={level.charAt(0).toUpperCase() + level.slice(1)}
+                                    >
+                                        <svg viewBox="0 0 80 56" width="80" height="56" style={{ display: 'block' }}>
+                                            <defs>
+                                                <linearGradient id={`home-tin-grad-${level}`} x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stop-color="#2a6090" />
+                                                    <stop offset="100%" stop-color="#0f2a45" />
+                                                </linearGradient>
+                                                <linearGradient id={`home-lid-grad-${level}`} x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stop-color="#5090c0" />
+                                                    <stop offset="100%" stop-color="#2a6090" />
+                                                </linearGradient>
+                                            </defs>
+                                            <ellipse cx="40" cy="51" rx="32" ry="4" fill="#1a2a3a" opacity="0.4" />
+                                            <rect x="6" y="14" width="68" height="28" rx="0" ry="0" fill={`url(#home-tin-grad-${level})`} />
+                                            <ellipse cx="40" cy="42" rx="34" ry="8" fill="#0f2a45" />
+                                            <ellipse cx="40" cy="14" rx="34" ry="9" fill={`url(#home-lid-grad-${level})`} />
+                                            <ellipse cx="40" cy="14" rx="28" ry="6" fill="#3a6090" opacity="0.5" />
+                                            {[0, 1, 2].map(d => (
+                                                <circle
+                                                    cx={28 + d * 12}
+                                                    cy="28"
+                                                    r="5"
+                                                    fill={d <= i ? '#e0eaf8' : 'none'}
+                                                    stroke="#4a80b0"
+                                                    stroke-width="1.5"
+                                                />
+                                            ))}
+                                        </svg>
+                                        <span class="factory-tin-label">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </Show>
+                </div>
+                <div class="room-actions-inner">
+                    <Button onClick={handleStartSolo} disabled={startingSolo()}>
+                        {startingSolo() ? 'Starting...' : 'Play Solo'}
+                    </Button>
+                    <Button onClick={handleCreate} disabled={creating()} variant="secondary">
+                        {creating() ? 'Creating...' : 'Create Room'}
+                    </Button>
+                    <span class="room-actions-divider">or join one</span>
+                    <form onSubmit={handleJoin} class="join-form">
+                        <input
+                            class="input"
+                            placeholder="Room code"
+                            value={joinCode()}
+                            onInput={(e) => setJoinCode(e.currentTarget.value.toUpperCase())}
+                            maxLength={6}
+                            style={{ 'text-transform': 'uppercase' }}
+                        />
+                        <Button type="submit" variant="secondary" disabled={joining()}>{joining() ? 'Joining...' : 'Join'}</Button>
+                    </form>
+                </div>
+                <Show when={joinError()}>
+                    <p class="error-text" style={{ 'margin-top': '10px' }}>{joinError()}</p>
+                </Show>
+            </section>
+        );
+    };
+
     return (
         <main class="home-page">
             <div class="home-glow" aria-hidden="true" />
@@ -119,111 +230,20 @@ export default function Home() {
             <section class="home-games-section">
                 <p class="home-section-label">Choose a game</p>
                 <div class="home-games-grid">
-                    {GAMES.map(game => (
-                        <div
-                            class={`home-game-card${selectedGame()?.id === game.id ? ' home-game-card--selected' : ''}`}
-                            onClick={() => auth.user && selectGame(game)}
-                            style={{ cursor: auth.user ? 'pointer' : 'default' }}
-                        >
-                            <div class="home-game-card-glow" aria-hidden="true" />
-                            <div class="home-game-card-icon">
-                                <span style={{ "font-size": "48px", "line-height": "1" }}>{game.icon}</span>
-                            </div>
-                            <div class="home-game-card-body">
-                                <p class="home-game-card-tagline">{game.tagline}</p>
-                                <h2 class="home-game-card-title">{game.name}</h2>
-                                <p class="home-game-card-desc">{game.description}</p>
-                                <div class="home-game-card-badges">
-                                    {game.badges.map(b => <span class="badge">{b}</span>)}
-                                </div>
-                            </div>
-                            <div class="home-game-card-cta">
-                                {selectedGame()?.id === game.id ? 'Selected ✓' : auth.user ? 'Select →' : <><a href="/login">Log in</a> to play</>}
-                            </div>
-                        </div>
+                    {GAMES.map((game, i) => (
+                        <>
+                            {renderCard(game)}
+                            <Show when={
+                                isMobile()
+                                    ? selectedIdx() === i
+                                    : i % 2 === 1 && (selectedIdx() === i || selectedIdx() === i - 1)
+                            }>
+                                {() => roomActionsPanel()}
+                            </Show>
+                        </>
                     ))}
                 </div>
             </section>
-
-            <Show when={selectedGame()}>
-                {(game) => (
-                    <section class="room-actions">
-                        <div class="room-actions-header">
-                        <p class="room-actions-label">Ready to play <strong>{game().name}</strong>?</p>
-                        <Show when={game().id === 'snusfactory'}>
-                            <div class="factory-difficulty-picker">
-                                <p class="factory-difficulty-label">Difficulty</p>
-                                <div class="factory-difficulty-tins">
-                                    {(['easy', 'medium', 'hard'] as FactoryDifficulty[]).map((level, i) => (
-                                        <button
-                                            class={`factory-tin${factoryDifficulty() === level ? ' factory-tin--selected' : ''}`}
-                                            onClick={() => setFactoryDifficulty(level)}
-                                            title={level.charAt(0).toUpperCase() + level.slice(1)}
-                                        >
-                                            <svg viewBox="0 0 80 56" width="80" height="56" style={{ display: 'block' }}>
-                                                <defs>
-                                                    <linearGradient id={`home-tin-grad-${level}`} x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="0%" stop-color="#2a6090" />
-                                                        <stop offset="100%" stop-color="#0f2a45" />
-                                                    </linearGradient>
-                                                    <linearGradient id={`home-lid-grad-${level}`} x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="0%" stop-color="#5090c0" />
-                                                        <stop offset="100%" stop-color="#2a6090" />
-                                                    </linearGradient>
-                                                </defs>
-                                                {/* Shadow */}
-                                                <ellipse cx="40" cy="51" rx="32" ry="4" fill="#1a2a3a" opacity="0.4" />
-                                                {/* Tin body */}
-                                                <rect x="6" y="14" width="68" height="28" rx="0" ry="0" fill={`url(#home-tin-grad-${level})`} />
-                                                {/* Bottom ellipse */}
-                                                <ellipse cx="40" cy="42" rx="34" ry="8" fill="#0f2a45" />
-                                                {/* Lid */}
-                                                <ellipse cx="40" cy="14" rx="34" ry="9" fill={`url(#home-lid-grad-${level})`} />
-                                                <ellipse cx="40" cy="14" rx="28" ry="6" fill="#3a6090" opacity="0.5" />
-                                                {[0, 1, 2].map(d => (
-                                                    <circle
-                                                        cx={28 + d * 12}
-                                                        cy="28"
-                                                        r="5"
-                                                        fill={d <= i ? '#e0eaf8' : 'none'}
-                                                        stroke="#4a80b0"
-                                                        stroke-width="1.5"
-                                                    />
-                                                ))}
-                                            </svg>
-                                            <span class="factory-tin-label">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </Show>
-                        </div>
-                        <div class="room-actions-inner">
-                            <Button onClick={handleStartSolo} disabled={startingSolo()}>
-                                {startingSolo() ? 'Starting...' : 'Play Solo'}
-                            </Button>
-                            <Button onClick={handleCreate} disabled={creating()} variant="secondary">
-                                {creating() ? 'Creating...' : 'Create Room'}
-                            </Button>
-                            <span class="room-actions-divider">or join one</span>
-                            <form onSubmit={handleJoin} class="join-form">
-                                <input
-                                    class="input"
-                                    placeholder="Room code"
-                                    value={joinCode()}
-                                    onInput={(e) => setJoinCode(e.currentTarget.value.toUpperCase())}
-                                    maxLength={6}
-                                    style={{ 'text-transform': 'uppercase' }}
-                                />
-                                <Button type="submit" variant="secondary" disabled={joining()}>{joining() ? 'Joining...' : 'Join'}</Button>
-                            </form>
-                        </div>
-                        <Show when={joinError()}>
-                            <p class="error-text" style={{ 'margin-top': '10px' }}>{joinError()}</p>
-                        </Show>
-                    </section>
-                )}
-            </Show>
         </main>
     );
 }

@@ -14,7 +14,7 @@ const COLORS = {
     bg: '#0d1117',
     divider: '#30363d',
     fresh: '#39d353',
-    spent: '#f85149',
+    spent: '#5c2a0a',
     wideBar: '#388bfd',
     slowRain: '#e3b341',
     fastRain: '#8b6914',
@@ -34,7 +34,7 @@ const EFFECT_COLORS: Record<SnusregnEffectType, string> = {
     fastRain: '#f85149',
     shrinkBar: '#a371f7',
     blind: '#484f58',
-    beer: '#ffe033',
+    beer: '#ffe800',
 };
 
 const ITEM_BORDER_COLOR: Record<SnusregnItemType, string> = {
@@ -45,7 +45,7 @@ const ITEM_BORDER_COLOR: Record<SnusregnItemType, string> = {
     fastRain: '#8b6914',
     shrinkBar: '#a371f7',
     blind: '#484f58',
-    beer: '#ffe033',
+    beer: '#ffe800',
     beerSnus: '',
 };
 
