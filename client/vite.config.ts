@@ -12,9 +12,17 @@ export default defineConfig({
     server: {
         port: 3003,
         proxy: {
-            '/api': { target: 'http://localhost:4000', changeOrigin: true },
-            '/uploads': { target: 'http://localhost:4000', changeOrigin: true },
-            '/socket.io': { target: 'http://localhost:4000', ws: true, changeOrigin: true },
+            '/api': { target: 'http://localhost:4000', changeOrigin: true, configure: (proxy) => { proxy.on('error', () => {}); } },
+            '/uploads': { target: 'http://localhost:4000', changeOrigin: true, configure: (proxy) => { proxy.on('error', () => {}); } },
+            '/socket.io': {
+                target: 'http://localhost:4000',
+                ws: true,
+                changeOrigin: true,
+                configure: (proxy) => {
+                    proxy.on('error', () => {});
+                    proxy.on('proxyReqWsErr', () => {});
+                },
+            },
         },
     },
 });

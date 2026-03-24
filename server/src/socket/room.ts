@@ -88,9 +88,17 @@ export function roomHandlers(
         } catch { /* intentionally ignored */ }
     });
 
+    // Leaves the socket.io channel only — no DB changes, no game disruption.
+    // Used when navigating away from a game page so we stop receiving game:state broadcasts.
+    socket.on('room:unsubscribe', ({ roomCode }) => {
+        if (!roomCode) return;
+        socket.leave(roomCode.toUpperCase());
+    });
+
     socket.on('room:leave', async ({ roomCode }) => {
         try {
-            const room = await prisma.room.findUnique({ where: { code: roomCode.toUpperCase() } });
+            const normalCode = roomCode.toUpperCase();
+            const room = await prisma.room.findUnique({ where: { code: normalCode } });
             if (!room) return;
             await prisma.roomPlayer.deleteMany({ where: { roomId: room.id, userId } });
             socket.leave(roomCode);
@@ -100,10 +108,14 @@ export function roomHandlers(
                 io.to(roomCode).emit('room:dissolved');
                 await prisma.roomPlayer.deleteMany({ where: { roomId: room.id } });
                 await prisma.room.delete({ where: { id: room.id } });
+                const engine = activeGames.get(normalCode);
+                if (engine) { engine.destroy(); activeGames.delete(normalCode); }
                 return;
             }
             if (remaining.length === 0) {
                 await prisma.room.delete({ where: { id: room.id } });
+                const engine = activeGames.get(normalCode);
+                if (engine) { engine.destroy(); activeGames.delete(normalCode); }
                 return;
             }
             const info = await buildRoomInfo(room.id);

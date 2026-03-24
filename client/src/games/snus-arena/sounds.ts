@@ -1,4 +1,268 @@
-import { play, envelope } from '../audio';
+import { play, envelope, getAudioCtx, getDestination } from '../audio';
+
+// ── Background music ──────────────────────────────────────────────────────────
+// Intense arena battle: minor key, driving, aggressive
+
+let bgMusicActive = false;
+let bgSchedulerTimer: ReturnType<typeof setTimeout> | null = null;
+let bgMusicGain: GainNode | null = null;
+let bgMusicHpf: BiquadFilterNode | null = null;
+let bgScheduledUntil = 0;
+let bgMusicStartTime = 0;
+
+const LOOKAHEAD = 0.3;   // seconds ahead to schedule
+const SCHEDULE_INTERVAL = 150; // ms between scheduler ticks
+
+const bpm = 145;
+const step = 60 / bpm / 4;
+const totalSteps = 128;
+const loopDuration = totalSteps * step;
+
+// ── Bassline: A minor (A2=110, E2=82.4, G2=98, F2=87.3) ─────────────────
+const bassA: Array<{ freq: number; len: number } | null> = [
+    { freq: 110,  len: 1 }, null, { freq: 110,  len: 1 }, null,
+    { freq: 110,  len: 1 }, null, { freq: 110,  len: 1 }, null,
+    { freq: 98,   len: 1 }, null, { freq: 98,   len: 1 }, null,
+    { freq: 87.3, len: 1 }, null, { freq: 82.4, len: 2 }, null,
+];
+const bassB: Array<{ freq: number; len: number } | null> = [
+    { freq: 110,  len: 1 }, null, { freq: 110,  len: 1 }, { freq: 110,  len: 1 },
+    null, { freq: 98,   len: 1 }, null, null,
+    { freq: 87.3, len: 1 }, null, { freq: 87.3, len: 1 }, { freq: 87.3, len: 1 },
+    null, { freq: 82.4, len: 1 }, null, null,
+];
+const bassC: Array<{ freq: number; len: number } | null> = [
+    { freq: 82.4, len: 4 }, null, null, null,
+    null, null, null, null,
+    { freq: 87.3, len: 4 }, null, null, null,
+    { freq: 98,   len: 2 }, null, { freq: 110,  len: 2 }, null,
+];
+const fullBass: Array<{ freq: number; len: number } | null> = [
+    ...bassA, ...bassB, ...bassA, ...bassC,
+    ...bassA, ...bassB, ...bassA, ...bassC,
+];
+
+// ── Melody: A minor pentatonic (A4=440, C5=523.3, D5=587.3, E5=659.3, G5=784) ─
+const melA: Array<{ freq: number; len: number } | null> = [
+    { freq: 440,   len: 1 }, null, null, null,
+    { freq: 523.3, len: 1 }, null, { freq: 587.3, len: 1 }, null,
+    { freq: 659.3, len: 2 }, null, null, null,
+    { freq: 587.3, len: 1 }, null, { freq: 523.3, len: 1 }, null,
+
+    { freq: 440,   len: 1 }, null, { freq: 523.3, len: 1 }, null,
+    { freq: 440,   len: 2 }, null, null, null,
+    null, null, { freq: 392, len: 1 }, null,
+    { freq: 440,   len: 2 }, null, null, null,
+];
+const melB: Array<{ freq: number; len: number } | null> = [
+    { freq: 784,   len: 1 }, null, { freq: 659.3, len: 1 }, null,
+    { freq: 587.3, len: 1 }, null, { freq: 523.3, len: 1 }, null,
+    { freq: 440,   len: 2 }, null, null, null,
+    null, { freq: 523.3, len: 1 }, null, null,
+
+    { freq: 587.3, len: 1 }, null, { freq: 659.3, len: 1 }, null,
+    { freq: 784,   len: 2 }, null, null, null,
+    { freq: 659.3, len: 1 }, null, { freq: 587.3, len: 1 }, null,
+    { freq: 523.3, len: 2 }, null, null, null,
+];
+const fullMel: Array<{ freq: number; len: number } | null> = [
+    ...melA, ...melB, ...melA, ...melB,
+];
+
+// ── Chord stabs: Am / F / G / Em ─────────────────────────────────────────
+const chordFreqs = [
+    [220, 261.6, 329.6], // Am
+    [174.6, 220, 261.6], // F
+    [196, 246.9, 293.7], // G
+    [164.8, 196, 246.9], // Em
+];
+
+function freeOnEnd(src: OscillatorNode | AudioBufferSourceNode, stopTime: number, ...nodes: AudioNode[]): void {
+    const delay = (stopTime - (src.context as AudioContext).currentTime + 0.05) * 1000;
+    setTimeout(() => { try { for (const n of nodes) n.disconnect(); } catch { /* ignore */ } }, Math.max(0, delay));
+}
+
+function scheduleArenaLoop(
+    ac: AudioContext,
+    musicGain: GainNode,
+    hpf: BiquadFilterNode,
+    loopStart: number
+): void {
+    // Bass (distorted sawtooth)
+    for (let i = 0; i < fullBass.length; i++) {
+        const note = fullBass[i];
+        if (!note) continue;
+        const t = loopStart + i * step;
+        if (t + step * note.len < ac.currentTime) continue;
+        const osc = ac.createOscillator();
+        const g = ac.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(note.freq, t);
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.14, t + 0.004);
+        g.gain.setValueAtTime(0.14, t + step * note.len * 0.7);
+        g.gain.linearRampToValueAtTime(0, t + step * note.len * 0.9);
+        osc.connect(g); g.connect(hpf);
+        osc.start(t); osc.stop(t + step * note.len + 0.01);
+        freeOnEnd(osc, t + step * note.len + 0.01, osc, g);
+    }
+
+    // Melody (square wave — aggressive)
+    for (let i = 0; i < fullMel.length; i++) {
+        const note = fullMel[i];
+        if (!note) continue;
+        const t = loopStart + i * step;
+        if (t + step * note.len < ac.currentTime) continue;
+        const osc = ac.createOscillator();
+        const g = ac.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(note.freq, t);
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.15, t + 0.006);
+        g.gain.setValueAtTime(0.15, t + step * note.len * 0.6);
+        g.gain.linearRampToValueAtTime(0, t + step * note.len * 0.85);
+        osc.connect(g); g.connect(hpf);
+        osc.start(t); osc.stop(t + step * note.len + 0.01);
+        freeOnEnd(osc, t + step * note.len + 0.01, osc, g);
+    }
+
+    // Chord stabs every 8 steps
+    for (let ci = 0; ci * 8 < totalSteps; ci++) {
+        const stab = ci * 8;
+        const freqs = chordFreqs[ci % chordFreqs.length];
+        const t = loopStart + stab * step;
+        if (t + step * 3 < ac.currentTime) continue;
+        for (const freq of freqs) {
+            const osc = ac.createOscillator();
+            const g = ac.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq, t);
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(0.09, t + 0.005);
+            g.gain.linearRampToValueAtTime(0, t + step * 2.5);
+            osc.connect(g); g.connect(hpf);
+            osc.start(t); osc.stop(t + step * 3);
+            freeOnEnd(osc, t + step * 3, osc, g);
+        }
+    }
+
+    // Hi-hat: 8th notes
+    for (let i = 0; i < totalSteps; i++) {
+        if (i % 2 !== 0) continue;
+        const t = loopStart + i * step;
+        if (t + 0.028 < ac.currentTime) continue;
+        const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * 0.028), ac.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let s = 0; s < data.length; s++) data[s] = (Math.random() * 2 - 1);
+        const src = ac.createBufferSource();
+        src.buffer = buf;
+        const g = ac.createGain();
+        const accent = (i % 8 === 0) ? 0.22 : 0.1;
+        g.gain.setValueAtTime(accent, t);
+        g.gain.linearRampToValueAtTime(0, t + 0.022);
+        const hhf = ac.createBiquadFilter();
+        hhf.type = 'highpass';
+        hhf.frequency.value = 8500;
+        src.connect(hhf); hhf.connect(g); g.connect(musicGain);
+        src.start(t); src.stop(t + 0.028);
+        freeOnEnd(src, t + 0.028, src, hhf, g);
+    }
+
+    // Kick: 4-on-the-floor
+    for (const kick of [0, 8, 16, 24]) {
+        const t = loopStart + kick * step;
+        if (t + 0.15 < ac.currentTime) continue;
+        const osc = ac.createOscillator();
+        const g = ac.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(170, t);
+        osc.frequency.exponentialRampToValueAtTime(48, t + 0.09);
+        g.gain.setValueAtTime(0.75, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+        osc.connect(g); g.connect(musicGain);
+        osc.start(t); osc.stop(t + 0.15);
+        freeOnEnd(osc, t + 0.15, osc, g);
+    }
+
+    // Snare on beats 2 and 4 (steps 8 and 24)
+    for (const snare of [8, 24]) {
+        const t = loopStart + snare * step;
+        if (t + 0.15 < ac.currentTime) continue;
+        const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * 0.15), ac.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let s = 0; s < data.length; s++) data[s] = (Math.random() * 2 - 1);
+        const src = ac.createBufferSource();
+        src.buffer = buf;
+        const bpf = ac.createBiquadFilter();
+        bpf.type = 'bandpass';
+        bpf.frequency.value = 2500;
+        bpf.Q.value = 0.7;
+        const g = ac.createGain();
+        g.gain.setValueAtTime(0.35, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+        src.connect(bpf); bpf.connect(g); g.connect(musicGain);
+        src.start(t); src.stop(t + 0.15);
+        freeOnEnd(src, t + 0.15, src, bpf, g);
+    }
+}
+
+function runScheduler(): void {
+    if (!bgMusicActive) return;
+    try {
+        const ac = getAudioCtx();
+        if (!bgMusicGain || !bgMusicHpf) return;
+
+        const scheduleUntil = ac.currentTime + LOOKAHEAD;
+
+        // bgScheduledUntil tracks the end of the last scheduled loop
+        while (bgScheduledUntil < scheduleUntil) {
+            const elapsed = bgScheduledUntil - bgMusicStartTime;
+            const loop = Math.floor(elapsed / loopDuration);
+            const loopStart = bgMusicStartTime + loop * loopDuration;
+            scheduleArenaLoop(ac, bgMusicGain, bgMusicHpf, loopStart);
+            bgScheduledUntil = loopStart + loopDuration;
+        }
+    } catch { /* ignore */ }
+
+    bgSchedulerTimer = setTimeout(runScheduler, SCHEDULE_INTERVAL);
+}
+
+export function startBgMusic(): void {
+    if (bgMusicActive) return;
+    bgMusicActive = true;
+    try {
+        const ac = getAudioCtx();
+        const dest = getDestination();
+
+        bgMusicGain = ac.createGain();
+        bgMusicGain.gain.setValueAtTime(0.08, ac.currentTime);
+        bgMusicGain.connect(dest);
+
+        bgMusicHpf = ac.createBiquadFilter();
+        bgMusicHpf.type = 'highpass';
+        bgMusicHpf.frequency.value = 70;
+        bgMusicHpf.connect(bgMusicGain);
+
+        bgMusicStartTime = ac.currentTime;
+        bgScheduledUntil = ac.currentTime;
+        runScheduler();
+    } catch { /* ignore */ }
+}
+
+export function stopBgMusic(): void {
+    bgMusicActive = false;
+    if (bgSchedulerTimer !== null) {
+        clearTimeout(bgSchedulerTimer);
+        bgSchedulerTimer = null;
+    }
+    try {
+        bgMusicGain?.disconnect();
+        bgMusicHpf?.disconnect();
+    } catch { /* ignore */ }
+    bgMusicGain = null;
+    bgMusicHpf = null;
+    bgScheduledUntil = 0;
+}
 
 /** Game start — punchy ascending arcade fanfare */
 export function soundArenaStart(): void {

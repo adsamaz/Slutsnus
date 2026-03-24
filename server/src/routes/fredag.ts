@@ -18,16 +18,16 @@ const MAX_POSTS_PER_TYPE_PER_DAY = 3;
 
 const ALLOWED_TYPES: Record<string, string> = {
     'image/jpeg': '.jpg',
-    'image/png':  '.png',
+    'image/png': '.png',
     'image/webp': '.webp',
-    'image/gif':  '.gif',
+    'image/gif': '.gif',
 };
 
 const MAGIC_BYTES: { mime: string; offset: number; bytes: number[] }[] = [
     { mime: 'image/jpeg', offset: 0, bytes: [0xFF, 0xD8, 0xFF] },
-    { mime: 'image/png',  offset: 0, bytes: [0x89, 0x50, 0x4E, 0x47] },
+    { mime: 'image/png', offset: 0, bytes: [0x89, 0x50, 0x4E, 0x47] },
     { mime: 'image/webp', offset: 8, bytes: [0x57, 0x45, 0x42, 0x50] },
-    { mime: 'image/gif',  offset: 0, bytes: [0x47, 0x49, 0x46] },
+    { mime: 'image/gif', offset: 0, bytes: [0x47, 0x49, 0x46] },
 ];
 
 function detectMimeFromFile(filePath: string): string | null {

@@ -86,6 +86,10 @@ export default function GameContainer(props: GameContainerProps) {
         socket.off('room:error', onError);
         socket.off('room:started', onStarted);
         clearTimeout(fallbackTimer);
+        // Leave the socket.io channel so the server stops broadcasting this room's game:state.
+        // Without this, navigating away via the navbar leaves the socket subscribed to the old
+        // room channel, causing the new game to receive both rooms' states simultaneously.
+        socket.emit('room:unsubscribe', { roomCode: props.roomCode });
     });
 
     const gameType = () => roomState.room?.gameType ?? '';

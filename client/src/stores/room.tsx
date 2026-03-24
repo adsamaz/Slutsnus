@@ -30,6 +30,14 @@ export const RoomProvider: ParentComponent = (props) => {
     const socket = useSocket();
 
     const createRoom = async (gameType: GameType): Promise<string> => {
+        // Clean up any stale room the user may have abandoned (e.g. by navigating away mid-game)
+        const staleCode = state.room?.code;
+        if (staleCode) {
+            socket.emit('room:leave', { roomCode: staleCode });
+            await fetch(`/api/rooms/${staleCode}/leave`, { method: 'DELETE', credentials: 'include' }).catch(() => {});
+            setState('room', null);
+        }
+
         const res = await fetch('/api/rooms/create', {
             method: 'POST',
             credentials: 'include',

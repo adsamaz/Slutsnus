@@ -5,7 +5,7 @@ import { useAuth } from '../../stores/auth';
 import type { FarmState, GameAction } from '@slutsnus/shared';
 import { drawGame, drawEndScreen } from './render';
 import { CANVAS_W, CANVAS_H } from './constants';
-import { soundFarmStart, soundChickenCaptured, soundFarmMilestone, soundFarmWin, soundFarmLose, soundSnusPickup, soundSnusSpawn } from './sounds';
+import { soundFarmStart, soundChickenCaptured, soundFarmMilestone, soundFarmWin, soundFarmLose, soundSnusPickup, soundSnusSpawn, startBgMusic, stopBgMusic } from './sounds';
 
 interface SnusFarmProps {
     state: FarmState;
@@ -31,10 +31,13 @@ export function SnusFarmGame(props: SnusFarmProps) {
     let prevScores = new Map<string, number>();
     let soundedGameEnd = false;
     let prevSnusId: string | null = null;
+    let prevStatus: string | null = null;
 
     // ── Input ────────────────────────────────────────────────────────────────
     const keys = new Set<string>();
     let lastMoveEmit = 0;
+    let lastStateTime = 0;
+    let mouseRakeAngle = -Math.PI / 4; // default: up-right
 
     const getInputDelta = (): { dx: number; dy: number } => {
         let dx = 0, dy = 0;
@@ -54,6 +57,19 @@ export function SnusFarmGame(props: SnusFarmProps) {
 
     const onKeyUp = (e: KeyboardEvent) => keys.delete(e.code);
 
+    const onMouseMove = (e: MouseEvent) => {
+        if (!canvasRef) return;
+        const rect = canvasRef.getBoundingClientRect();
+        const scaleX = CANVAS_W / rect.width;
+        const scaleY = CANVAS_H / rect.height;
+        const mouseX = (e.clientX - rect.left) * scaleX;
+        const mouseY = (e.clientY - rect.top) * scaleY;
+        const myPlayer = currentState().players.find(p => p.userId === myUserId());
+        if (myPlayer) {
+            mouseRakeAngle = Math.atan2(mouseY - myPlayer.y, mouseX - myPlayer.x);
+        }
+    };
+
     // ── Render loop ──────────────────────────────────────────────────────────
     const renderLoop = () => {
         const ctx = canvasRef?.getContext('2d');
@@ -67,9 +83,19 @@ export function SnusFarmGame(props: SnusFarmProps) {
             if (now - lastMoveEmit >= 50) {
                 lastMoveEmit = now;
                 const { dx, dy } = getInputDelta();
-                props.onAction({ type: 'farm:move', payload: { dx, dy } } as GameAction);
+                props.onAction({ type: 'farm:move', payload: { dx, dy, rakeAngle: mouseRakeAngle } } as GameAction);
             }
-            drawGame(ctx, state, myUserId());
+            // Interpolate chicken positions between server ticks using vx/vy
+            const elapsed = Math.min(now - lastStateTime, 100); // cap at 100ms
+            const interpState = elapsed > 0 ? {
+                ...state,
+                chickens: state.chickens.map(c => ({
+                    ...c,
+                    x: c.x + c.vx * (elapsed / 20),
+                    y: c.y + c.vy * (elapsed / 20),
+                })),
+            } : state;
+            drawGame(ctx, interpState, myUserId(), mouseRakeAngle);
         } else {
             drawEndScreen(ctx, state, myUserId());
         }
@@ -80,6 +106,17 @@ export function SnusFarmGame(props: SnusFarmProps) {
     // ── Sound logic ──────────────────────────────────────────────────────────
 
     const processSounds = (next: FarmState) => {
+        if (next.status === 'playing' && prevStatus !== 'playing') {
+            soundFarmStart();
+            startBgMusic();
+            // Reset per-game tracking for Play Again
+            soundedGameEnd = false;
+            prevSnusId = null;
+            prevScores = new Map();
+            for (const p of next.players) prevScores.set(p.userId, p.score);
+        }
+        if (next.status !== 'playing' && prevStatus === 'playing') stopBgMusic();
+        prevStatus = next.status;
         if (next.status === 'playing') {
             for (const player of next.players) {
                 const prevScore = prevScores.get(player.userId) ?? player.score;
@@ -122,11 +159,10 @@ export function SnusFarmGame(props: SnusFarmProps) {
         const next = state as FarmState;
         processSounds(next);
         setCurrentState(next);
+        lastStateTime = Date.now();
     };
 
     onMount(() => {
-        soundFarmStart();
-
         // Seed score tracking
         for (const p of props.state.players) {
             prevScores.set(p.userId, p.score);
@@ -135,6 +171,7 @@ export function SnusFarmGame(props: SnusFarmProps) {
         socket.on('game:state', onGameState);
         window.addEventListener('keydown', onKeyDown);
         window.addEventListener('keyup', onKeyUp);
+        window.addEventListener('mousemove', onMouseMove);
         rafId = requestAnimationFrame(renderLoop);
     });
 
@@ -142,7 +179,9 @@ export function SnusFarmGame(props: SnusFarmProps) {
         socket.off('game:state', onGameState);
         window.removeEventListener('keydown', onKeyDown);
         window.removeEventListener('keyup', onKeyUp);
+        window.removeEventListener('mousemove', onMouseMove);
         cancelAnimationFrame(rafId);
+        stopBgMusic();
     });
 
     return (

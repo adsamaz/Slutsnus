@@ -31,7 +31,7 @@ export function drawClassSelect(
     }
 
     const me = state.players.find(p => p.userId === myUserId);
-    const alreadySelected = me?.class !== null;
+    const alreadySelected = me != null && me.class !== null;
 
     // Title with glow
     const titlePulse = 0.75 + 0.25 * Math.sin(now / 600);

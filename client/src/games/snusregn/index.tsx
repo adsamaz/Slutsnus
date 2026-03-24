@@ -7,7 +7,7 @@ import type { ItemBitmaps, ScreenFlash } from './render';
 import bjudlocketSrc from '../../assets/bjudlocket.webp';
 import snusiconSrc from '../../assets/snusicon.webp';
 import type { SnusregnState, GameAction, SnusregnEffectType } from '@slutsnus/shared';
-import { soundFreshCatch, soundFreshCatchBeer, soundLifeLost, soundPowerup, soundDebuff, soundGameStart } from './sounds';
+import { soundFreshCatch, soundFreshCatchBeer, soundLifeLost, soundPowerup, soundDebuff, soundGameStart, startBgMusic, stopBgMusic } from './sounds';
 import './snusregn.css';
 
 interface SnusregnGameProps {
@@ -28,8 +28,16 @@ export function SnusregnGame(props: SnusregnGameProps) {
 
     const BAR_Y_FROM_BOTTOM = 20 + 18; // must match engine: BAR_Y_FROM_BOTTOM + BAR_HEIGHT
 
+    let prevStatus: string | null = null;
+
     const onGameState = ({ state }: { state: unknown }) => {
         const next = state as SnusregnState;
+        if (next.status === 'playing' && prevStatus !== 'playing') {
+            soundGameStart();
+            startBgMusic();
+        }
+        if (next.status !== 'playing' && prevStatus === 'playing') stopBgMusic();
+        prevStatus = next.status;
         const selfId = authState.user?.id ?? '';
         const selfNext = next.players.find(p => p.userId === selfId);
         if (selfNext) {
@@ -109,9 +117,6 @@ export function SnusregnGame(props: SnusregnGameProps) {
         lastStateAt = performance.now();
         setGameStore('data', next);
     };
-    socket.on('game:state', onGameState);
-    onCleanup(() => socket.off('game:state', onGameState));
-
     let canvasRef!: HTMLCanvasElement;
     let localBarXFraction = 0.5;
     let localHalfBar = BAR_WIDTH_DEFAULT / 2;
@@ -135,7 +140,8 @@ export function SnusregnGame(props: SnusregnGameProps) {
     const barMoveAction = { type: 'snusregn:bar-move', payload: barMovePayload } as GameAction;
 
     onMount(() => {
-        soundGameStart();
+        socket.on('game:state', onGameState);
+
         const ctx = canvasRef.getContext('2d')!;
 
         // Pre-size the canvas to avoid an expensive resize on the first rendered frame
@@ -190,6 +196,8 @@ export function SnusregnGame(props: SnusregnGameProps) {
         canvasRef.addEventListener('pointerdown', onPointerDown);
 
         onCleanup(() => {
+            socket.off('game:state', onGameState);
+            stopBgMusic();
             canvasRef.removeEventListener('pointermove', onPointerMove);
             canvasRef.removeEventListener('pointerdown', onPointerDown);
             window.removeEventListener('resize', updateRect);

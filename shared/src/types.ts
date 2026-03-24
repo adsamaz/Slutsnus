@@ -105,6 +105,7 @@ export interface ClientToServerEvents {
     'room:join': (data: { roomCode: string }) => void;
     'room:ready': (data: { roomCode: string }) => void;
     'room:leave': (data: { roomCode: string }) => void;
+    'room:unsubscribe': (data: { roomCode: string }) => void;
     'room:start': (data: { roomCode: string; gameMode?: ArenaGameMode; factoryDifficulty?: FactoryDifficulty }) => void;
     'game:action': (data: { roomCode: string; action: GameAction }) => void;
     'game:ready': (data: { roomCode: string }) => void;
@@ -426,6 +427,7 @@ export interface FarmPlayer {
     score: number;
     side: 'left' | 'right';
     speedBoostTicks: number;
+    rakeAngle: number;
 }
 
 export interface FarmState {
@@ -438,7 +440,7 @@ export interface FarmState {
 }
 
 export type FarmAction =
-    | { type: 'farm:move'; payload: { dx: number; dy: number } };
+    | { type: 'farm:move'; payload: { dx: number; dy: number; rakeAngle: number } };
 
 // ─────────────────────────────────────────────────
 // Snusfactory specific

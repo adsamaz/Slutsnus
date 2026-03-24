@@ -21,6 +21,7 @@ interface PlayerInternal {
     inputDx: number;
     inputDy: number;
     speedBoostTicks: number;
+    rakeAngle: number;
 }
 
 interface ChickenInternal extends FarmChicken {
@@ -62,6 +63,7 @@ export class SnusFarmEngine implements GameEngine {
                 inputDx: 0,
                 inputDy: 0,
                 speedBoostTicks: 0,
+                rakeAngle: -Math.PI / 4,
             });
         });
 
@@ -97,9 +99,12 @@ export class SnusFarmEngine implements GameEngine {
         if (!player || this.status !== 'playing') return;
 
         if (action.type === 'farm:move') {
-            const payload = action.payload as { dx: number; dy: number };
+            const payload = action.payload as { dx: number; dy: number; rakeAngle: number };
             player.inputDx = Math.max(-1, Math.min(1, payload.dx));
             player.inputDy = Math.max(-1, Math.min(1, payload.dy));
+            if (typeof payload.rakeAngle === 'number' && isFinite(payload.rakeAngle)) {
+                player.rakeAngle = payload.rakeAngle;
+            }
         }
     }
 
@@ -222,7 +227,7 @@ export class SnusFarmEngine implements GameEngine {
                 chicken.wanderTimer = randInt(CHICKEN_WANDER_MIN_TICKS, CHICKEN_WANDER_MAX_TICKS);
             }
 
-            // Apply push from nearby farmers
+            // Apply push from nearby farmers, biased toward rake direction
             let pushX = 0;
             let pushY = 0;
             for (const player of playerList) {
@@ -231,8 +236,15 @@ export class SnusFarmEngine implements GameEngine {
                 const dist = Math.sqrt(dx * dx + dy * dy);
                 if (dist < FARMER_PUSH_RADIUS && dist > 0) {
                     const mag = ((FARMER_PUSH_RADIUS - dist) / FARMER_PUSH_RADIUS) * FARMER_PUSH_STRENGTH;
-                    pushX += (dx / dist) * mag;
-                    pushY += (dy / dist) * mag;
+                    // Base push: away from farmer
+                    const basePushX = (dx / dist) * mag;
+                    const basePushY = (dy / dist) * mag;
+                    // Rake direction: chickens are steered toward the angle the rake points
+                    const rakeX = Math.cos(player.rakeAngle);
+                    const rakeY = Math.sin(player.rakeAngle);
+                    // Blend: 50% raw push-away, 50% rake direction
+                    pushX += basePushX * 0.5 + rakeX * mag * 0.5;
+                    pushY += basePushY * 0.5 + rakeY * mag * 0.5;
                 }
             }
 
@@ -246,20 +258,24 @@ export class SnusFarmEngine implements GameEngine {
                 const scale = CHICKEN_MAX_SPEED / totalSpeed;
                 frameVx = totalVx * scale;
                 frameVy = totalVy * scale;
-                // Scale down wander component proportionally so it stays consistent
-                chicken.vx *= scale;
-                chicken.vy *= scale;
+                // Do NOT scale down the wander component — push is transient and
+                // shrinking vx/vy permanently causes a velocity pop when wander resets.
             }
 
             // Apply capped velocity
             let newX = chicken.x + frameVx;
             let newY = chicken.y + frameVy;
 
-            // Bounce wander velocity off field walls; allow push to carry chickens into pen zones
-            if (newX < CHICKEN_MIN_X) { if (pushX >= 0) { chicken.vx = Math.abs(chicken.vx); newX = CHICKEN_MIN_X; } }
-            if (newX > CHICKEN_MAX_X) { if (pushX <= 0) { chicken.vx = -Math.abs(chicken.vx); newX = CHICKEN_MAX_X; } }
+            // Bounce off canvas edges (hard walls)
+            if (newX < FARMER_RADIUS) { newX = FARMER_RADIUS; chicken.vx = Math.abs(chicken.vx); }
+            if (newX > CANVAS_W - FARMER_RADIUS) { newX = CANVAS_W - FARMER_RADIUS; chicken.vx = -Math.abs(chicken.vx); }
             if (newY < CHICKEN_MIN_Y) { newY = CHICKEN_MIN_Y; chicken.vy = Math.abs(chicken.vy); }
             if (newY > CHICKEN_MAX_Y) { newY = CHICKEN_MAX_Y; chicken.vy = -Math.abs(chicken.vy); }
+
+            // Steer wander velocity away from pen zones so chickens don't linger there.
+            // Only affects future wander direction, never clamps position (which would cause jumps).
+            if (chicken.x < CHICKEN_MIN_X && chicken.vx < 0) chicken.vx = Math.abs(chicken.vx);
+            if (chicken.x > CHICKEN_MAX_X && chicken.vx > 0) chicken.vx = -Math.abs(chicken.vx);
 
             chicken.x = newX;
             chicken.y = newY;
@@ -335,6 +351,7 @@ export class SnusFarmEngine implements GameEngine {
             score: p.score,
             side: p.side,
             speedBoostTicks: p.speedBoostTicks,
+            rakeAngle: p.rakeAngle,
         }));
 
         const chickens: FarmChicken[] = this.chickens

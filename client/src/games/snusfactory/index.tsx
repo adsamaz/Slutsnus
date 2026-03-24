@@ -75,6 +75,7 @@ export function SnusFactoryGame(props: SnusFactoryProps) {
     let prevSpeedBoost = new Map<string, number>(); // userId → speedBoostTicks
     let soundedGameEnd = false;
     let timeLowSounded = false;
+    let prevFactoryStatus: string | null = null;
 
     const initTracking = (state: FactoryState) => {
         prevScore = state.score;
@@ -89,9 +90,14 @@ export function SnusFactoryGame(props: SnusFactoryProps) {
     };
 
     const processSounds = (next: FactoryState) => {
-        if (next.status === 'playing' && !soundedGameEnd) {
+        // Reset per-game flags when a new game starts
+        if (next.status === 'playing' && prevFactoryStatus !== 'playing') {
+            soundedGameEnd = false;
+            timeLowSounded = false;
+            initTracking(next);
             startBgMusic();
         }
+        prevFactoryStatus = next.status;
 
         if (next.status === 'playing') {
             // Snapshot score before updating so we can detect direction of change
@@ -306,8 +312,6 @@ export function SnusFactoryGame(props: SnusFactoryProps) {
 
     onMount(() => {
         initTracking(props.state);
-
-        if (props.state.status === 'playing') startBgMusic();
 
         socket.on('game:state', onGameState);
         window.addEventListener('keydown', onKeyDown);

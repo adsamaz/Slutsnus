@@ -8,7 +8,7 @@ import { CANVAS_W, CANVAS_H } from './constants';
 import {
     soundArenaStart, soundShoot, soundFireball, soundHit, soundDeath,
     soundHeal, soundDamageBoost, soundArenaWin, soundArenaLose,
-    soundMeleeStrike, soundShieldBash,
+    soundMeleeStrike, soundShieldBash, startBgMusic, stopBgMusic,
 } from './sounds';
 
 interface SnusArenaProps {
@@ -145,10 +145,22 @@ export function SnusArenaGame(props: SnusArenaProps) {
     const processSounds = (next: ArenaState) => {
         const me = next.players.find(p => p.userId === myUserId());
 
-        // Game start (selecting → playing)
+        // Game start: fire sound and reset tracking when entering 'selecting' (new game began)
         const prev = prevState();
-        if (prev?.status === 'selecting' && next.status === 'playing') {
+        if ((prev === null || prev.status === 'ended') && next.status === 'selecting') {
             soundArenaStart();
+            soundedGameEnd = false;
+            prevProjectileIds = new Set();
+            prevPlayerHp = new Map();
+            prevPlayerAlive = new Map();
+            prevPowerupActive = new Map();
+            prevCastingSlot = new Map();
+        }
+        if (prev?.status === 'selecting' && next.status === 'playing') {
+            startBgMusic();
+        }
+        if (next.status !== 'playing' && prev?.status === 'playing') {
+            stopBgMusic();
         }
 
         if (next.status === 'playing') {
@@ -224,8 +236,6 @@ export function SnusArenaGame(props: SnusArenaProps) {
     const onContextMenu = (e: MouseEvent) => e.preventDefault();
 
     onMount(() => {
-        soundArenaStart();
-
         // Seed tracking maps from initial state
         const init = props.state;
         prevProjectileIds = new Set(init.projectiles.map(p => p.id));
@@ -256,6 +266,7 @@ export function SnusArenaGame(props: SnusArenaProps) {
             canvasRef.removeEventListener('contextmenu', onContextMenu);
         }
         cancelAnimationFrame(rafId);
+        stopBgMusic();
     });
 
     return (

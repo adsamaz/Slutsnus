@@ -172,7 +172,7 @@ export default function Lobby() {
                                                 onClick={() => setFactoryDifficulty(level)}
                                                 title={level.charAt(0).toUpperCase() + level.slice(1)}
                                             >
-                                                <svg viewBox="0 0 80 80" width="80" height="80" style={{ display: 'block' }}>
+                                                <svg viewBox="0 0 80 56" width="80" height="56" style={{ display: 'block' }}>
                                                     <defs>
                                                         <linearGradient id={`tin-grad-${level}`} x1="0" y1="0" x2="0" y2="1">
                                                             <stop offset="0%" stop-color="#2a6090" />
@@ -183,17 +183,20 @@ export default function Lobby() {
                                                             <stop offset="100%" stop-color="#2a6090" />
                                                         </linearGradient>
                                                     </defs>
+                                                    {/* Shadow */}
+                                                    <ellipse cx="40" cy="51" rx="32" ry="4" fill="#1a2a3a" opacity="0.4" />
                                                     {/* Tin body */}
-                                                    <ellipse cx="40" cy="68" rx="34" ry="8" fill="#1a2a3a" opacity="0.4" />
-                                                    <rect x="6" y="18" width="68" height="50" rx="10" ry="10" fill={`url(#tin-grad-${level})`} />
+                                                    <rect x="6" y="14" width="68" height="28" rx="0" ry="0" fill={`url(#tin-grad-${level})`} />
+                                                    {/* Bottom ellipse */}
+                                                    <ellipse cx="40" cy="42" rx="34" ry="8" fill="#0f2a45" />
                                                     {/* Lid */}
-                                                    <ellipse cx="40" cy="18" rx="34" ry="9" fill={`url(#lid-grad-${level})`} />
-                                                    <ellipse cx="40" cy="18" rx="28" ry="6" fill="#3a6090" opacity="0.5" />
+                                                    <ellipse cx="40" cy="14" rx="34" ry="9" fill={`url(#lid-grad-${level})`} />
+                                                    <ellipse cx="40" cy="14" rx="28" ry="6" fill="#3a6090" opacity="0.5" />
                                                     {/* Dots */}
                                                     {[0, 1, 2].map(d => (
                                                         <circle
                                                             cx={28 + d * 12}
-                                                            cy="47"
+                                                            cy="28"
                                                             r="5"
                                                             fill={d <= i ? '#e0eaf8' : 'none'}
                                                             stroke="#4a80b0"

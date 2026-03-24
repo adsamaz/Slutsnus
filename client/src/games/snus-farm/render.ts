@@ -71,7 +71,7 @@ function farmerColor(side: 'left' | 'right'): string {
     return side === 'left' ? COLOR_LEFT : COLOR_RIGHT;
 }
 
-export function drawGame(ctx: CanvasRenderingContext2D, state: FarmState, myUserId: string): void {
+export function drawGame(ctx: CanvasRenderingContext2D, state: FarmState, myUserId: string, myRakeAngle?: number): void {
     // ── Background ───────────────────────────────────────────────────────────
     ctx.drawImage(grassCanvas, 0, 0);
 
@@ -136,8 +136,9 @@ export function drawGame(ctx: CanvasRenderingContext2D, state: FarmState, myUser
         ctx.rect(player.x - 11, player.y - FARMER_RADIUS - 5, 22, 3);
         ctx.fill();
 
-        // Pitchfork (held to the right side of the body)
-        drawPitchfork(ctx, player.x, player.y, FARMER_RADIUS);
+        // Pitchfork pointing toward mouse (for local player) or server rake angle
+        const rakeAngle = isMe && myRakeAngle !== undefined ? myRakeAngle : player.rakeAngle;
+        drawPitchfork(ctx, player.x, player.y, FARMER_RADIUS, rakeAngle);
 
         // Speed boost glow
         if (player.speedBoostTicks > 0) {
@@ -164,9 +165,8 @@ export function drawGame(ctx: CanvasRenderingContext2D, state: FarmState, myUser
     drawHud(ctx, state, myUserId);
 }
 
-function drawPitchfork(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
-    // Pitchfork extends diagonally up-right from the farmer's body edge
-    const angle = -Math.PI / 4; // 45° up-right
+function drawPitchfork(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, angle: number): void {
+    // Pitchfork extends from the farmer's body edge toward the given angle
     const startX = cx + Math.cos(angle) * (r - 2);
     const startY = cy + Math.sin(angle) * (r - 2);
     const handleLen = 22;
