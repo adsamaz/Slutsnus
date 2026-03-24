@@ -238,7 +238,7 @@ export default function Home() {
                                     ? selectedIdx() === i
                                     : i % 2 === 1 && (selectedIdx() === i || selectedIdx() === i - 1)
                             }>
-                                {() => roomActionsPanel()}
+                                {roomActionsPanel()}
                             </Show>
                         </>
                     ))}
