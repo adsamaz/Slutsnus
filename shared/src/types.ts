@@ -28,7 +28,7 @@ export interface AuthResponse {
 // Rooms
 // ─────────────────────────────────────────────────
 export type RoomStatus = 'waiting' | 'playing' | 'ended';
-export type GameType = 'snusregn' | 'snus-arena' | 'snus-farm' | 'snusfactory';
+export type GameType = 'snusregn' | 'snus-arena' | 'snus-farm' | 'snusfactory' | 'fisksnusen';
 
 export interface RoomPlayer {
     userId: string;
@@ -143,6 +143,16 @@ export interface FredagReactionSummary {
     users: string[];
 }
 
+export interface FredagCommentData {
+    id: string;
+    postId: string;
+    userId: string;
+    username: string;
+    avatarUrl?: string | null;
+    body: string;
+    createdAt: string;
+}
+
 export interface FredagPostData {
     id: string;
     type: FredagPostType;
@@ -153,6 +163,7 @@ export interface FredagPostData {
     username: string;
     avatarUrl?: string | null;
     reactions: FredagReactionSummary[];
+    comments: FredagCommentData[];
 }
 
 // ─────────────────────────────────────────────────
@@ -530,3 +541,75 @@ export type FactoryAction =
     | { type: 'factory:interact';            payload: { interacting: boolean } }
     | { type: 'factory:drop' }
     | { type: 'factory:grinder-slot-pickup'; payload: { slot: 'leaf' | 'flavor' } };
+
+// ─────────────────────────────────────────────────
+// Fisksnusen specific
+// ─────────────────────────────────────────────────
+
+export type FiskePhase =
+    | 'idle'
+    | 'aiming'      // Player aims with mouse and times power meter to cast
+    | 'casting'
+    | 'waiting'
+    | 'nibble'
+    | 'bite'        // Stage 1: hook the fish (oscillating power meter)
+    | 'reel'        // Stage 2: fight fish to surface (3 sequential fills)
+    | 'boat'        // Stage 3: swing into boat (faster power meter)
+    | 'snus'        // Stage 4: pop the snus (single pulse window)
+    | 'transition'  // Brief pause between stages with visual announcement
+    | 'result';
+
+export type FiskeStageResult = 'perfect' | 'good' | 'miss' | null;
+export type FiskeFishSize = 'small' | 'medium' | 'big' | null;
+
+export interface FiskeSnusPlayerState {
+    userId: string;
+    username: string;
+    isBot: boolean;
+    fishCaught: number;
+    lastFishSize: FiskeFishSize;
+    caughtFishSizes: FiskeFishSize[];
+    phase: FiskePhase;
+    phaseTicksRemaining: number;
+    // Power meter (bite, snus phases) / countdown 1→0 (boat phase)
+    meterValue: number;           // 0.0–1.0
+    meterDirection: 1 | -1;
+    // Boat phase (tap/mash mechanic)
+    boatTapsCompleted: number;
+    boatTapsRequired: number;
+    // Reel phase
+    reelProgress: number;         // 0–1, how much line has been reeled in (drives fish position)
+    reelBarPosition: number;      // 0–1, 0.5=center; indicator the player must keep near middle
+    reelInDanger: boolean;        // true when bar is outside the safe zone
+    // Per-fish tracking
+    stageResults: FiskeStageResult[];  // [bite, reel, boat, snus]
+    lastStageResult: FiskeStageResult;
+    // Rendering helpers
+    castProgress: number;              // 0–1 during casting animation
+    castX: number;                     // 0–1 horizontal hook position (set when cast)
+    castDepth: number;                 // 0–1 hook depth (from power meter at cast time)
+    fishApproachProgress: number;      // 0–1 during waiting/nibble
+    approachFishStartX: number;        // panel-space X (0–1) where the attracted fish started swimming
+    approachFishStartY: number;        // panel-space Y (0–1) where it started
+    nibbleCount: number;
+    fishDepth: number;                 // 0=deep, 1=surface (reel phase)
+    consecutivePerfects: number;
+    totalScore: number;
+    ambientFish: Array<{ x: number; y: number; dir: number; canBite: boolean; approaching: boolean }>; // approaching=true means this fish is swimming to the hook, skip in ambient draw
+    snusStep: 0 | 1;                   // 0=open the tin, 1=pop the portioner
+    transitionTarget: FiskePhase | null; // next phase after transition
+    transitionProgress: number;          // 0–1 within transition phase
+    treeStuck: boolean;                  // true while line is caught in the tree
+}
+
+export interface FiskeSnusState {
+    status: 'playing' | 'ended';
+    tickCount: number;
+    players: FiskeSnusPlayerState[];
+    results?: GameResult[];
+}
+
+export type FiskeSnusAction =
+    | { type: 'fisksnusen:strike' }
+    | { type: 'fisksnusen:cast'; castX: number }
+    | { type: 'fisksnusen:tree-hit' };

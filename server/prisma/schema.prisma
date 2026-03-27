@@ -22,6 +22,7 @@ model User {
   winLossRecords      WinLossRecord[]
   fredagPosts         FredagPost[]
   fredagReactions     FredagReaction[]
+  fredagComments      FredagComment[]
 }
 
 model Room {
@@ -111,6 +112,7 @@ model FredagPost {
 
   user      User              @relation(fields: [userId], references: [id])
   reactions FredagReaction[]
+  comments  FredagComment[]
 }
 
 model FredagReaction {
@@ -124,6 +126,17 @@ model FredagReaction {
   user      User       @relation(fields: [userId], references: [id])
 
   @@unique([postId, userId])
+}
+
+model FredagComment {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  body      String
+  createdAt DateTime @default(now())
+
+  post      FredagPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id])
 }
 
 // Win/loss record per player per game type — upserted on game end (CONTEXT.md locked decision)

@@ -40,6 +40,14 @@ const GAMES: Game[] = [
         badges: ['1-4 Players', 'Co-op', 'Real-time'],
         icon: '🏭',
     },
+    {
+        id: 'fisksnusen',
+        name: 'Fisksnusen',
+        tagline: 'Bite. Reel. Rake. Snus.',
+        description: 'Four timing stages — hook the fish, reel it up, land it in the boat, and pack the snus. Hit all four perfectly for a PERFECT FISKSNUS. First to 5 fish wins.',
+        badges: ['1-2 Players', 'Timing', 'Real-time'],
+        icon: '🎣',
+    },
 ];
 
 export default function Home() {
@@ -236,7 +244,8 @@ export default function Home() {
                             <Show when={
                                 isMobile()
                                     ? selectedIdx() === i
-                                    : i % 2 === 1 && (selectedIdx() === i || selectedIdx() === i - 1)
+                                    : (i % 3 === 2 || i === GAMES.length - 1) &&
+                                    Math.floor(selectedIdx() / 3) === Math.floor(i / 3)
                             }>
                                 {roomActionsPanel()}
                             </Show>

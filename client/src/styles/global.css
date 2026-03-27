@@ -531,7 +531,7 @@ h5 {
 
 .home-games-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
 }
 
@@ -1483,6 +1483,94 @@ h5 {
 
 .fredag-post-date {
     font-size: 0.78rem;
+}
+
+.fredag-delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 2px 4px;
+    color: #c0392b;
+    opacity: 0.55;
+    transition: opacity 0.15s;
+    line-height: 1;
+}
+
+.fredag-delete-btn:hover {
+    opacity: 1;
+}
+
+.fredag-comments-section {
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--color-border);
+    padding-top: 0.5rem;
+}
+
+.fredag-comments-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-muted);
+    font-size: 0.82rem;
+    padding: 2px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.fredag-comments-toggle:hover {
+    color: var(--color-text);
+}
+
+.fredag-comments-chevron {
+    font-size: 0.65rem;
+}
+
+.fredag-comments {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.fredag-comment {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.fredag-comment-body {
+    flex: 1;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    min-width: 0;
+}
+
+.fredag-comment-username {
+    font-weight: 600;
+    margin-right: 6px;
+}
+
+.fredag-comment-text {
+    word-break: break-word;
+}
+
+.fredag-comment-form {
+    display: flex;
+    gap: 8px;
+    margin-top: 0.5rem;
+}
+
+.fredag-comment-input {
+    flex: 1;
+    font-size: 0.85rem;
+}
+
+.fredag-comment-submit {
+    font-size: 0.82rem;
+    padding: 6px 12px;
+    white-space: nowrap;
 }
 
 .fredag-post-image {

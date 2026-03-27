@@ -9,7 +9,8 @@ import type { ItemBitmaps } from './snusregn/render';
 import { SnusArenaGame } from './snus-arena/index';
 import { SnusFarmGame } from './snus-farm/index';
 import { SnusFactoryGame } from './snusfactory/index';
-import type { SnusregnState, ArenaState, ArenaGameMode, FarmState, FactoryState, GameAction } from '@slutsnus/shared';
+import { FiskeSnusGame } from './fisksnusen/index';
+import type { SnusregnState, ArenaState, ArenaGameMode, FarmState, FactoryState, FiskeSnusState, GameAction } from '@slutsnus/shared';
 import freshSnusSrc from '../assets/freshsnus.svg';
 import goldSnusSrc from '../assets/goldsnus.svg';
 import spentSnusSrc from '../assets/spentsnus.svg';
@@ -156,6 +157,16 @@ export default function GameContainer(props: GameContainerProps) {
                 {(s) => (
                     <SnusFactoryGame
                         state={s() as FactoryState}
+                        roomCode={props.roomCode}
+                        isSolo={isSolo()}
+                        onAction={(action) => socket.emit('game:action', { roomCode: props.roomCode, action: action as GameAction })}
+                    />
+                )}
+            </Show>
+            <Show when={gameType() === 'fisksnusen' ? gameState() : null}>
+                {(s) => (
+                    <FiskeSnusGame
+                        state={s() as FiskeSnusState}
                         roomCode={props.roomCode}
                         isSolo={isSolo()}
                         onAction={(action) => socket.emit('game:action', { roomCode: props.roomCode, action: action as GameAction })}

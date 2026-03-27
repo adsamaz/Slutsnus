@@ -3,6 +3,7 @@ import { SnusregnEngine } from './snusregn/engine';
 import { SnusArenaEngine } from './snus-arena/engine';
 import { SnusFarmEngine } from './snus-farm/engine';
 import { SnusFactoryEngine } from './snusfactory/engine';
+import { FiskeSnusEngine } from './fisksnusen/engine';
 
 export interface GameEngineOptions {
     difficulty?: FactoryDifficulty;
@@ -30,4 +31,5 @@ export const gameRegistry: Record<string, new () => GameEngine> = {
     'snus-arena': SnusArenaEngine,
     'snus-farm': SnusFarmEngine,
     'snusfactory': SnusFactoryEngine,
+    'fisksnusen': FiskeSnusEngine,
 };

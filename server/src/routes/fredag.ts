@@ -90,6 +90,10 @@ router.get('/', authMiddleware, async (req: AuthenticatedRequest, res: Response)
         include: {
             user: { select: { username: true, avatarUrl: true } },
             reactions: { include: { user: { select: { username: true } } } },
+            comments: {
+                orderBy: { createdAt: 'asc' },
+                include: { user: { select: { username: true, avatarUrl: true } } },
+            },
         },
     });
 
@@ -109,6 +113,16 @@ router.get('/', authMiddleware, async (req: AuthenticatedRequest, res: Response)
             users: data.users,
         }));
 
+        const comments = post.comments.map(c => ({
+            id: c.id,
+            postId: c.postId,
+            userId: c.userId,
+            username: c.user.username,
+            avatarUrl: c.user.avatarUrl,
+            body: c.body,
+            createdAt: c.createdAt.toISOString(),
+        }));
+
         return {
             id: post.id,
             type: post.type,
@@ -119,6 +133,7 @@ router.get('/', authMiddleware, async (req: AuthenticatedRequest, res: Response)
             username: post.user.username,
             avatarUrl: post.user.avatarUrl,
             reactions,
+            comments,
         };
     });
 
@@ -212,9 +227,89 @@ router.post(
             username: post.user.username,
             avatarUrl: post.user.avatarUrl,
             reactions: [],
+            comments: [],
         });
     },
 );
+
+// DELETE /api/fredag/:postId — delete own post
+router.delete('/:postId', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+    const postId = req.params.postId as string;
+    const userId = req.user!.userId;
+
+    const post = await prisma.fredagPost.findUnique({ where: { id: postId } });
+    if (!post) {
+        res.status(404).json({ error: 'Post not found' });
+        return;
+    }
+    if (post.userId !== userId) {
+        res.status(403).json({ error: 'Not your post' });
+        return;
+    }
+
+    await prisma.fredagReaction.deleteMany({ where: { postId } });
+    await prisma.fredagPost.delete({ where: { id: postId } });
+
+    // Clean up uploaded file (not Spotify URLs)
+    if (post.fileUrl.startsWith('/uploads/')) {
+        const filePath = path.join(__dirname, '../../../', post.fileUrl);
+        fs.unlink(filePath, () => { /* ignore errors */ });
+    }
+
+    res.json({ ok: true });
+});
+
+// POST /api/fredag/:postId/comments — add a comment
+router.post('/:postId/comments', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+    const postId = req.params.postId as string;
+    const userId = req.user!.userId;
+    const body = typeof req.body.body === 'string' ? req.body.body.trim().slice(0, 500) : '';
+
+    if (!body) {
+        res.status(400).json({ error: 'Comment cannot be empty' });
+        return;
+    }
+
+    const post = await prisma.fredagPost.findUnique({ where: { id: postId } });
+    if (!post) {
+        res.status(404).json({ error: 'Post not found' });
+        return;
+    }
+
+    const comment = await prisma.fredagComment.create({
+        data: { postId, userId, body },
+        include: { user: { select: { username: true, avatarUrl: true } } },
+    });
+
+    res.json({
+        id: comment.id,
+        postId: comment.postId,
+        userId: comment.userId,
+        username: comment.user.username,
+        avatarUrl: comment.user.avatarUrl,
+        body: comment.body,
+        createdAt: comment.createdAt.toISOString(),
+    });
+});
+
+// DELETE /api/fredag/:postId/comments/:commentId — delete own comment
+router.delete('/:postId/comments/:commentId', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+    const commentId = req.params.commentId as string;
+    const userId = req.user!.userId;
+
+    const comment = await prisma.fredagComment.findUnique({ where: { id: commentId } });
+    if (!comment) {
+        res.status(404).json({ error: 'Comment not found' });
+        return;
+    }
+    if (comment.userId !== userId) {
+        res.status(403).json({ error: 'Not your comment' });
+        return;
+    }
+
+    await prisma.fredagComment.delete({ where: { id: commentId } });
+    res.json({ ok: true });
+});
 
 // POST /api/fredag/:postId/react — toggle an emoji reaction
 router.post('/:postId/react', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
