@@ -51,7 +51,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage,
-    limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
     fileFilter: (_req, file, cb) => {
         // First-pass: reject obviously wrong MIME types before wasting disk I/O
         if (!ALLOWED_TYPES[file.mimetype]) {

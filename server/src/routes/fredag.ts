@@ -11,7 +11,7 @@ const router = Router();
 const UPLOADS_DIR = path.join(__dirname, '../../../uploads/fredag');
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
-const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3 MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 // Max posts per user per type per day
 const MAX_POSTS_PER_TYPE_PER_DAY = 3;
