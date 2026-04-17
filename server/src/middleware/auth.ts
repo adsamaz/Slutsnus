@@ -26,3 +26,24 @@ export function authMiddleware(
         res.status(401).json({ error: 'Invalid token' });
     }
 }
+
+// Attaches user if token is present, but never rejects unauthenticated requests
+export function optionalAuthMiddleware(
+    req: AuthenticatedRequest,
+    _res: Response,
+    next: NextFunction,
+): void {
+    const token = (req.cookies as Record<string, string>)?.token;
+    if (token) {
+        try {
+            const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
+                userId: string;
+                username: string;
+            };
+            req.user = payload;
+        } catch {
+            // invalid token — proceed as guest
+        }
+    }
+    next();
+}

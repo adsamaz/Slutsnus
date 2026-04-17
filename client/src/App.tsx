@@ -64,14 +64,7 @@ export default function App() {
                                     </ProtectedRoute>
                                 )}
                             />
-                            <Route
-                                path="/leaderboard"
-                                component={() => (
-                                    <ProtectedRoute>
-                                        <Leaderboard />
-                                    </ProtectedRoute>
-                                )}
-                            />
+                            <Route path="/leaderboard" component={Leaderboard} />
                             <Route
                                 path="/profile"
                                 component={() => (
@@ -80,14 +73,7 @@ export default function App() {
                                     </ProtectedRoute>
                                 )}
                             />
-                            <Route
-                                path="/fredag"
-                                component={() => (
-                                    <ProtectedRoute>
-                                        <Fredag />
-                                    </ProtectedRoute>
-                                )}
-                            />
+                            <Route path="/fredag" component={Fredag} />
                         </Router>
                     </FriendsProvider>
                 </RoomProvider>

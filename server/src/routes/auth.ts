@@ -11,12 +11,12 @@ const COOKIE_OPTIONS = {
     httpOnly: true,
     sameSite: 'lax' as const,
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: 2 * 365 * 24 * 60 * 60 * 1000,
     path: '/',
 };
 
 function signToken(userId: string, username: string): string {
-    return jwt.sign({ userId, username }, process.env.JWT_SECRET!, { expiresIn: '7d' });
+    return jwt.sign({ userId, username }, process.env.JWT_SECRET!, { expiresIn: '2y' });
 }
 
 router.post('/register', async (req, res: Response) => {

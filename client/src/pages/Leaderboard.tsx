@@ -62,56 +62,46 @@ export default function Leaderboard() {
                         when={(entries() ?? []).length > 0}
                         fallback={<p class="muted">No scores yet. Be the first!</p>}
                     >
-                        <table class="leaderboard-table">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Player</th>
-                                    <Show when={currentGame().hasDifficulty}>
-                                        <th>Difficulty</th>
-                                    </Show>
-                                    <th>{currentGame().timeBased ? 'Time' : 'Score'}</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <For each={entries()}>
-                                    {(entry, i) => {
-                                        const prevDiff = () => i() > 0 ? entries()![i() - 1].difficulty : null;
-                                        const isNewGroup = () => currentGame().hasDifficulty && entry.difficulty !== prevDiff();
-                                        return (
-                                            <>
-                                                <Show when={isNewGroup()}>
-                                                    <tr>
-                                                        <td colspan="4" style={{ 'padding-top': '12px', 'font-weight': '700', 'text-transform': 'capitalize', color: '#888', 'font-size': '12px' }}>
-                                                            {entry.difficulty}
-                                                        </td>
-                                                    </tr>
+                        <div class="leaderboard-list">
+                            <div class="leaderboard-header">
+                                <span class="lb-col-rank">#</span>
+                                <span class="lb-col-player">Player</span>
+                                <Show when={currentGame().hasDifficulty}>
+                                    <span class="lb-col-diff">Difficulty</span>
+                                </Show>
+                                <span class="lb-col-score">{currentGame().timeBased ? 'Time' : 'Score'}</span>
+                                <span class="lb-col-date">Date</span>
+                            </div>
+                            <For each={entries()}>
+                                {(entry, i) => {
+                                    const prevDiff = () => i() > 0 ? entries()![i() - 1].difficulty : null;
+                                    const isNewGroup = () => currentGame().hasDifficulty && entry.difficulty !== prevDiff();
+                                    return (
+                                        <>
+                                            <Show when={isNewGroup()}>
+                                                <div class="leaderboard-group-label">{entry.difficulty}</div>
+                                            </Show>
+                                            <div class={`leaderboard-row${entry.rank <= 3 ? ` leaderboard-row--rank-${entry.rank}` : ''}`}>
+                                                <span class="lb-col-rank lb-rank-num">{entry.rank}</span>
+                                                <span class="lb-col-player leaderboard-player">
+                                                    <Avatar username={entry.username} avatarUrl={entry.avatarUrl} size="sm" />
+                                                    {entry.username}
+                                                </span>
+                                                <Show when={currentGame().hasDifficulty}>
+                                                    <span class="lb-col-diff lb-diff-val">{entry.difficulty ?? '—'}</span>
                                                 </Show>
-                                                <tr>
-                                                    <td class={entry.rank <= 3 ? `rank-${entry.rank}` : ''}>{entry.rank}</td>
-                                                    <td>
-                                                        <span class="leaderboard-player">
-                                                            <Avatar username={entry.username} avatarUrl={entry.avatarUrl} size="md" />
-                                                            {entry.username}
-                                                        </span>
-                                                    </td>
-                                                    <Show when={currentGame().hasDifficulty}>
-                                                        <td style={{ 'text-transform': 'capitalize' }}>{entry.difficulty ?? '—'}</td>
-                                                    </Show>
-                                                    <td>
-                                                        {currentGame().timeBased
-                                                            ? (entry.timeTakenMs != null ? formatTime(entry.timeTakenMs) : '—')
-                                                            : entry.score}
-                                                    </td>
-                                                    <td>{new Date(entry.recordedAt).toLocaleDateString()}</td>
-                                                </tr>
-                                            </>
-                                        );
-                                    }}
-                                </For>
-                            </tbody>
-                        </table>
+                                                <span class="lb-col-score lb-score-val">
+                                                    {currentGame().timeBased
+                                                        ? (entry.timeTakenMs != null ? formatTime(entry.timeTakenMs) : '—')
+                                                        : entry.score}
+                                                </span>
+                                                <span class="lb-col-date lb-muted">{new Date(entry.recordedAt).toLocaleDateString()}</span>
+                                            </div>
+                                        </>
+                                    );
+                                }}
+                            </For>
+                        </div>
                     </Show>
                 </Show>
             </div>

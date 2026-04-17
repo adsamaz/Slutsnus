@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { prisma } from '../db/client';
-import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
+import { authMiddleware, optionalAuthMiddleware, AuthenticatedRequest } from '../middleware/auth';
 import type { FredagPostType } from '@slutsnus/shared';
 
 const router = Router();
@@ -81,8 +81,8 @@ function handleMulterError(err: unknown, _req: Request, res: Response, next: Nex
 const VALID_TYPES: FredagPostType[] = ['bild', 'lat', 'ol'];
 
 // GET /api/fredag — list all posts with reaction summaries
-router.get('/', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user!.userId;
+router.get('/', optionalAuthMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user?.userId;
 
     const posts = await prisma.fredagPost.findMany({
         orderBy: { createdAt: 'desc' },
@@ -103,7 +103,7 @@ router.get('/', authMiddleware, async (req: AuthenticatedRequest, res: Response)
             const entry = emojiMap.get(r.emoji) ?? { count: 0, reactedByMe: false, users: [] };
             entry.count += 1;
             entry.users.push(r.user.username);
-            if (r.userId === userId) entry.reactedByMe = true;
+            if (userId && r.userId === userId) entry.reactedByMe = true;
             emojiMap.set(r.emoji, entry);
         }
         const reactions = Array.from(emojiMap.entries()).map(([emoji, data]) => ({

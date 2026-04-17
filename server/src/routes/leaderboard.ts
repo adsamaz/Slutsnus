@@ -1,10 +1,10 @@
 import { Router, Response } from 'express';
 import { prisma } from '../db/client';
-import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
+import { optionalAuthMiddleware, AuthenticatedRequest } from '../middleware/auth';
 import { LeaderboardEntry } from '@slutsnus/shared';
 
 const router = Router();
-router.use(authMiddleware);
+router.use(optionalAuthMiddleware);
 
 // Games where lower time = better (show fastest wins)
 const TIME_BASED_GAMES = new Set(['snus-farm', 'snus-arena']);

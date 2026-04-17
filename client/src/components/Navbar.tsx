@@ -19,10 +19,10 @@ export default function Navbar() {
             </div>
             <div class="navbar-links">
                 <A href="/" class="nav-link" end>Games</A>
+                <A href="/fredag" class="nav-link">Fredag</A>
+                <A href="/leaderboard" class="nav-link">Leaderboard</A>
                 <Show when={auth.user}>
                     <A href="/friends" class="nav-link">Friends</A>
-                    <A href="/leaderboard" class="nav-link">Leaderboard</A>
-                    <A href="/fredag" class="nav-link">Fredag</A>
                 </Show>
             </div>
             <div class="navbar-auth">
