@@ -18,6 +18,7 @@ const Friends = lazy(() => import('./pages/Friends'));
 const Leaderboard = lazy(() => import('./pages/Leaderboard'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Fredag = lazy(() => import('./pages/Fredag'));
+const BulkSisters = lazy(() => import('./pages/BulkSisters'));
 
 function Layout(props: ParentProps) {
     return (
@@ -74,6 +75,7 @@ export default function App() {
                                 )}
                             />
                             <Route path="/fredag" component={Fredag} />
+                            <Route path="/bulk-sisters" component={BulkSisters} />
                         </Router>
                     </FriendsProvider>
                 </RoomProvider>

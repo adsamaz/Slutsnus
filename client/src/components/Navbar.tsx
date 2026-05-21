@@ -20,6 +20,7 @@ export default function Navbar() {
             <div class="navbar-links">
                 <A href="/" class="nav-link" end>Games</A>
                 <A href="/fredag" class="nav-link">Fredag</A>
+                <A href="/bulk-sisters" class="nav-link">Bulk Sisters</A>
                 <A href="/leaderboard" class="nav-link">Leaderboard</A>
                 <Show when={auth.user}>
                     <A href="/friends" class="nav-link">Friends</A>
