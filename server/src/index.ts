@@ -12,6 +12,8 @@ import leaderboardRouter from './routes/leaderboard';
 import profileRouter from './routes/profile';
 import fredagRouter from './routes/fredag';
 import bulkSistersRouter from './routes/bulkSisters';
+import vacationsRouter from './routes/vacations';
+import mushroomsRouter from './routes/mushrooms';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -32,6 +34,8 @@ app.use('/api/leaderboard', leaderboardRouter);
 app.use('/api/profile', profileRouter);
 app.use('/api/fredag', fredagRouter);
 app.use('/api/bulk-sisters', bulkSistersRouter);
+app.use('/api/vacations', vacationsRouter);
+app.use('/api/mushrooms', mushroomsRouter);
 
 const uploadsDir = path.join(__dirname, '../../uploads');
 app.use('/uploads', express.static(uploadsDir));

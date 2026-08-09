@@ -10,10 +10,12 @@
     "dependencies": {
         "@slutsnus/shared": "*",
         "@solidjs/router": "^0.15.3",
+        "leaflet": "^1.9.4",
         "socket.io-client": "^4.8.1",
         "solid-js": "^1.9.3"
     },
     "devDependencies": {
+        "@types/leaflet": "^1.9.22",
         "typescript": "*",
         "vite": "^6.1.0",
         "vite-plugin-solid": "^2.11.0"

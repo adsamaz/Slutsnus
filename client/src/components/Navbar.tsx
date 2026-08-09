@@ -22,6 +22,8 @@ export default function Navbar() {
                 <A href="/fredag" class="nav-link">Fredag</A>
                 <A href="/bulk-sisters" class="nav-link">Bulk Sisters</A>
                 <A href="/leaderboard" class="nav-link">Leaderboard</A>
+                <A href="/vacation-calendar" class="nav-link">Semester</A>
+                <A href="/svamp" class="nav-link">Svamp</A>
                 <Show when={auth.user}>
                     <A href="/friends" class="nav-link">Friends</A>
                 </Show>

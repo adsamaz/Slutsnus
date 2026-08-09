@@ -613,3 +613,123 @@ export type FiskeSnusAction =
     | { type: 'fisksnusen:strike' }
     | { type: 'fisksnusen:cast'; castX: number }
     | { type: 'fisksnusen:tree-hit' };
+
+// ─────────────────────────────────────────────────
+// Vacation Calendar
+// ─────────────────────────────────────────────────
+
+export type VacationIcon = '🏡' | '🎣' | '🏖️' | '⛰️' | '🏙️' | '🚗' | '✈️' | '⛷️' | '🎉' | '⛵';
+
+export interface VacationEntryData {
+    id: string;
+    userId: string;
+    username: string;
+    avatarUrl?: string | null;
+    startDate: string; // YYYY-MM-DD
+    endDate: string;   // YYYY-MM-DD
+    icon: VacationIcon;
+    title?: string | null;
+    createdAt: string;
+    isMine: boolean;
+}
+
+export interface CreateVacationEntryRequest {
+    startDate: string; // YYYY-MM-DD
+    endDate: string;   // YYYY-MM-DD
+    icon: VacationIcon;
+    title?: string;
+}
+
+export type UpdateVacationEntryRequest = CreateVacationEntryRequest;
+
+export interface VacationUserOption {
+    id: string;
+    username: string;
+    avatarUrl?: string | null;
+    hidden: boolean;
+}
+
+export interface SwedishHoliday {
+    date: string; // YYYY-MM-DD
+    name: string;
+}
+
+// ─────────────────────────────────────────────────
+// Mushroom Foraging (Svamp)
+// ─────────────────────────────────────────────────
+
+export type MushroomVisibility = 'private' | 'friends' | 'public';
+
+export interface MushroomAreaVertex {
+    lat: number;
+    lng: number;
+}
+
+export interface MushroomEntryData {
+    id: string;
+    userId: string;
+    username: string;
+    avatarUrl?: string | null;
+    speciesId?: string | null;
+    customLabel?: string | null;
+    customColor?: string | null;
+    displayLabel: string;
+    displayIcon: string;
+    displayColor: string;
+    weightGrams: number;
+    foundDate: string; // YYYY-MM-DD
+    lat: number;
+    lng: number;
+    notes?: string | null;
+    areaId?: string | null;
+    visibility: MushroomVisibility;
+    // Only populated for the owner's own entries; which friends a 'friends'-visibility
+    // entry is shared with.
+    visibleToUserIds: string[];
+    createdAt: string;
+    isMine: boolean;
+}
+
+export interface CreateMushroomEntryRequest {
+    speciesId?: string;
+    customLabel?: string;
+    customColor?: string; // hex, e.g. '#8B5E3C'
+    weightGrams: number;
+    foundDate: string; // YYYY-MM-DD
+    lat: number;
+    lng: number;
+    notes?: string;
+    areaId?: string | null;
+    visibility?: MushroomVisibility;
+    visibleToUserIds?: string[];
+}
+
+export type UpdateMushroomEntryRequest = CreateMushroomEntryRequest;
+
+export interface MushroomAreaData {
+    id: string;
+    userId: string;
+    username: string;
+    avatarUrl?: string | null;
+    name: string;
+    polygon: MushroomAreaVertex[];
+    centerLat: number;
+    centerLng: number;
+    notes?: string | null;
+    visibility: MushroomVisibility;
+    // Only populated for the owner's own areas; which friends a 'friends'-visibility
+    // area is shared with.
+    visibleToUserIds: string[];
+    createdAt: string;
+    isMine: boolean;
+}
+
+export interface CreateMushroomAreaRequest {
+    name: string;
+    polygon: MushroomAreaVertex[]; // minimum 3 vertices
+    notes?: string;
+    visibility?: MushroomVisibility;
+    visibleToUserIds?: string[];
+}
+
+export type UpdateMushroomAreaRequest = CreateMushroomAreaRequest;

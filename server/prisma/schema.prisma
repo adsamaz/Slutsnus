@@ -23,6 +23,11 @@ model User {
   fredagPosts         FredagPost[]
   fredagReactions     FredagReaction[]
   fredagComments      FredagComment[]
+  vacationEntries     VacationEntry[]
+  vacationHidden      VacationHiddenUser[] @relation("VacationHiddenViewer")
+  vacationHiddenBy    VacationHiddenUser[] @relation("VacationHiddenTarget")
+  mushroomEntries     MushroomEntry[]
+  mushroomAreas       MushroomArea[]
 }
 
 model Room {
@@ -149,4 +154,77 @@ model WinLossRecord {
   user User @relation(fields: [userId], references: [id])
 
   @@id([userId, gameType])
+}
+
+model VacationEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  icon      String
+  title     String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([startDate, endDate])
+}
+
+model VacationHiddenUser {
+  viewerId     String
+  hiddenUserId String
+  createdAt    DateTime @default(now())
+
+  viewer     User @relation("VacationHiddenViewer", fields: [viewerId], references: [id])
+  hiddenUser User @relation("VacationHiddenTarget", fields: [hiddenUserId], references: [id])
+
+  @@id([viewerId, hiddenUserId])
+}
+
+model MushroomEntry {
+  id          String   @id @default(cuid())
+  userId      String
+  areaId      String?
+  speciesId   String?
+  customLabel String?
+  customColor String?
+  weightGrams Int
+  foundDate   DateTime @db.Date
+  lat         Float
+  lng         Float
+  notes       String?
+  visibility  String   @default("private")
+  // Only meaningful when visibility === 'friends'; which of the owner's friends can
+  // see this entry. Empty by default — an entry set to "friends" is visible to none
+  // until the owner explicitly picks recipients.
+  visibleToUserIds String[] @default([])
+  createdAt   DateTime @default(now())
+
+  user User          @relation(fields: [userId], references: [id])
+  area MushroomArea? @relation(fields: [areaId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([areaId, foundDate])
+  @@index([foundDate])
+  @@index([visibility])
+}
+
+model MushroomArea {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  polygonJson String
+  centerLat   Float
+  centerLng   Float
+  notes       String?
+  visibility  String   @default("private")
+  // Only meaningful when visibility === 'friends'; see MushroomEntry.visibleToUserIds.
+  visibleToUserIds String[] @default([])
+  createdAt   DateTime @default(now())
+
+  user    User            @relation(fields: [userId], references: [id])
+  entries MushroomEntry[]
+
+  @@index([userId])
+  @@index([visibility])
 }

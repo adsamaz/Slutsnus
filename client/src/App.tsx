@@ -19,6 +19,8 @@ const Leaderboard = lazy(() => import('./pages/Leaderboard'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Fredag = lazy(() => import('./pages/Fredag'));
 const BulkSisters = lazy(() => import('./pages/BulkSisters'));
+const VacationCalendar = lazy(() => import('./pages/VacationCalendar'));
+const Svamp = lazy(() => import('./pages/Svamp'));
 
 function Layout(props: ParentProps) {
     return (
@@ -76,6 +78,8 @@ export default function App() {
                             />
                             <Route path="/fredag" component={Fredag} />
                             <Route path="/bulk-sisters" component={BulkSisters} />
+                            <Route path="/vacation-calendar" component={VacationCalendar} />
+                            <Route path="/svamp" component={Svamp} />
                         </Router>
                     </FriendsProvider>
                 </RoomProvider>

@@ -25,7 +25,16 @@
       "Bash(xargs grep:*)",
       "Skill(gsd:discuss-phase)",
       "Skill(gsd:discuss-phase:*)",
-      "Bash(ls .planning/phases/03-client-ui-and-reveal-experience/*SUMMARY*)"
+      "Bash(ls .planning/phases/03-client-ui-and-reveal-experience/*SUMMARY*)",
+      "WebFetch(domain:jeppenator.com)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(curl -s -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\" \"https://jeppenator.com/bulk-brothers\")",
+      "Bash(curl -s \"https://jeppenator.com/main-YX6RNXGN.js\")",
+      "Bash(curl -s \"https://jeppenator.com/api/bulk/community\")",
+      "Bash(Get-ChildItem -Path C:\\\\Users\\\\addes\\\\Git\\\\Slutsnus -Force)",
+      "Bash(Select-Object Name, FullName)",
+      "Bash(curl -s -I \"https://jeppenator.com/api/bulk/community\")",
+      "Bash(git push *)"
     ]
   }
 }
